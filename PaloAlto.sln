@@ -1,0 +1,45 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30717.126
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PaloAlto", "PaloAlto\PaloAlto.csproj", "{33FBC5A1-3466-4F10-B9A6-7186F804A65A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1A6C93E7-24FD-47FD-883D-EDABF5CEE4C6}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		integration-manifest.json = integration-manifest.json
+		.github\workflows\keyfactor-extension-release.yml = .github\workflows\keyfactor-extension-release.yml
+		README.md = README.md
+		README.md.tpl = README.md.tpl
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{6302034E-DF8C-4B65-AC36-CED24C068999}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaloAltoTestConsole", "PaloAltoTestConsole\PaloAltoTestConsole.csproj", "{FFF21E91-1820-4090-922B-A78D5CC38D7B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{33FBC5A1-3466-4F10-B9A6-7186F804A65A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33FBC5A1-3466-4F10-B9A6-7186F804A65A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33FBC5A1-3466-4F10-B9A6-7186F804A65A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33FBC5A1-3466-4F10-B9A6-7186F804A65A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFF21E91-1820-4090-922B-A78D5CC38D7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFF21E91-1820-4090-922B-A78D5CC38D7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFF21E91-1820-4090-922B-A78D5CC38D7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFF21E91-1820-4090-922B-A78D5CC38D7B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6302034E-DF8C-4B65-AC36-CED24C068999} = {1A6C93E7-24FD-47FD-883D-EDABF5CEE4C6}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E0FA12DA-6B82-4E64-928A-BB9965E636C1}
+	EndGlobalSection
+EndGlobal
