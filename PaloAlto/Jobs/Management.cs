@@ -85,17 +85,33 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
                         config.ServerPassword); //Api base URL Plus Key
-                
-                        _logger.LogTrace("Return Success");
-                        return new JobResult
-                        {
-                            Result = OrchestratorJobStatusJobResult.Success,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = ""
-                        };
 
-                //Todo: Return success or failure based on return from Palo Alto
-                
+                _logger.LogTrace(
+                    $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
+                var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias);
+
+                var resWriter = new StringWriter();
+                var resSerializer = new XmlSerializer(typeof(RemoveCertificateResponse));
+                resSerializer.Serialize(resWriter, response.Result);
+                _logger.LogTrace($"Remove Certificate Xml Response {resWriter}");
+
+                if (response.Result.Status == "success")
+                {
+                    return new JobResult
+                    {
+                        Result = OrchestratorJobStatusJobResult.Success,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = ""
+                    };
+                }
+
+                return new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    JobHistoryId = config.JobHistoryId,
+                    FailureMessage = response.Result.Msg
+                };
+
             }
             catch (Exception e)
             {
@@ -103,8 +119,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
                     JobHistoryId = config.JobHistoryId,
-                    FailureMessage =
-                        $"Management/Remove: {e.Message}"
+                    FailureMessage = $"PerformRemoval: {e.Message}"
                 };
             }
         }
@@ -124,6 +139,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace(
                     $"Palo Alto Client Created");
 
+                string certPem;
                 if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX Entry
                 {
                     _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
@@ -141,10 +157,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                     _logger.LogTrace($"Created Pkcs12Store containing Alias {config.JobCertificate.Alias} Contains Alias is {p.ContainsAlias(config.JobCertificate.Alias)}");
 
-                    string privateKeyString;
-
                     // Extract private key
                     string alias;
+                    string privateKeyString;
                     using (var memoryStream = new MemoryStream())
                     {
                         using (TextWriter streamWriter = new StreamWriter(memoryStream))
@@ -174,12 +189,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     var pubCertPem= Pemify(Convert.ToBase64String(p.GetCertificate(alias).Certificate.GetEncoded()));
                     _logger.LogTrace($"Public cert Pem {pubCertPem}");
 
-                    var certPem = privateKeyString + certStart + pubCertPem + certEnd;
+                    certPem = privateKeyString + certStart + pubCertPem + certEnd;
                     
                     _logger.LogTrace($"Got certPem {certPem}");
 
                     var importResult=client.ImportCertificate(config.JobCertificate.Alias, config.JobCertificate.PrivateKeyPassword,
-                        Encoding.UTF8.GetBytes(certPem));
+                        Encoding.UTF8.GetBytes(certPem),"yes","keypair");
 
                     var content = importResult.Result;
                     
@@ -206,9 +221,39 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     };
 
                 }
+                else
+                {
+                    _logger.LogTrace($"Adding a certificate without a private key to Palo Alto.....");
+                    certPem = certStart + Pemify(config.JobCertificate.Contents) + certEnd;
+                    _logger.LogTrace($"Pem: {certPem}");
 
-                //todo: Remove this and add else statement for certs without a private key
-                return new JobResult();
+                    var importResult = client.ImportCertificate(config.JobCertificate.Alias, config.JobCertificate.PrivateKeyPassword,
+                        Encoding.UTF8.GetBytes(certPem), "no", "certificate");
+                    
+                    var content = importResult.Result;
+
+                    var resWriter = new StringWriter();
+                    var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
+                    resSerializer.Serialize(resWriter, content);
+                    _logger.LogTrace($"Import Certificate WithOut Private Key Xml Response {resWriter}");
+
+                    if (content.Status == "success")
+                    {
+                        return new JobResult
+                        {
+                            Result = OrchestratorJobStatusJobResult.Success,
+                            JobHistoryId = config.JobHistoryId,
+                            FailureMessage = ""
+                        };
+                    }
+
+                    return new JobResult
+                    {
+                        Result = OrchestratorJobStatusJobResult.Failure,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = $"Management/Add Cert With Private Key Failure {content.Result}"
+                    };
+                }
             }
             catch (Exception e)
             {
