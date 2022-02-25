@@ -57,7 +57,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //Debug Write Trusted Root List Response from Palo Alto
                 var resWriter = new StringWriter();
                 var resSerializer = new XmlSerializer(typeof(TrustedRootListResponse));
-                resSerializer.Serialize(resWriter, certificatesResult);
+                resSerializer.Serialize(resWriter, trustedRootPayload);
                 _logger.LogTrace($"Certificate Trusted List Result {resWriter}");
 
                 var warningFlag = false;
@@ -105,9 +105,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         warningFlag = true;
                     }
 
-                _logger.LogTrace($"Submitting Inventory To Keyfactor via submitInventory.Invoke");
+                _logger.LogTrace("Submitting Inventory To Keyfactor via submitInventory.Invoke");
                 submitInventory.Invoke(inventoryItems);
-                _logger.LogTrace($"Submitted Inventory To Keyfactor via submitInventory.Invoke");
+                _logger.LogTrace("Submitted Inventory To Keyfactor via submitInventory.Invoke");
 
                 _logger.MethodExit(LogLevel.Debug);
                 if (warningFlag)

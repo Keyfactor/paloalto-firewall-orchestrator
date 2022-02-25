@@ -28,7 +28,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
             };
-            HttpClient = new HttpClient(httpClientHandler) { BaseAddress = new Uri(url)};
+            HttpClient = new HttpClient(httpClientHandler) { BaseAddress = new Uri("https://" + url)};
             ApiKey = key;
         }
 
@@ -97,7 +97,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             try
             {
                 var uri = $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl=&target-tpl-vsys=&vsys&key={ApiKey}";
-                var boundary = $"--------------------------598408616359830956846110";
+                var boundary = $"--------------------------{Guid.NewGuid():N}";
                 var requestContent = new MultipartFormDataContent();
                 requestContent.Headers.Remove("Content-Type");
                 requestContent.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={boundary}");
@@ -105,7 +105,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 requestContent.GetType().BaseType?.GetField("_boundary", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(requestContent, boundary);
                 var pfxContent=new ByteArrayContent(bytes);
                 pfxContent.Headers.ContentType=MediaTypeHeaderValue.Parse("application/x-x509-ca-cert");
-                requestContent.Add(pfxContent,"\"file\"","\"TestUploadCode.pem\"");
+                requestContent.Add(pfxContent,"\"file\"", $"\"{name}.pem\"");
                 return await GetXmlResponseAsync<ImportCertificateResponse>(await HttpClient.PostAsync(uri, requestContent));
             }
             catch (Exception e)
