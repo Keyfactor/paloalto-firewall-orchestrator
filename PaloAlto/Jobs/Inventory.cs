@@ -11,6 +11,7 @@ using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
@@ -37,7 +38,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry(LogLevel.Debug);
-
+                _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace($"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
                 //Get the list of certificates and Trusted Roots
                 var client =

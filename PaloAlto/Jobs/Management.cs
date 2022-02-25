@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Pkcs;
+using Newtonsoft.Json;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
@@ -55,11 +56,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 if (config.OperationType.ToString() == "Add")
                 {
                     _logger.LogTrace("Adding...");
+                    _logger.LogTrace($"Add Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformAddition(config);
                 }
                 else if (config.OperationType.ToString() == "Remove")
                 {
                     _logger.LogTrace("Removing...");
+                    _logger.LogTrace($"Remove Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformRemoval(config);
                 }
 
@@ -79,7 +82,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
-
                 _logger.LogTrace(
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
                 var client =
@@ -163,6 +165,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
+
                 _logger.LogTrace(
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
                 var client =
