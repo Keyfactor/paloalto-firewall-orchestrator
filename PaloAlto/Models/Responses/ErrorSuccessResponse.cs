@@ -15,7 +15,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses
     }
 
     [XmlRoot(ElementName = "response")]
-    public class RemoveCertificateResponse
+    public class ErrorSuccessResponse
     {
 
         [XmlElement(ElementName = "msg",IsNullable = true)]

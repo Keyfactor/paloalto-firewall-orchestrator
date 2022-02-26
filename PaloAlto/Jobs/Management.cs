@@ -93,7 +93,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias);
 
                 var resWriter = new StringWriter();
-                var resSerializer = new XmlSerializer(typeof(RemoveCertificateResponse));
+                var resSerializer = new XmlSerializer(typeof(ErrorSuccessResponse));
                 resSerializer.Serialize(resWriter, response.Result);
                 _logger.LogTrace($"Remove Certificate Xml Response {resWriter}");
 
@@ -254,6 +254,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         if (content.Status == "success")
                         {
+                            SetForwardTrust(config.JobProperties["Forward Trust"].ToString(),config.JobCertificate.Alias,client);
+                            SetTrustedRoot(config.JobProperties["Trusted Root"].ToString(),config.JobCertificate.Alias,client);
+
                             return new JobResult
                             {
                                 Result = OrchestratorJobStatusJobResult.Success,
@@ -289,6 +292,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         if (content.Status == "success")
                         {
+                            SetForwardTrust(config.JobProperties["Forward Trust"].ToString(),config.JobCertificate.Alias,client);
+                            SetTrustedRoot(config.JobProperties["Trusted Root"].ToString(),config.JobCertificate.Alias,client);
+
                             return new JobResult
                             {
                                 Result = OrchestratorJobStatusJobResult.Success,
@@ -322,6 +328,49 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage =
                         $"Management/Add {e.Message}"
                 };
+            }
+        }
+
+        private void SetTrustedRoot(string trustedRoot, string jobCertificateAlias,PaloAltoClient client)
+        {
+            _logger.MethodEntry(LogLevel.Debug);
+            try
+            {
+                if (Convert.ToBoolean(trustedRoot))
+                {
+                    var result=client.SubmitSetTrustedRoot(jobCertificateAlias);
+                    _logger.LogTrace(result.Result.LineMsg.Line.Count > 0
+                        ? $"Set Trusted Root Response {String.Join(" ,", result.Result.LineMsg.Line)}"
+                        : $"Set Trusted Root Response {result.Result.LineMsg.StringMsg}");
+                }
+                _logger.MethodExit(LogLevel.Debug);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occurred in Management.SetTrustedRoot {LogHandler.FlattenException(e)}");
+                throw;
+            }
+        }
+
+        private void SetForwardTrust(string forwardTrust, string jobCertificateAlias,PaloAltoClient client)
+        {
+            _logger.MethodEntry(LogLevel.Debug);
+            try
+            {
+                if (Convert.ToBoolean(forwardTrust))
+                {
+                    var result = client.SubmitSetForwardTrust(jobCertificateAlias);
+
+                    _logger.LogTrace(result.Result.LineMsg.Line.Count > 0
+                        ? $"Set Forward Trust Response {String.Join(" ,", result.Result.LineMsg.Line)}"
+                        : $"Set Forward Trust Response {result.Result.LineMsg.StringMsg}");
+                }
+                _logger.MethodExit(LogLevel.Debug);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occurred in Management.SetForwardTrust {LogHandler.FlattenException(e)}");
+                throw;
             }
         }
     }

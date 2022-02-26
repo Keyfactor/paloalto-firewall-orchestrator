@@ -77,13 +77,43 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<RemoveCertificateResponse> SubmitDeleteCertificate(string name)
+        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name)
         {
 
             try
             {
                 var uri = $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}";
-                return await GetXmlResponseAsync<RemoveCertificateResponse>(await HttpClient.GetAsync(uri));
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name)
+        {
+
+            try
+            {
+                var uri = $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}";
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SubmitSetForwardTrust(string name)
+        {
+
+            try
+            {
+                var uri = $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<forward-trust-certificate><rsa>{name}</rsa></forward-trust-certificate>&key={ApiKey}";
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
             {

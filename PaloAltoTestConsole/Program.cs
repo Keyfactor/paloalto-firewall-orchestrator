@@ -93,9 +93,9 @@ namespace PaloAltoTestConsole
 
                         var xml = "<response status=\"error\" code=\"10\"><msg><line> <![CDATA[ Boingy]]> cannot be deleted because of references from:</line><line> certificate-profile -> Keyfactor -> CA -> Boingy</line></msg></response>";
                         // using System.Xml.Serialization;
-                         XmlSerializer serializer = new XmlSerializer(typeof(RemoveCertificateResponse));
+                         XmlSerializer serializer = new XmlSerializer(typeof(ErrorSuccessResponse));
                          using StringReader reader = new StringReader(xml);
-                         var test = (RemoveCertificateResponse)serializer.Deserialize(reader);
+                         var test = (ErrorSuccessResponse)serializer.Deserialize(reader);
                          Console.Write(test);
                 }
 
