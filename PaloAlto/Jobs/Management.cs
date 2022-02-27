@@ -254,8 +254,30 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         if (content.Status == "success")
                         {
-                            SetForwardTrust(config.JobProperties["Forward Trust"].ToString(),config.JobCertificate.Alias,client);
-                            SetTrustedRoot(config.JobProperties["Trusted Root"].ToString(),config.JobCertificate.Alias,client);
+                            var forwardTrust = Convert.ToBoolean(config.JobProperties["Forward Trust"].ToString());
+                            var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                            var forwardResponse = SetForwardTrust(forwardTrust, config.JobCertificate.Alias, client);
+                            var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
+
+                            if (forwardTrust && forwardResponse.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Certificate to Forward Trust"
+                                };
+                            }
+
+                            if (trustedRoot && rootResponse.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Certificate to Trusted Root"
+                                };
+                            }
 
                             return new JobResult
                             {
@@ -292,8 +314,30 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         if (content.Status == "success")
                         {
-                            SetForwardTrust(config.JobProperties["Forward Trust"].ToString(),config.JobCertificate.Alias,client);
-                            SetTrustedRoot(config.JobProperties["Trusted Root"].ToString(),config.JobCertificate.Alias,client);
+                            var forwardTrust = Convert.ToBoolean(config.JobProperties["Forward Trust"].ToString());
+                            var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                            var forwardResponse=SetForwardTrust(forwardTrust, config.JobCertificate.Alias,client);
+                            var rootResponse=SetTrustedRoot(trustedRoot, config.JobCertificate.Alias,client);
+
+                            if (forwardTrust && forwardResponse.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Certificate to Forward Trust"
+                                };
+                            }
+
+                            if (trustedRoot && rootResponse.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Certificate to Trusted Root"
+                                };
+                            }
 
                             return new JobResult
                             {
@@ -331,19 +375,21 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        private void SetTrustedRoot(string trustedRoot, string jobCertificateAlias,PaloAltoClient client)
+        private ErrorSuccessResponse SetTrustedRoot(bool trustedRoot, string jobCertificateAlias,PaloAltoClient client)
         {
             _logger.MethodEntry(LogLevel.Debug);
             try
             {
-                if (Convert.ToBoolean(trustedRoot))
+                if (trustedRoot)
                 {
                     var result=client.SubmitSetTrustedRoot(jobCertificateAlias);
                     _logger.LogTrace(result.Result.LineMsg.Line.Count > 0
                         ? $"Set Trusted Root Response {String.Join(" ,", result.Result.LineMsg.Line)}"
                         : $"Set Trusted Root Response {result.Result.LineMsg.StringMsg}");
+                    return result.Result;
                 }
                 _logger.MethodExit(LogLevel.Debug);
+                return null;
             }
             catch (Exception e)
             {
@@ -352,20 +398,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        private void SetForwardTrust(string forwardTrust, string jobCertificateAlias,PaloAltoClient client)
+        private ErrorSuccessResponse SetForwardTrust(bool forwardTrust, string jobCertificateAlias,PaloAltoClient client)
         {
             _logger.MethodEntry(LogLevel.Debug);
             try
             {
-                if (Convert.ToBoolean(forwardTrust))
+                if (forwardTrust)
                 {
                     var result = client.SubmitSetForwardTrust(jobCertificateAlias);
 
                     _logger.LogTrace(result.Result.LineMsg.Line.Count > 0
                         ? $"Set Forward Trust Response {String.Join(" ,", result.Result.LineMsg.Line)}"
                         : $"Set Forward Trust Response {result.Result.LineMsg.StringMsg}");
+
+                    return result.Result;
                 }
                 _logger.MethodExit(LogLevel.Debug);
+                return null;
             }
             catch (Exception e)
             {
