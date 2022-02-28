@@ -16,7 +16,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{6302034E-DF8C-4B65-AC36-CED24C068999}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaloAltoTestConsole", "PaloAltoTestConsole\PaloAltoTestConsole.csproj", "{FFF21E91-1820-4090-922B-A78D5CC38D7B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PaloAltoTestConsole", "PaloAltoTestConsole\PaloAltoTestConsole.csproj", "{FFF21E91-1820-4090-922B-A78D5CC38D7B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
