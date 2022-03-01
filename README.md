@@ -85,3 +85,27 @@ Password |This is the API Key obtained from the Palo Alto PA-VM Firewall Device.
 `
 curl -k -X GET 'https://<firewall>/api/?type=keygen&user=<username>&password=<password>'
 `
+
+#### Usage
+
+**Adding New Certificate**
+
+![](images/AddCertificate.gif)
+
+**Adding New Certificate With Trusted Root**
+
+![](images/AddWithTrustedRoot.gif)
+
+**Replace Certficate**
+
+![](images/ReplaceCertificate.gif)
+
+**Remove Certficate**
+
+![](images/RemoveCertificate.gif)
+
+**Inventory Locations**
+
+![](images/InventoryLocation1.gif)
+
+![](images/InventoryLocation2.gif)
