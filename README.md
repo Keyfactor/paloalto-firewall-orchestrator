@@ -19,8 +19,8 @@ This agent implements three job types – Inventory, Management Add, and Managem
 In Keyfactor Command create a new Certificate Store Type similar to the one below:
 
 #### STORE TYPE CONFIGURATION
-SETTING TAB   |  CONFIG ELEMENT	| DESCRIPTION
-------------------|------------------
+SETTING TAB  |  CONFIG ELEMENT	| DESCRIPTION
+------|-----------|------------------
 Basic |Name	|Descriptive name for the Store Type.  PaloAlto can be used.
 Basic |Short Name	|The short name that identifies the registered functionality of the orchestrator. Must be PaloAlto
 Basic |Custom Capability|You can leave this unchecked and use the default.
@@ -80,6 +80,8 @@ Inventory Schedule	|The interval that the system will use to report on what cert
 Use SSL	|This should be checked.
 User	|This is not necessary.
 Password |This is the API Key obtained from the Palo Alto PA-VM Firewall Device.  This will have to be obtained by making the following API Call.
+
+*API Key Generation*
 `
 curl -k -X GET 'https://<firewall>/api/?type=keygen&user=<username>&password=<password>'
 `
