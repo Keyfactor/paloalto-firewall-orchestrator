@@ -3,6 +3,8 @@
 
 {{ description }}
 
+## {{ status | capitalize }} Ready
+
 <!-- add integration specific information below -->
 *** 
 **Palo Alto PA-VM Firewall Device Configuration**
