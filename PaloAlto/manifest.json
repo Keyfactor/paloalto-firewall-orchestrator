@@ -1,14 +1,14 @@
-﻿{
-  "extensions": {
-    "Keyfactor.Orchestrators.Extensions.IOrchestratorJobExtension": {
-      "CertStores.IISBindings.Inventory": {
-        "assemblypath": "PaloAlto.dll",
-        "TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Inventory"
-      },
-      "CertStores.IISBindings.Management": {
-        "assemblypath": "PaloAlto.dll",
-        "TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Management"
-      }
-    }
-  }
+{
+	"extensions": {
+		"Keyfactor.Orchestrators.Extensions.IOrchestratorJobExtension": {
+			"CertStores.PaloAlto.Inventory": {
+				"assemblypath": "PaloAlto.dll",
+				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Inventory"
+			},
+			"CertStores.PaloAlto.Management": {
+				"assemblypath": "PaloAlto.dll",
+				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Management"
+			}
+		}
+	}
 }
