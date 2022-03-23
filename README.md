@@ -15,6 +15,7 @@ The Palo Alto Firewall Orchestrator remotely manages certificates on the Palo Al
 
 This agent implements three job types – Inventory, Management Add, and Management Remove. Below are the steps necessary to configure this AnyAgent.  It supports adding certificates with or without private keys.
 
+NOTE: Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.
 
 **1. Create the New Certificate Store Type for the PA-VM Firewall Device**
 
