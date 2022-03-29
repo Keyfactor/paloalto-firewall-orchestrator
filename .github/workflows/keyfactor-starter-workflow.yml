@@ -12,6 +12,8 @@ jobs:
       release_version: ${{ needs.call-create-github-release-workflow.outputs.release_version }}
       release_url: ${{ needs.call-create-github-release-workflow.outputs.release_url }}
       release_dir: PaloAlto/bin/Release/netcoreapp3.1 # output directory to upload as a release, relative to checkout workspace
+    secrets: 
+      token: ${{ secrets.PRIVATE_PACKAGE_ACCESS  }}
 
   call-generate-readme-workflow:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
