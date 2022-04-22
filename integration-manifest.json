@@ -2,6 +2,6 @@
     "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
     "integration_type": "orchestrator",
     "name": "Palo Alto PA-VM Firewall",
-    "status": "Prototype",
+    p"status": "Prototype",
     "description": "Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory."
 }
