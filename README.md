@@ -14,7 +14,6 @@ The Universal Orchestrator is the successor to the Windows Orchestrator. This Ca
 
 ---
 
-*** 
 **Palo Alto PA-VM Firewall Device Configuration**
 
 **Overview**
@@ -129,3 +128,4 @@ curl -k -X GET 'https://<firewall>/api/?type=keygen&user=<username>&password=<pa
 ![](images/InventoryLocation1.gif)
 
 ![](images/InventoryLocation2.gif)
+
