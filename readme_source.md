@@ -1,4 +1,3 @@
-*** 
 **Palo Alto PA-VM Firewall Device Configuration**
 
 **Overview**
