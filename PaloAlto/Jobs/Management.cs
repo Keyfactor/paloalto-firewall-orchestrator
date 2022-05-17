@@ -2,9 +2,13 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Requests;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -165,6 +169,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
+                
+                var storeProps = JsonConvert.DeserializeObject<StorePath>(config.CertificateStoreDetails.Properties,
+                    new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+                _logger.LogTrace($"Store Properties: {JsonConvert.SerializeObject(storeProps)}");
 
                 _logger.LogTrace(
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
@@ -182,7 +190,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
                     string certPem;
-                    if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX Entry
+                    if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX ProfileEntry
                     {
                         _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
 
@@ -247,13 +255,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         var content = importResult.Result;
 
-                        var resWriter = new StringWriter();
+                                var resWriter = new StringWriter();
                         var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
                         resSerializer.Serialize(resWriter, content);
                         _logger.LogTrace($"Import Certificate With Private Key Xml Response {resWriter}");
 
                         if (content.Status == "success")
                         {
+                            //1. Set as trusted root after cert is created
                             var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
                             var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
                             
@@ -264,6 +273,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     Result = OrchestratorJobStatusJobResult.Warning,
                                     JobHistoryId = config.JobHistoryId,
                                     FailureMessage = "Could not set Certificate to Trusted Root"
+                                };
+                            }
+
+                            //2. Set the bindings and warn if they could not be set
+                            var bindingsResponse = SetBindings(config, storeProps, client);
+                            if (bindingsResponse.Result.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Bindings"
                                 };
                             }
 
@@ -302,6 +323,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         if (content.Status == "success")
                         {
+                            //1. Set as trusted root after cert is created
                             var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
                             var rootResponse=SetTrustedRoot(trustedRoot, config.JobCertificate.Alias,client);
 
@@ -313,6 +335,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     Result = OrchestratorJobStatusJobResult.Warning,
                                     JobHistoryId = config.JobHistoryId,
                                     FailureMessage = "Could not set Certificate to Trusted Root"
+                                };
+                            }
+
+                            //2. Set the bindings and warn if they could not be set
+                            var bindingsResponse = SetBindings(config, storeProps, client);
+                            if (bindingsResponse.Result.Status == "error")
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = "Could not set Bindings"
                                 };
                             }
 
@@ -333,6 +367,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     }
                 }
 
+               
                 return new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
@@ -349,6 +384,34 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage =
                         $"Management/Add {e.Message}"
                 };
+            }
+        }
+
+        private Task<ErrorSuccessResponse> SetBindings(ManagementJobConfiguration config, StorePath storeProps, PaloAltoClient client)
+        {
+            //Handle the Profile Bindings
+            try
+            {
+                var profileRequest = new EditProfileRequest
+                {
+                    Name = config.CertificateStoreDetails.StorePath, Certificate = config.JobCertificate.Alias
+                };
+                var pMinVersion = new ProfileMinVersion {Text = storeProps.ProtocolMinVersion};
+                var pMaxVersion = new ProfileMaxVersion { Text = storeProps.ProtocolMaxVersion };
+                var pSettings = new ProfileProtocolSettings {MinVersion = pMinVersion, MaxVersion = pMaxVersion};
+                profileRequest.ProtocolSettings = pSettings;
+
+                var reqWriter = new StringWriter();
+                var reqSerializer = new XmlSerializer(typeof(EditProfileRequest));
+                reqSerializer.Serialize(reqWriter, profileRequest);
+                _logger.LogTrace($"Profile Request {reqWriter}");
+
+                return client.SubmitEditProfile(profileRequest);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occurred in Management.SetBindings {LogHandler.FlattenException(e)}");
+                throw;
             }
         }
 

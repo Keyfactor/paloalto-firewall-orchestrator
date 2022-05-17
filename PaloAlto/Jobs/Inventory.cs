@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -40,6 +39,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry(LogLevel.Debug);
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace($"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
+
+                var storeProps = JsonConvert.DeserializeObject<StorePath>(config.CertificateStoreDetails.Properties,
+                    new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+                _logger.LogTrace($"Store Properties: {JsonConvert.SerializeObject(storeProps)}");
+
                 //Get the list of certificates and Trusted Roots
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
@@ -53,81 +57,30 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 listSerializer.Serialize(listWriter, certificatesResult);
                 _logger.LogTrace($"Certificate List Result {listWriter}");
                 
-                var trustedRootPayload = client.GetTrustedRootList().Result;
-
-                //Debug Write Trusted Root List Response from Palo Alto
-                var resWriter = new StringWriter();
-                var resSerializer = new XmlSerializer(typeof(TrustedRootListResponse));
-                resSerializer.Serialize(resWriter, trustedRootPayload);
-                _logger.LogTrace($"Certificate Trusted List Result {resWriter}");
-
-                var warningFlag = false;
-                var sb = new StringBuilder();
-                sb.Append("");
+                //Only inventory for the profile that you are on for this store
+                var profileListResponse = client.GetTlsProfileList().Result;
+                var profile=profileListResponse.ProfileListResult.Entry.FirstOrDefault(p => p.Name == config.CertificateStoreDetails.StorePath);
+                var certificateItem = certificatesResult.CertificateResult.Certificate.Entry
+                    .FirstOrDefault(c => profile != null && c.Name == profile.Certificate.Text);
 
                 var inventoryItems = new List<CurrentInventoryItem>();
 
-                inventoryItems.AddRange(certificatesResult.CertificateResult.Certificate.Entry.Select(
-                    c =>
-                    {
-                        try
-                        {
-                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey.Text} Private Key: dummy (from PA API)");
-                            return BuildInventoryItem(c.Name, c.PublicKey.Text, c.PrivateKey == "dummy");
-                        }
-                        catch
-                        {
-                            _logger.LogWarning(
-                                $"Could not fetch the certificate: {c?.Name} associated with issuer {c?.Issuer}.");
-                            sb.Append(
-                                $"Could not fetch the certificate: {c?.Name} associated with issuer {c?.Issuer}.{Environment.NewLine}");
-                            warningFlag = true;
-                            return new CurrentInventoryItem();
-                        }
-                    }).Where(acsii => acsii?.Certificates != null).ToList());
-
-
-                foreach (var trustedRootCert in trustedRootPayload.TrustedRootResult.TrustedRootCa.Entry)
-                    try
-                    {
-                        _logger.LogTrace($"Building Trusted Root Inventory Item Alias: {trustedRootCert.Name}");
-                        var certificatePem = client.GetCertificateByName(trustedRootCert.Name);
-                        var bytes = Encoding.ASCII.GetBytes(certificatePem.Result);
-                        var cert = new X509Certificate2(bytes);
-                        _logger.LogTrace($"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
-                        BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey);
-                    }
-                    catch
-                    {
-                        _logger.LogWarning(
-                            $"Could not fetch the certificate: {trustedRootCert.Name} associated with issuer {trustedRootCert.Issuer}.");
-                        sb.Append(
-                            $"Could not fetch the certificate: {trustedRootCert.Name} associated with issuer {trustedRootCert.Issuer}.{Environment.NewLine}");
-                        warningFlag = true;
-                    }
+                if (certificateItem != null)
+                    inventoryItems.Add(BuildInventoryItem(certificateItem.Name, certificateItem.PublicKey.Text,
+                        certificateItem.PrivateKey == "dummy"));
 
                 _logger.LogTrace("Submitting Inventory To Keyfactor via submitInventory.Invoke");
                 submitInventory.Invoke(inventoryItems);
                 _logger.LogTrace("Submitted Inventory To Keyfactor via submitInventory.Invoke");
 
                 _logger.MethodExit(LogLevel.Debug);
-                if (warningFlag)
-                {
-                    _logger.LogTrace("Found Warning");
-                    return new JobResult
-                    {
-                        Result = OrchestratorJobStatusJobResult.Warning,
-                        JobHistoryId = config.JobHistoryId,
-                        FailureMessage = sb.ToString()
-                    };
-                }
 
                 _logger.LogTrace("Return Success");
                 return new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Success,
                     JobHistoryId = config.JobHistoryId,
-                    FailureMessage = sb.ToString()
+                    FailureMessage =""
                 };
             }
             catch (Exception e)

@@ -6,7 +6,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Requests;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Microsoft.Extensions.Logging;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
@@ -63,6 +65,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<ProfileListResponse> GetTlsProfileList()
+        {
+            try
+            {
+                var uri = $"/api/?type=config&action=get&xpath=/config/shared/ssl-tls-service-profile/entry&key={ApiKey}";
+                var response=await GetXmlResponseAsync<ProfileListResponse>(await HttpClient.GetAsync(uri));
+                //var response= await GetResponseAsync(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetTrustedRootList: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<string> GetCertificateByName(string name)
         {
             try
@@ -73,6 +91,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateByName: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SubmitEditProfile(EditProfileRequest request)
+        {
+            try
+            {
+                var editXml = $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
+                var uri = $@"/api/?type=config&action=edit&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}";
+                var response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
                 throw;
             }
         }
