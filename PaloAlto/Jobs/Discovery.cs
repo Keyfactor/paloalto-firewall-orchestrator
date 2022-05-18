@@ -40,7 +40,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var tlsListResponse = client.GetTlsProfileList().Result;
 
                 var listWriter = new StringWriter();
-                var listSerializer = new XmlSerializer(typeof(ProfileListResult));
+                var listSerializer = new XmlSerializer(typeof(ProfileListResponse));
                 listSerializer.Serialize(listWriter, tlsListResponse);
                 _logger.LogTrace($"Profile List Result {listWriter}");
 
