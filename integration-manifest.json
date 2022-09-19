@@ -3,6 +3,6 @@
     "integration_type": "orchestrator",
     "name": "Palo Alto PA-VM Firewall",
     "status": "production",
-    "link_github": false,
+    "link_github": true,
     "description": "Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory."
 }
