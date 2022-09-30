@@ -4,6 +4,18 @@ on: [workflow_dispatch, push, pull_request]
 jobs:
   call-create-github-release-workflow:
     uses: Keyfactor/actions/.github/workflows/github-release.yml@main
+  get-manifest-properties:
+    runs-on: windows-latest
+    outputs:
+      update_catalog: ${{ steps.read-json.outputs.prop }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Read json
+        id: read-json
+        shell: pwsh
+        run: |
+          $json = Get-Content integration-manifest.json | ConvertFrom-Json
+          echo "::set-output name=prop::$(echo $json.update_catalog)"
 
   call-dotnet-build-and-release-workflow:
     needs: [call-create-github-release-workflow]
@@ -11,16 +23,17 @@ jobs:
     with:
       release_version: ${{ needs.call-create-github-release-workflow.outputs.release_version }}
       release_url: ${{ needs.call-create-github-release-workflow.outputs.release_url }}
-      release_dir: PaloAlto/bin/Release/netcoreapp3.1 # output directory to upload as a release, relative to checkout workspace
+      release_dir: PaloAlto/bin/Release/netcoreapp3.1
     secrets: 
-      token: ${{ secrets.PRIVATE_PACKAGE_ACCESS  }}
+      token: ${{ secrets.PRIVATE_PACKAGE_ACCESS }}
 
   call-generate-readme-workflow:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: Keyfactor/actions/.github/workflows/generate-readme.yml@main
 
   call-update-catalog-workflow:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: get-manifest-properties
+    if: needs.get-manifest-properties.outputs.update_catalog == 'True' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     uses: Keyfactor/actions/.github/workflows/update-catalog.yml@main
     secrets: 
       token: ${{ secrets.SDK_SYNC_PAT }}
