@@ -14,10 +14,4 @@
     <ProjectReference Include="..\PaloAlto\PaloAlto.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="hashicorp-vault-pam">
-      <HintPath>hashicorp-vault-pam.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>
