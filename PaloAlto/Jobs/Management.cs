@@ -43,13 +43,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private IPAMSecretResolver _resolver;
 
-        private string _thumbprint = string.Empty;
-
         private string ServerPassword { get; set; }
 
         protected internal virtual AsymmetricKeyEntry KeyEntry { get; set; }
 
         public string ExtensionName => "PaloAlto";
+
+        public Management(IPAMSecretResolver resolver)
+        {
+            _resolver = resolver;
+        }
 
         private string ResolvePamField(string name, string value)
         {
@@ -59,6 +62,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
+            _logger = LogHandler.GetClassLogger<Management>();
             return PerformManagement(jobConfiguration);
         }
 
@@ -67,8 +71,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
-                _logger = LogHandler.GetClassLogger<Management>();
-                ServerPassword = ResolvePamField("Server Password", config.ServerPassword);
+                ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 var complete = new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,

@@ -54,6 +54,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration,
             SubmitInventoryUpdate submitInventoryUpdate)
         {
+            _logger = LogHandler.GetClassLogger<Inventory>();
             _logger.MethodEntry(LogLevel.Debug);
             return PerformInventory(jobConfiguration, submitInventoryUpdate);
         }
@@ -62,7 +63,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         {
             try
             {
-                _logger = LogHandler.GetClassLogger<Inventory>();
                 _logger.MethodEntry(LogLevel.Debug);
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
