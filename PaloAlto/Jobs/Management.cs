@@ -1,4 +1,18 @@
-﻿using System;
+﻿// Copyright 2022 Keyfactor
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,6 +22,7 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
+using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.OpenSsl;
@@ -24,19 +39,30 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private static readonly Func<string, string> Pemify = ss =>
             ss.Length <= 64 ? ss : ss.Substring(0, 64) + "\n" + Pemify(ss.Substring(64));
 
-        private readonly ILogger<Management> _logger;
+        private ILogger _logger;
 
-        public Management(ILogger<Management> logger)
-        {
-            _logger = logger;
-        }
+        private IPAMSecretResolver _resolver;
+
+        private string ServerPassword { get; set; }
 
         protected internal virtual AsymmetricKeyEntry KeyEntry { get; set; }
 
         public string ExtensionName => "PaloAlto";
 
+        public Management(IPAMSecretResolver resolver)
+        {
+            _resolver = resolver;
+        }
+
+        private string ResolvePamField(string name, string value)
+        {
+            _logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
+            return _resolver.Resolve(value);
+        }
+
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
+            _logger = LogHandler.GetClassLogger<Management>();
             return PerformManagement(jobConfiguration);
         }
 
@@ -45,6 +71,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
+                ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 var complete = new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
@@ -86,7 +113,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        config.ServerPassword); //Api base URL Plus Key
+                        ServerPassword); //Api base URL Plus Key
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
@@ -170,7 +197,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        config.ServerPassword); //Api base URL Plus Key
+                        ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace(
                     "Palo Alto Client Created");
 

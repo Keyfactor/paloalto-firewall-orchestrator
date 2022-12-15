@@ -1,10 +1,34 @@
 {
-    "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
-    "integration_type": "orchestrator",
-    "name": "Palo Alto PA-VM Firewall",
-    "status": "production",
-    "update_catalog": true,
-    "link_github": true,
-    "support_level": "kf-supported",
-    "description": "Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory."
+  "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+  "integration_type": "orchestrator",
+  "name": "Palo Alto PA-VM Firewall",
+  "status": "production",
+  "update_catalog": true,
+  "link_github": true,
+  "support_level": "kf-supported",
+  "description": "Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory.",
+  "about": {
+    "orchestrator": {
+      "UOFramework": "10.1",
+      "pam_support": true,
+      "win": {
+        "supportsCreateStore": false,
+        "supportsDiscovery": false,
+        "supportsManagementAdd": true,
+        "supportsManagementRemove": true,
+        "supportsReenrollment": true,
+        "supportsInventory": true,
+        "platformSupport": "Unused"
+      },
+      "linux": {
+        "supportsCreateStore": false,
+        "supportsDiscovery": false,
+        "supportsManagementAdd": false,
+        "supportsManagementRemove": false,
+        "supportsReenrollment": false,
+        "supportsInventory": false,
+        "platformSupport": "Unused"
+      }
+    }
+  }
 }

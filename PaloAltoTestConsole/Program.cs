@@ -1,4 +1,18 @@
-﻿using System;
+﻿// Copyright 2022 Keyfactor
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -7,8 +21,9 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
-using Microsoft.Extensions.Logging;
+using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Newtonsoft.Json;
+using Moq;
 
 namespace PaloAltoTestConsole
 {
@@ -25,11 +40,9 @@ namespace PaloAltoTestConsole
                 switch (input)
                 {
                     case "Inventory":
-                        ILoggerFactory invLoggerFactory = new LoggerFactory();
-                        ILogger<Inventory> invLogger = invLoggerFactory.CreateLogger<Inventory>();
-
-                        var inv = new Inventory(invLogger);
-
+                        Mock<IPAMSecretResolver> secretResolver=new Mock<IPAMSecretResolver>();
+                        secretResolver.Setup(m => m.Resolve(It.IsAny<string>())).Returns(() => "LUFRPT0xbXlnVU9OL2d1N05zY0NPbDJPaEtzWDhtVWM9RWUzVTk4YmZPajhTRkRtcTNmTnEzNERHVzdRTWZNWmQxNlBFNXl0UDBnOXVDWGU1bFN6NS9FSklKNFduNGV6dA==");
+                        var inv = new Inventory(secretResolver.Object);
                         var invJobConfig = GetInventoryJobConfiguration();
 
                         SubmitInventoryUpdate sui = GetItems;
@@ -49,10 +62,9 @@ namespace PaloAltoTestConsole
                             Console.WriteLine("Trusted Root? Enter true or false");
                             var trustedRoot = Console.ReadLine();
 
-                            ILoggerFactory loggerFactory = new LoggerFactory();
-                            ILogger<Management> logger = loggerFactory.CreateLogger<Management>();
-
-                            var mgmt = new Management(logger);
+                            Mock<IPAMSecretResolver> mgmtSecretResolver = new Mock<IPAMSecretResolver>();
+                            mgmtSecretResolver.Setup(m => m.Resolve(It.IsAny<string>())).Returns(() => "LUFRPT0xbXlnVU9OL2d1N05zY0NPbDJPaEtzWDhtVWM9RWUzVTk4YmZPajhTRkRtcTNmTnEzNERHVzdRTWZNWmQxNlBFNXl0UDBnOXVDWGU1bFN6NS9FSklKNFduNGV6dA==");
+                            var mgmt = new Management(mgmtSecretResolver.Object);
 
                             var jobConfiguration = GetJobConfiguration(privateKeyPwd, overWrite, trustedRoot,
                                 alias);
@@ -70,10 +82,10 @@ namespace PaloAltoTestConsole
                             Console.WriteLine("Alias Enter Alias Name");
                             var alias = Console.ReadLine();
 
-                            ILoggerFactory loggerFactory = new LoggerFactory();
-                            ILogger<Management> logger = loggerFactory.CreateLogger<Management>();
+                            Mock<IPAMSecretResolver> mgmtSecretResolver = new Mock<IPAMSecretResolver>();
+                            mgmtSecretResolver.Setup(m => m.Resolve(It.IsAny<string>())).Returns(() => "LUFRPT0xbXlnVU9OL2d1N05zY0NPbDJPaEtzWDhtVWM9RWUzVTk4YmZPajhTRkRtcTNmTnEzNERHVzdRTWZNWmQxNlBFNXl0UDBnOXVDWGU1bFN6NS9FSklKNFduNGV6dA==");
+                            var mgmt = new Management(mgmtSecretResolver.Object);
 
-                            var mgmt = new Management(logger);
                             var jobConfig = GetRemoveJobConfiguration(alias);
                             var result = mgmt.ProcessJob(jobConfig);
 
