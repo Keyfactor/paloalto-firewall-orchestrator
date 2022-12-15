@@ -28,6 +28,40 @@ ___
 
 
 
+## Keyfactor Version Supported
+
+The minimum version of the Keyfactor Universal Orchestrator Framework needed to run this version of the extension is 10.1
+
+## Platform Specific Notes
+
+The Keyfactor Universal Orchestrator may be installed on either Windows or Linux based platforms. The certificate operations supported by a capability may vary based what platform the capability is installed on. The table below indicates what capabilities are supported based on which platform the encompassing Universal Orchestrator is running.
+| Operation | Win | Linux |
+|-----|-----|------|
+|Supports Management Add|&check; |  |
+|Supports Management Remove|&check; |  |
+|Supports Create Store|  |  |
+|Supports Discovery|  |  |
+|Supports Renrollment|&check; |  |
+|Supports Inventory|&check; |  |
+
+
+## PAM Integration
+
+This orchestrator extension has the ability to connect to a variety of supported PAM providers to allow for the retrieval of various client hosted secrets right from the orchestrator server itself.  This eliminates the need to set up the PAM integration on Keyfactor Command which may be in an environment that the client does not want to have access to their PAM provider.
+
+The secrets that this orchestrator extension supports for use with a PAM Provider are:
+
+|Name|Description|
+|----|-----------|
+|ServerPassword|Key obtained from Palo Alto API to authenticate the server hosting the store|
+
+
+It is not necessary to implement all of the secrets available to be managed by a PAM provider.  For each value that you want managed by a PAM provider, simply enter the key value inside your specific PAM provider that will hold this value into the corresponding field when setting up the certificate store, discovery job, or API call.
+
+Setting up a PAM provider for use involves adding an additional section to the manifest.json file for this extension as well as setting up the PAM provider you will be using.  Each of these steps is specific to the PAM provider you will use and are documented in the specific GitHub repo for that provider.  For a list of Keyfactor supported PAM providers, please reference the [Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam).
+
+
+
 ---
 
 
