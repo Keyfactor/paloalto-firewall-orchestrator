@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
+using Keyfactor.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
@@ -29,15 +30,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
     {
         private string ApiKey { get; set; }
 
-        private readonly ILogger<PaloAltoClient> _logger;
-
-        public PaloAltoClient(ILogger<PaloAltoClient> logger)
-        {
-            _logger = logger;
-        }
+        private ILogger _logger;
 
         public PaloAltoClient(string url,string key)
         {
+            _logger = LogHandler.GetClassLogger<PaloAltoClient>();
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
