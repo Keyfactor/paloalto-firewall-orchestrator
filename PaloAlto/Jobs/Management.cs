@@ -45,6 +45,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private string ServerPassword { get; set; }
 
+        private string ServerUserName { get; set; }
+
         protected internal virtual AsymmetricKeyEntry KeyEntry { get; set; }
 
         public string ExtensionName => "PaloAlto";
@@ -72,6 +74,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 _logger.MethodEntry();
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
+                ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+
                 var complete = new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
@@ -113,7 +117,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerPassword); //Api base URL Plus Key
+                        ServerUserName,ServerPassword); //Api base URL Plus Key
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
@@ -193,178 +197,192 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 _logger.MethodEntry();
 
-                _logger.LogTrace(
-                    $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
-                var client =
-                    new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerPassword); //Api base URL Plus Key
-                _logger.LogTrace(
-                    "Palo Alto Client Created");
-
-                var duplicate = CheckForDuplicate(config, client);
-                _logger.LogTrace($"Duplicate? = {duplicate}");
-                
-                //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
-                if ((duplicate && config.Overwrite) || !duplicate)
+                //Store path is "/" for direct integration with Firewall or the Template Name for integration with Panorama
+                if (config.CertificateStoreDetails.StorePath == "/" || config.CertificateStoreDetails.StorePath.Length > 0)
                 {
-                    _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
-                    string certPem;
-                    if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX Entry
+                    _logger.LogTrace(
+                        $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Server UserName: {config.ServerUsername}");
+
+                    var client =
+                        new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
+                            ServerUserName, ServerPassword); //Api base URL Plus Key
+                    _logger.LogTrace(
+                        "Palo Alto Client Created");
+
+                    var duplicate = CheckForDuplicate(config, client);
+                    _logger.LogTrace($"Duplicate? = {duplicate}");
+
+                    //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
+                    if ((duplicate && config.Overwrite) || !duplicate)
                     {
-                        _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
-
-                        if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias)) _logger.LogTrace("No Alias Found");
-
-                        // Load PFX
-                        var pfxBytes = Convert.FromBase64String(config.JobCertificate.Contents);
-                        Pkcs12Store p;
-                        using (var pfxBytesMemoryStream = new MemoryStream(pfxBytes))
+                        _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
+                        string certPem;
+                        if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX Entry
                         {
-                            p = new Pkcs12Store(pfxBytesMemoryStream,
-                                config.JobCertificate.PrivateKeyPassword.ToCharArray());
-                        }
+                            _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
 
-                        _logger.LogTrace(
-                            $"Created Pkcs12Store containing Alias {config.JobCertificate.Alias} Contains Alias is {p.ContainsAlias(config.JobCertificate.Alias)}");
+                            if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias)) _logger.LogTrace("No Alias Found");
 
-                        // Extract private key
-                        string alias;
-                        string privateKeyString;
-                        using (var memoryStream = new MemoryStream())
-                        {
-                            using (TextWriter streamWriter = new StreamWriter(memoryStream))
+                            // Load PFX
+                            var pfxBytes = Convert.FromBase64String(config.JobCertificate.Contents);
+                            Pkcs12Store p;
+                            using (var pfxBytesMemoryStream = new MemoryStream(pfxBytes))
                             {
-                                _logger.LogTrace("Extracting Private Key...");
-                                var pemWriter = new PemWriter(streamWriter);
-                                _logger.LogTrace("Created pemWriter...");
-                                alias = p.Aliases.Cast<string>().SingleOrDefault(a => p.IsKeyEntry(a));
-                                _logger.LogTrace($"Alias = {alias}");
-                                var publicKey = p.GetCertificate(alias).Certificate.GetPublicKey();
-                                _logger.LogTrace($"publicKey = {publicKey}");
-                                KeyEntry = p.GetKey(alias);
-                                _logger.LogTrace($"KeyEntry = {KeyEntry}");
-                                if (KeyEntry == null) throw new Exception("Unable to retrieve private key");
-
-                                var privateKey = KeyEntry.Key;
-                                _logger.LogTrace($"privateKey = {privateKey}");
-                                var keyPair = new AsymmetricCipherKeyPair(publicKey, privateKey);
-
-                                pemWriter.WriteObject(keyPair.Private);
-                                streamWriter.Flush();
-                                privateKeyString = Encoding.ASCII.GetString(memoryStream.GetBuffer()).Trim()
-                                    .Replace("\r", "").Replace("\0", "");
-                                _logger.LogTrace($"Got Private Key String {privateKeyString}");
-                                memoryStream.Close();
-                                streamWriter.Close();
-                                _logger.LogTrace("Finished Extracting Private Key...");
+                                p = new Pkcs12Store(pfxBytesMemoryStream,
+                                    config.JobCertificate.PrivateKeyPassword.ToCharArray());
                             }
-                        }
 
-                        var pubCertPem =
-                            Pemify(Convert.ToBase64String(p.GetCertificate(alias).Certificate.GetEncoded()));
-                        _logger.LogTrace($"Public cert Pem {pubCertPem}");
+                            _logger.LogTrace(
+                                $"Created Pkcs12Store containing Alias {config.JobCertificate.Alias} Contains Alias is {p.ContainsAlias(config.JobCertificate.Alias)}");
 
-                        certPem = privateKeyString + certStart + pubCertPem + certEnd;
-
-                        _logger.LogTrace($"Got certPem {certPem}");
-
-                        var importResult = client.ImportCertificate(config.JobCertificate.Alias,
-                            config.JobCertificate.PrivateKeyPassword,
-                            Encoding.UTF8.GetBytes(certPem), "yes", "keypair");
-
-                        var content = importResult.Result;
-
-                        var resWriter = new StringWriter();
-                        var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
-                        resSerializer.Serialize(resWriter, content);
-                        _logger.LogTrace($"Import Certificate With Private Key Xml Response {resWriter}");
-
-                        if (content.Status == "success")
-                        {
-                            var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
-                            var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
-                            
-                            if (trustedRoot && rootResponse.Status == "error")
+                            // Extract private key
+                            string alias;
+                            string privateKeyString;
+                            using (var memoryStream = new MemoryStream())
                             {
+                                using (TextWriter streamWriter = new StreamWriter(memoryStream))
+                                {
+                                    _logger.LogTrace("Extracting Private Key...");
+                                    var pemWriter = new PemWriter(streamWriter);
+                                    _logger.LogTrace("Created pemWriter...");
+                                    alias = p.Aliases.Cast<string>().SingleOrDefault(a => p.IsKeyEntry(a));
+                                    _logger.LogTrace($"Alias = {alias}");
+                                    var publicKey = p.GetCertificate(alias).Certificate.GetPublicKey();
+                                    _logger.LogTrace($"publicKey = {publicKey}");
+                                    KeyEntry = p.GetKey(alias);
+                                    _logger.LogTrace($"KeyEntry = {KeyEntry}");
+                                    if (KeyEntry == null) throw new Exception("Unable to retrieve private key");
+
+                                    var privateKey = KeyEntry.Key;
+                                    _logger.LogTrace($"privateKey = {privateKey}");
+                                    var keyPair = new AsymmetricCipherKeyPair(publicKey, privateKey);
+
+                                    pemWriter.WriteObject(keyPair.Private);
+                                    streamWriter.Flush();
+                                    privateKeyString = Encoding.ASCII.GetString(memoryStream.GetBuffer()).Trim()
+                                        .Replace("\r", "").Replace("\0", "");
+                                    _logger.LogTrace($"Got Private Key String {privateKeyString}");
+                                    memoryStream.Close();
+                                    streamWriter.Close();
+                                    _logger.LogTrace("Finished Extracting Private Key...");
+                                }
+                            }
+
+                            var pubCertPem =
+                                Pemify(Convert.ToBase64String(p.GetCertificate(alias).Certificate.GetEncoded()));
+                            _logger.LogTrace($"Public cert Pem {pubCertPem}");
+
+                            certPem = privateKeyString + certStart + pubCertPem + certEnd;
+
+                            _logger.LogTrace($"Got certPem {certPem}");
+
+                            var importResult = client.ImportCertificate(config.JobCertificate.Alias,
+                                config.JobCertificate.PrivateKeyPassword,
+                                Encoding.UTF8.GetBytes(certPem), "yes", "keypair");
+
+                            var content = importResult.Result;
+
+                            var resWriter = new StringWriter();
+                            var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
+                            resSerializer.Serialize(resWriter, content);
+                            _logger.LogTrace($"Import Certificate With Private Key Xml Response {resWriter}");
+
+                            if (content.Status == "success")
+                            {
+                                var commitResponse = client.GetCommitResponse();
+                                if (commitResponse.Result.Status == "success")
+                                {
+                                    var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                                    var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
+
+                                    if (trustedRoot && rootResponse.Status == "error")
+                                    {
+                                        return new JobResult
+                                        {
+                                            Result = OrchestratorJobStatusJobResult.Warning,
+                                            JobHistoryId = config.JobHistoryId,
+                                            FailureMessage = "Could not set Certificate to Trusted Root"
+                                        };
+                                    }
+
+                                    return new JobResult
+                                    {
+                                        Result = OrchestratorJobStatusJobResult.Success,
+                                        JobHistoryId = config.JobHistoryId,
+                                        FailureMessage = ""
+                                    };
+                                }
+                            }
+
+                            return new JobResult
+                            {
+                                Result = OrchestratorJobStatusJobResult.Failure,
+                                JobHistoryId = config.JobHistoryId,
+                                FailureMessage = $"Management/Add Cert With Private Key Failure {content.Result}"
+                            };
+
+                        }
+                        else
+                        {
+                            _logger.LogTrace("Adding a certificate without a private key to Palo Alto.....");
+                            certPem = certStart + Pemify(config.JobCertificate.Contents) + certEnd;
+                            _logger.LogTrace($"Pem: {certPem}");
+
+                            var importResult = client.ImportCertificate(config.JobCertificate.Alias,
+                                config.JobCertificate.PrivateKeyPassword,
+                                Encoding.UTF8.GetBytes(certPem), "no", "certificate");
+
+                            var content = importResult.Result;
+
+                            var resWriter = new StringWriter();
+                            var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
+                            resSerializer.Serialize(resWriter, content);
+                            _logger.LogTrace($"Import Certificate WithOut Private Key Xml Response {resWriter}");
+
+                            if (content.Status == "success")
+                            {
+                                var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                                var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
+
+
+                                if (trustedRoot && rootResponse.Status == "error")
+                                {
+                                    return new JobResult
+                                    {
+                                        Result = OrchestratorJobStatusJobResult.Warning,
+                                        JobHistoryId = config.JobHistoryId,
+                                        FailureMessage = "Could not set Certificate to Trusted Root"
+                                    };
+                                }
+
                                 return new JobResult
                                 {
-                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    Result = OrchestratorJobStatusJobResult.Success,
                                     JobHistoryId = config.JobHistoryId,
-                                    FailureMessage = "Could not set Certificate to Trusted Root"
+                                    FailureMessage = ""
                                 };
                             }
 
                             return new JobResult
                             {
-                                Result = OrchestratorJobStatusJobResult.Success,
+                                Result = OrchestratorJobStatusJobResult.Failure,
                                 JobHistoryId = config.JobHistoryId,
-                                FailureMessage = ""
+                                FailureMessage = $"Management/Add Cert With Private Key Failure {content.Result}"
                             };
                         }
-
-                        return new JobResult
-                        {
-                            Result = OrchestratorJobStatusJobResult.Failure,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = $"Management/Add Cert With Private Key Failure {content.Result}"
-                        };
-
                     }
-                    else
+                    return new JobResult
                     {
-                        _logger.LogTrace("Adding a certificate without a private key to Palo Alto.....");
-                        certPem = certStart + Pemify(config.JobCertificate.Contents) + certEnd;
-                        _logger.LogTrace($"Pem: {certPem}");
-
-                        var importResult = client.ImportCertificate(config.JobCertificate.Alias,
-                            config.JobCertificate.PrivateKeyPassword,
-                            Encoding.UTF8.GetBytes(certPem), "no", "certificate");
-
-                        var content = importResult.Result;
-
-                        var resWriter = new StringWriter();
-                        var resSerializer = new XmlSerializer(typeof(ImportCertificateResponse));
-                        resSerializer.Serialize(resWriter, content);
-                        _logger.LogTrace($"Import Certificate WithOut Private Key Xml Response {resWriter}");
-
-                        if (content.Status == "success")
-                        {
-                            var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
-                            var rootResponse=SetTrustedRoot(trustedRoot, config.JobCertificate.Alias,client);
-
-
-                            if (trustedRoot && rootResponse.Status == "error")
-                            {
-                                return new JobResult
-                                {
-                                    Result = OrchestratorJobStatusJobResult.Warning,
-                                    JobHistoryId = config.JobHistoryId,
-                                    FailureMessage = "Could not set Certificate to Trusted Root"
-                                };
-                            }
-
-                            return new JobResult
-                            {
-                                Result = OrchestratorJobStatusJobResult.Success,
-                                JobHistoryId = config.JobHistoryId,
-                                FailureMessage = ""
-                            };
-                        }
-
-                        return new JobResult
-                        {
-                            Result = OrchestratorJobStatusJobResult.Failure,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = $"Management/Add Cert With Private Key Failure {content.Result}"
-                        };
-                    }
+                        Result = OrchestratorJobStatusJobResult.Failure,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = $"Duplicate alias {config.JobCertificate.Alias} found in Palo Alto, to overwrite use the overwrite flag."
+                    };
                 }
-
                 return new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
                     JobHistoryId = config.JobHistoryId,
-                    FailureMessage = $"Duplicate alias {config.JobCertificate.Alias} found in Palo Alto, to overwrite use the overwrite flag."
+                    FailureMessage = $"Store Path needs to either be / for Firewall Integration or Template Name for Panorama"
                 };
             }
             catch (Exception e)

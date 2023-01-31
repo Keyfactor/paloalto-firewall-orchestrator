@@ -37,6 +37,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private IPAMSecretResolver _resolver;
 
         private string ServerPassword { get; set; }
+        private string ServerUserName { get; set; }
 
         public Inventory(IPAMSecretResolver resolver)
         {
@@ -65,19 +66,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 _logger.MethodEntry(LogLevel.Debug);
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
+                ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace($"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
                 //Get the list of certificates and Trusted Roots
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerPassword); //Api base URL Plus Key
+                        ServerUserName,ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace("Inventory Palo Alto Client Created");
-                var certificatesResult = client.GetCertificateList().Result;
-                
+                var rawCertificatesResult = client.GetCertificateList().Result;
+                var certificatesResult = rawCertificatesResult.CertificateResult.Certificate.Entry.FindAll(c => c.PublicKey != null);
+
                 //Debug Write Certificate List Response from Palo Alto
                 var listWriter = new StringWriter();
                 var listSerializer = new XmlSerializer(typeof(CertificateListResponse));
-                listSerializer.Serialize(listWriter, certificatesResult);
+                listSerializer.Serialize(listWriter, rawCertificatesResult);
                 _logger.LogTrace($"Certificate List Result {listWriter}");
                 
                 var trustedRootPayload = client.GetTrustedRootList().Result;
@@ -94,7 +98,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 var inventoryItems = new List<CurrentInventoryItem>();
 
-                inventoryItems.AddRange(certificatesResult.CertificateResult.Certificate.Entry.Select(
+                inventoryItems.AddRange(certificatesResult.Select(
                     c =>
                     {
                         try
@@ -111,7 +115,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             warningFlag = true;
                             return new CurrentInventoryItem();
                         }
-                    }).Where(acsii => acsii?.Certificates != null).ToList());
+                    }).Where(acsii => acsii?.Certificates != null ).ToList());
 
 
                 foreach (var trustedRootCert in trustedRootPayload.TrustedRootResult.TrustedRootCa.Entry)

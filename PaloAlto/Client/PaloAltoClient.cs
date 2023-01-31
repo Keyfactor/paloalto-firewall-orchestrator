@@ -32,15 +32,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 
         private ILogger _logger;
 
-        public PaloAltoClient(string url,string key)
+        private string ServerPassword { get; set; }
+
+        private string ServerUserName { get; set; }
+
+        public PaloAltoClient(string url,string userName, string password)
         {
             _logger = LogHandler.GetClassLogger<PaloAltoClient>();
+            ServerUserName = userName;
+            ServerPassword = password;
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
             };
             HttpClient = new HttpClient(httpClientHandler) { BaseAddress = new Uri("https://" + url)};
-            ApiKey = key;
+
+            ApiKey = GetAuthenticationResponse().Result?.Result?.Key;
         }
 
         private HttpClient HttpClient { get; }
@@ -56,6 +63,36 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<CommitResponse> GetCommitResponse()
+        {
+            try
+            {
+                var uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+                var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<AuthenticationResponse> GetAuthenticationResponse()
+        {
+            try
+            {
+                var uri = $"/api/?type=keygen&user={ServerUserName}&password={ServerPassword}";
+                var response = await GetXmlResponseAsync<AuthenticationResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetAuthenticationResponse: {e.Message}");
                 throw;
             }
         }
