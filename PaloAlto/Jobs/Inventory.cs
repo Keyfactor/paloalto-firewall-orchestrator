@@ -109,9 +109,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         catch
                         {
                             _logger.LogWarning(
-                                $"Could not fetch the certificate: {c?.Name} associated with issuer {c?.Issuer}.");
+                                $"Could not fetch the certificate: {c.Name} associated with issuer {c.Issuer}.");
                             sb.Append(
-                                $"Could not fetch the certificate: {c?.Name} associated with issuer {c?.Issuer}.{Environment.NewLine}");
+                                $"Could not fetch the certificate: {c.Name} associated with issuer {c.Issuer}.{Environment.NewLine}");
                             warningFlag = true;
                             return new CurrentInventoryItem();
                         }

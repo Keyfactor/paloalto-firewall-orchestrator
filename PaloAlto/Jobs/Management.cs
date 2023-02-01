@@ -41,9 +41,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private ILogger _logger;
 
-        private IPAMSecretResolver _resolver;
+        private readonly IPAMSecretResolver _resolver;
 
         private string ServerPassword { get; set; }
+
+        private JobProperties StoreProperties { get; set; }
 
         private string ServerUserName { get; set; }
 
@@ -65,6 +67,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
             _logger = LogHandler.GetClassLogger<Management>();
+            StoreProperties= JsonConvert.DeserializeObject<JobProperties>(jobConfiguration.CertificateStoreDetails.Properties, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
             return PerformManagement(jobConfiguration);
         }
 
@@ -112,6 +115,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             //Temporarily only performing additions
             try
             {
+                var warnings = string.Empty;
+                var success = false;
+
                 _logger.MethodEntry();
                 _logger.LogTrace(
                     $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
@@ -128,35 +134,57 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 resSerializer.Serialize(resWriter, response.Result);
                 _logger.LogTrace($"Remove Certificate Xml Response {resWriter}");
 
-
-                switch (response.Result.Status)
+                var commitResponse = client.GetCommitResponse();
+                if (commitResponse.Result.Status == "success")
                 {
-                    case "error":
-                    {
-                        var failureMessage = response.Result.LineMsg.Line.Count == 0 ? response.Result.LineMsg.StringMsg : String.Join(", ", response.Result.LineMsg.Line);
+                    //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
+                    var deviceGroup = StoreProperties?.DeviceGroup.ToString();
 
-                        return new JobResult
+                    //If there is a template and device group then push to all firewall devices because it is Panorama
+                    if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
+                    {
+                        var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
+                        if (commitAllResponse.Result.Status != "success")
                         {
-                            Result = OrchestratorJobStatusJobResult.Failure,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = failureMessage
-                        };
+                            warnings += "The push to firewall devices failed. ";
+                        }
                     }
-                    case "success":
-                        return new JobResult
-                        {
-                            Result = OrchestratorJobStatusJobResult.Success,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = ""
-                        };
-                    default:
-                        return new JobResult
-                        {
-                            Result = OrchestratorJobStatusJobResult.Failure,
-                            JobHistoryId = config.JobHistoryId,
-                            FailureMessage = "Unknown Failure Has Occurred"
-                        };
+
+                    success = true;
                 }
+                else
+                {
+                    warnings += "Commit To Device Failed";
+                }
+
+                if (warnings.Length > 0)
+                {
+                    return new JobResult
+                    {
+                        Result = OrchestratorJobStatusJobResult.Warning,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = warnings
+                    };
+                }
+
+                if (success)
+                {
+                    return new JobResult
+                    {
+                        Result = OrchestratorJobStatusJobResult.Success,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = ""
+                    };
+                }
+
+                var failureMessage = response.Result.LineMsg.Line.Count == 0 ? response.Result.LineMsg.StringMsg : String.Join(", ", response.Result.LineMsg.Line);
+                return new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    JobHistoryId = config.JobHistoryId,
+                    FailureMessage = failureMessage
+                };
+
             }
             catch (Exception e)
             {
@@ -164,7 +192,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
                     JobHistoryId = config.JobHistoryId,
-                    FailureMessage = $"PerformRemoval: {e.Message}"
+                    FailureMessage = $"PerformRemoval: {LogHandler.FlattenException(e)}"
                 };
             }
         }
@@ -196,6 +224,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 _logger.MethodEntry();
+                var warnings = string.Empty;
+                var success = false;
 
                 //Store path is "/" for direct integration with Firewall or the Template Name for integration with Panorama
                 if (config.CertificateStoreDetails.StorePath == "/" || config.CertificateStoreDetails.StorePath.Length > 0)
@@ -213,7 +243,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace($"Duplicate? = {duplicate}");
 
                     //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
-                    if ((duplicate && config.Overwrite) || !duplicate)
+                    if (duplicate && config.Overwrite || !duplicate)
                     {
                         _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
                         string certPem;
@@ -297,21 +327,48 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                                     if (trustedRoot && rootResponse.Status == "error")
                                     {
-                                        return new JobResult
-                                        {
-                                            Result = OrchestratorJobStatusJobResult.Warning,
-                                            JobHistoryId = config.JobHistoryId,
-                                            FailureMessage = "Could not set Certificate to Trusted Root"
-                                        };
+                                        warnings += "Setting to Trusted Root Failed. ";
                                     }
 
-                                    return new JobResult
+                                    //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
+                                    var deviceGroup = StoreProperties?.DeviceGroup.ToString();
+
+                                    //If there is a template and device group then push to all firewall devices because it is Panorama
+                                    if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
                                     {
-                                        Result = OrchestratorJobStatusJobResult.Success,
-                                        JobHistoryId = config.JobHistoryId,
-                                        FailureMessage = ""
-                                    };
+                                        var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
+                                        if (commitAllResponse.Result.Status != "success")
+                                        {
+                                            warnings += "The push to firewall devices failed. ";
+                                        }
+                                    }
+
+                                    success = true;
                                 }
+                                else
+                                {
+                                    warnings += "The commit to the device failed. ";
+                                }
+                            }
+
+                            if (warnings.Length > 0)
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = warnings
+                                };
+                            }
+
+                            if (success)
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Success,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = ""
+                                };
                             }
 
                             return new JobResult
@@ -341,20 +398,52 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
-                                var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
-                                var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
-
-
-                                if (trustedRoot && rootResponse.Status == "error")
+                                var commitResponse = client.GetCommitResponse();
+                                if (commitResponse.Result.Status == "success")
                                 {
-                                    return new JobResult
-                                    {
-                                        Result = OrchestratorJobStatusJobResult.Warning,
-                                        JobHistoryId = config.JobHistoryId,
-                                        FailureMessage = "Could not set Certificate to Trusted Root"
-                                    };
-                                }
+                                    var trustedRoot =
+                                        Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                                    var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
 
+
+                                    if (trustedRoot && rootResponse.Status == "error")
+                                    {
+                                        warnings += "Setting to Trusted Root Failed. ";
+                                    }
+
+                                    //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
+                                    var deviceGroup = StoreProperties?.DeviceGroup.ToString();
+
+                                    //If there is a template and device group then push to all firewall devices because it is Panorama
+                                    if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
+                                    {
+                                        var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
+                                        if (commitAllResponse.Result.Status != "success")
+                                        {
+                                            warnings += "The push to firewall devices failed. ";
+                                        }
+                                    }
+
+                                    success = true;
+                                }
+                                else
+                                {
+                                    warnings += "The commit to the device failed. ";
+                                }
+                            }
+
+                            if (warnings.Length > 0)
+                            {
+                                return new JobResult
+                                {
+                                    Result = OrchestratorJobStatusJobResult.Warning,
+                                    JobHistoryId = config.JobHistoryId,
+                                    FailureMessage = warnings
+                                };
+                            }
+
+                            if (success)
+                            {
                                 return new JobResult
                                 {
                                     Result = OrchestratorJobStatusJobResult.Success,
@@ -382,7 +471,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
                     JobHistoryId = config.JobHistoryId,
-                    FailureMessage = $"Store Path needs to either be / for Firewall Integration or Template Name for Panorama"
+                    FailureMessage = "Store Path needs to either be / for Firewall Integration or Template Name for Panorama"
                 };
             }
             catch (Exception e)

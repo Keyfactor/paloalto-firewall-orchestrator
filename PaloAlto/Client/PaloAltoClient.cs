@@ -82,6 +82,21 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup)
+        {
+            try
+            {
+                var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<AuthenticationResponse> GetAuthenticationResponse()
         {
             try
