@@ -81,14 +81,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 CertificateListResponse rawCertificatesResult;
                 if (config.CertificateStoreDetails.StorePath.Length > 1)
                 {
-                    rawCertificatesResult = client.GetCertificateList($"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate").Result;
+                    rawCertificatesResult = client.GetCertificateList($"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry").Result;
                 }
                 else
                 {
-                    rawCertificatesResult = client.GetCertificateList("/config/shared/certificate").Result;
+                    rawCertificatesResult = client.GetCertificateList("/config/shared/certificate/entry").Result;
                 }            
               
-                var certificatesResult = rawCertificatesResult.CertificateResult.Certificate.Entry.FindAll(c => c.PublicKey != null);
+                var certificatesResult = rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
 
                 //Debug Write Certificate List Response from Palo Alto
                 var listWriter = new StringWriter();
