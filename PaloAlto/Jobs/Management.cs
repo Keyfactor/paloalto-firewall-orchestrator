@@ -143,6 +143,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     //If there is a template and device group then push to all firewall devices because it is Panorama
                     if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
                     {
+                        System.Threading.Thread.Sleep(120000); //Some delay built in so pushes to devices work
                         var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
                         if (commitAllResponse.Result.Status != "success")
                         {
@@ -336,6 +337,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     //If there is a template and device group then push to all firewall devices because it is Panorama
                                     if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
                                     {
+                                        System.Threading.Thread.Sleep(120000); //Some delay built in so pushes to devices work
                                         var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
                                         if (commitAllResponse.Result.Status != "success")
                                         {
@@ -417,6 +419,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     //If there is a template and device group then push to all firewall devices because it is Panorama
                                     if (config.CertificateStoreDetails.StorePath.Length > 1 && deviceGroup?.Length > 0)
                                     {
+                                        System.Threading.Thread.Sleep(120000); //Some delay built in so pushes to devices work
                                         var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
                                         if (commitAllResponse.Result.Status != "success")
                                         {

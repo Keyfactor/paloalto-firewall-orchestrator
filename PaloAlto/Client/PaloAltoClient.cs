@@ -88,7 +88,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                
+                //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
