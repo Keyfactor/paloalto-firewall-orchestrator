@@ -134,7 +134,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 resSerializer.Serialize(resWriter, response.Result);
                 _logger.LogTrace($"Remove Certificate Xml Response {resWriter}");
 
-                var commitResponse = client.GetCommitResponse();
+                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
                 if (commitResponse.Result.Status == "success")
                 {
                     //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
@@ -319,7 +319,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
-                                var commitResponse = client.GetCommitResponse();
+                                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
                                 if (commitResponse.Result.Status == "success")
                                 {
                                     var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
@@ -398,7 +398,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
-                                var commitResponse = client.GetCommitResponse();
+                                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
                                 if (commitResponse.Result.Status == "success")
                                 {
                                     var trustedRoot =

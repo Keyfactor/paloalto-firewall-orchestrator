@@ -68,11 +68,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<CommitResponse> GetCommitResponse()
+        public async Task<CommitResponse> GetCommitResponse(string templateName)
         {
             try
             {
-                var uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+                var uri = string.Empty;
+                if (templateName == "/")
+                {
+                    uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+                }
+                else
+                {
+                    uri = $"/api/?&type=commit&action=partial&target-tpl={templateName}&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+                }
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
