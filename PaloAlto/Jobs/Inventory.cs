@@ -76,7 +76,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         ServerUserName,ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace("Inventory Palo Alto Client Created");
                 var rawCertificatesResult = client.GetCertificateList().Result;
-                var certificatesResult = rawCertificatesResult.CertificateResult.Certificate.Entry.FindAll(c => c.PublicKey != null);
+                var certificatesResult = rawCertificatesResult.Result.Entry.FindAll(c => c.PublicKey != null);
 
                 //Debug Write Certificate List Response from Palo Alto
                 var listWriter = new StringWriter();
@@ -103,8 +103,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         try
                         {
-                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey.Text} Private Key: dummy (from PA API)");
-                            return BuildInventoryItem(c.Name, c.PublicKey.Text, c.PrivateKey == "dummy");
+                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy");
                         }
                         catch
                         {
