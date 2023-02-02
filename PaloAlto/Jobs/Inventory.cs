@@ -75,7 +75,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
                         ServerUserName,ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace("Inventory Palo Alto Client Created");
-                var rawCertificatesResult = client.GetCertificateList().Result;
+
+                //Change the path if you are pointed to a Panorama Device
+                var path = string.Empty;
+                CertificateListResponse rawCertificatesResult;
+                if (config.CertificateStoreDetails.StorePath.Length > 1)
+                {
+                    rawCertificatesResult = client.GetCertificateList($"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate").Result;
+                }
+                else
+                {
+                    rawCertificatesResult = client.GetCertificateList("/config/shared/certificate").Result;
+                }            
+              
                 var certificatesResult = rawCertificatesResult.CertificateResult.Certificate.Entry.FindAll(c => c.PublicKey != null);
 
                 //Debug Write Certificate List Response from Palo Alto

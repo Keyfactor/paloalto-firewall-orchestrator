@@ -52,11 +52,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 
         private HttpClient HttpClient { get; }
 
-        public async Task<CertificateListResponse> GetCertificateList()
+        public async Task<CertificateListResponse> GetCertificateList(string path)
         {
             try
             {
-                var uri = $"/api/?type=config&action=get&xpath=/config/shared/certificate&key={ApiKey}";
+                //path = System.Web.HttpUtility.UrlEncode(path);
+                var uri = ($"/api/?type=config&action=get&xpath={path}&key={ApiKey}");
                 var response= await GetXmlResponseAsync<CertificateListResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }

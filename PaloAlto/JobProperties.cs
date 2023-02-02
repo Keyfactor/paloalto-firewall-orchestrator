@@ -14,8 +14,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         }
 
         [JsonProperty("DeviceGroup")]
-        [DefaultValue(false)]
-        public bool DeviceGroup { get; set; }
+        [DefaultValue("")]
+        public string DeviceGroup { get; set; }
 
 
     }
