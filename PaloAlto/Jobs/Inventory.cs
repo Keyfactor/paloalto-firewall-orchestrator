@@ -1,4 +1,4 @@
-// Copyright 2022 Keyfactor
+// Copyright 2023 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,23 +34,17 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
     {
         private ILogger _logger;
 
-        private IPAMSecretResolver _resolver;
-
-        private string ServerPassword { get; set; }
-        private string ServerUserName { get; set; }
+        private readonly IPAMSecretResolver _resolver;
 
         public Inventory(IPAMSecretResolver resolver)
         {
             _resolver = resolver;
         }
 
-        public string ExtensionName => "PaloAlto";
+        private string ServerPassword { get; set; }
+        private string ServerUserName { get; set; }
 
-        private string ResolvePamField(string name, string value)
-        {
-            _logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
-            return _resolver.Resolve(value);
-        }
+        public string ExtensionName => "PaloAlto";
 
         public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration,
             SubmitInventoryUpdate submitInventoryUpdate)
@@ -58,6 +52,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger = LogHandler.GetClassLogger<Inventory>();
             _logger.MethodEntry(LogLevel.Debug);
             return PerformInventory(jobConfiguration, submitInventoryUpdate);
+        }
+
+        private string ResolvePamField(string name, string value)
+        {
+            _logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
+            return _resolver.Resolve(value);
         }
 
         private JobResult PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)
@@ -69,33 +69,33 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
 
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
-                _logger.LogTrace($"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
+                _logger.LogTrace(
+                    $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
                 //Get the list of certificates and Trusted Roots
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerUserName,ServerPassword); //Api base URL Plus Key
+                        ServerUserName, ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
                 //Change the path if you are pointed to a Panorama Device
-                var path = string.Empty;
                 CertificateListResponse rawCertificatesResult;
                 if (config.CertificateStoreDetails.StorePath.Length > 1)
-                {
-                    rawCertificatesResult = client.GetCertificateList($"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry").Result;
-                }
+                    rawCertificatesResult =
+                        client.GetCertificateList(
+                                $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry")
+                            .Result;
                 else
-                {
                     rawCertificatesResult = client.GetCertificateList("/config/shared/certificate/entry").Result;
-                }            
-              
-                var certificatesResult = rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
+
+                var certificatesResult =
+                    rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
 
                 //Debug Write Certificate List Response from Palo Alto
                 var listWriter = new StringWriter();
                 var listSerializer = new XmlSerializer(typeof(CertificateListResponse));
                 listSerializer.Serialize(listWriter, rawCertificatesResult);
                 _logger.LogTrace($"Certificate List Result {listWriter}");
-                
+
                 var trustedRootPayload = client.GetTrustedRootList().Result;
 
                 //Debug Write Trusted Root List Response from Palo Alto
@@ -115,7 +115,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         try
                         {
-                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                            _logger.LogTrace(
+                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
                             return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy");
                         }
                         catch
@@ -127,7 +128,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             warningFlag = true;
                             return new CurrentInventoryItem();
                         }
-                    }).Where(acsii => acsii?.Certificates != null ).ToList());
+                    }).Where(acsii => acsii?.Certificates != null).ToList());
 
 
                 foreach (var trustedRootCert in trustedRootPayload.TrustedRootResult.TrustedRootCa.Entry)
@@ -137,7 +138,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         var certificatePem = client.GetCertificateByName(trustedRootCert.Name);
                         var bytes = Encoding.ASCII.GetBytes(certificatePem.Result);
                         var cert = new X509Certificate2(bytes);
-                        _logger.LogTrace($"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
+                        _logger.LogTrace(
+                            $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
                         BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey);
                     }
                     catch

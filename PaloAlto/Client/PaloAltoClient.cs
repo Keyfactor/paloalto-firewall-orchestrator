@@ -1,4 +1,4 @@
-﻿// Copyright 2022 Keyfactor
+﻿// Copyright 2023 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,15 +28,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 {
     public class PaloAltoClient
     {
-        private string ApiKey { get; set; }
+        private readonly ILogger _logger;
 
-        private ILogger _logger;
-
-        private string ServerPassword { get; set; }
-
-        private string ServerUserName { get; set; }
-
-        public PaloAltoClient(string url,string userName, string password)
+        public PaloAltoClient(string url, string userName, string password)
         {
             _logger = LogHandler.GetClassLogger<PaloAltoClient>();
             ServerUserName = userName;
@@ -45,10 +39,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
             };
-            HttpClient = new HttpClient(httpClientHandler) { BaseAddress = new Uri("https://" + url)};
+            HttpClient = new HttpClient(httpClientHandler) {BaseAddress = new Uri("https://" + url)};
 
             ApiKey = GetAuthenticationResponse().Result?.Result?.Key;
         }
+
+        private string ApiKey { get; }
+
+        private string ServerPassword { get; }
+
+        private string ServerUserName { get; }
 
         private HttpClient HttpClient { get; }
 
@@ -57,8 +57,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             try
             {
                 //path = System.Web.HttpUtility.UrlEncode(path);
-                var uri = ($"/api/?type=config&action=get&xpath={path}&key={ApiKey}");
-                var response= await GetXmlResponseAsync<CertificateListResponse>(await HttpClient.GetAsync(uri));
+                var uri = $"/api/?type=config&action=get&xpath={path}&key={ApiKey}";
+                var response = await GetXmlResponseAsync<CertificateListResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
             catch (Exception e)
@@ -72,7 +72,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+                var uri =
+                    $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
 
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                 return response;
@@ -90,7 +91,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                var uri =
+                    $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -134,7 +136,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var uri = $@"/api/?type=export&category=certificate&certificate-name={name}&format=pem&include-key=no&key={ApiKey}";
+                var uri =
+                    $@"/api/?type=export&category=certificate&certificate-name={name}&format=pem&include-key=no&key={ApiKey}";
                 return await GetResponseAsync(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -144,14 +147,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name,string templateName)
+        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string templateName)
         {
-
             try
             {
                 if (templateName == "/")
                     templateName = "";
-                var uri = $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
+                var uri =
+                    $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -163,10 +166,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 
         public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name)
         {
-
             try
             {
-                var uri = $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}";
+                var uri =
+                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -178,10 +181,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 
         public async Task<ErrorSuccessResponse> SubmitSetForwardTrust(string name)
         {
-
             try
             {
-                var uri = $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<forward-trust-certificate><rsa>{name}</rsa></forward-trust-certificate>&key={ApiKey}";
+                var uri =
+                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<forward-trust-certificate><rsa>{name}</rsa></forward-trust-certificate>&key={ApiKey}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -191,30 +194,34 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ImportCertificateResponse> ImportCertificate(string name,string passPhrase,byte[] bytes,string includeKey,string category,string templateName)
+        public async Task<ImportCertificateResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
+            string includeKey, string category, string templateName)
         {
             try
             {
                 if (templateName == "/")
                     templateName = "";
-                var uri = $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
+                var uri =
+                    $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
                 var boundary = $"--------------------------{Guid.NewGuid():N}";
                 var requestContent = new MultipartFormDataContent();
                 requestContent.Headers.Remove("Content-Type");
-                requestContent.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={boundary}");
+                requestContent.Headers.TryAddWithoutValidation("Content-Type",
+                    $"multipart/form-data; boundary={boundary}");
                 //Workaround Palo Alto API does not like double quotes around boundary so can't use built in .net client
-                requestContent.GetType().BaseType?.GetField("_boundary", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(requestContent, boundary);
-                var pfxContent=new ByteArrayContent(bytes);
-                pfxContent.Headers.ContentType=MediaTypeHeaderValue.Parse("application/x-x509-ca-cert");
-                requestContent.Add(pfxContent,"\"file\"", $"\"{name}.pem\"");
-                return await GetXmlResponseAsync<ImportCertificateResponse>(await HttpClient.PostAsync(uri, requestContent));
+                requestContent.GetType().BaseType?.GetField("_boundary", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?.SetValue(requestContent, boundary);
+                var pfxContent = new ByteArrayContent(bytes);
+                pfxContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-x509-ca-cert");
+                requestContent.Add(pfxContent, "\"file\"", $"\"{name}.pem\"");
+                return await GetXmlResponseAsync<ImportCertificateResponse>(
+                    await HttpClient.PostAsync(uri, requestContent));
             }
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.ImportCertificate: {e.Message}");
                 throw;
             }
-            
         }
 
 
@@ -223,11 +230,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             try
             {
                 EnsureSuccessfulResponse(response);
-                var stringResponse = await new StreamReader(await response.Content.ReadAsStreamAsync()).ReadToEndAsync();
-                XmlSerializer serializer =
+                var stringResponse =
+                    await new StreamReader(await response.Content.ReadAsStreamAsync()).ReadToEndAsync();
+                var serializer =
                     new XmlSerializer(typeof(T));
-                XmlReader xmlReader = XmlReader.Create(new StringReader(stringResponse));
-                return (T)serializer.Deserialize(xmlReader);
+                var xmlReader = XmlReader.Create(new StringReader(stringResponse));
+                return (T) serializer.Deserialize(xmlReader);
             }
             catch (Exception e)
             {
@@ -241,7 +249,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             try
             {
                 EnsureSuccessfulResponse(response);
-                var stringResponse = await new StreamReader(await response.Content.ReadAsStreamAsync()).ReadToEndAsync();
+                var stringResponse =
+                    await new StreamReader(await response.Content.ReadAsStreamAsync()).ReadToEndAsync();
                 return stringResponse;
             }
             catch (Exception e)
@@ -250,7 +259,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 throw;
             }
         }
-        
+
         private void EnsureSuccessfulResponse(HttpResponseMessage response)
         {
             try
@@ -267,7 +276,5 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 throw;
             }
         }
-
-
     }
 }
