@@ -22,7 +22,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses
     {
 
         [XmlElement(ElementName = "result")]
-        public CertificateResult CertificateResult { get; set; }
+        public CertificateResult Result { get; set; }
 
         [XmlAttribute(AttributeName = "status")]
         public string Status { get; set; }

@@ -115,8 +115,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         try
                         {
-                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey.Text} Private Key: dummy (from PA API)");
-                            return BuildInventoryItem(c.Name, c.PublicKey.Text, c.PrivateKey == "dummy");
+                            _logger.LogTrace($"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy");
                         }
                         catch
                         {
