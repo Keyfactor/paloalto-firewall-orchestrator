@@ -68,19 +68,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<CommitResponse> GetCommitResponse(string templateName)
+        public async Task<CommitResponse> GetCommitResponse()
         {
             try
             {
-                var uri = string.Empty;
-                if (templateName == "/")
-                {
-                    uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
-                }
-                else
-                {
-                    uri = $"/api/?&type=commit&action=partial&target-tpl={templateName}&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
-                }
+                var uri = $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -149,12 +142,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name)
+        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name,string templateName)
         {
 
             try
             {
-                var uri = $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}";
+                if (templateName == "/")
+                    templateName = "";
+                var uri = $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -194,11 +189,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ImportCertificateResponse> ImportCertificate(string name,string passPhrase,byte[] bytes,string includeKey,string category)
+        public async Task<ImportCertificateResponse> ImportCertificate(string name,string passPhrase,byte[] bytes,string includeKey,string category,string templateName)
         {
             try
             {
-                var uri = $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl=&target-tpl-vsys=&vsys&key={ApiKey}";
+                if (templateName == "/")
+                    templateName = "";
+                var uri = $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
                 var boundary = $"--------------------------{Guid.NewGuid():N}";
                 var requestContent = new MultipartFormDataContent();
                 requestContent.Headers.Remove("Content-Type");

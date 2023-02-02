@@ -127,14 +127,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
-                var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias);
+                var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias,config.CertificateStoreDetails.StorePath);
 
                 var resWriter = new StringWriter();
                 var resSerializer = new XmlSerializer(typeof(ErrorSuccessResponse));
                 resSerializer.Serialize(resWriter, response.Result);
                 _logger.LogTrace($"Remove Certificate Xml Response {resWriter}");
 
-                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
+                var commitResponse = client.GetCommitResponse();
                 if (commitResponse.Result.Status == "success")
                 {
                     //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
@@ -308,7 +308,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             var importResult = client.ImportCertificate(config.JobCertificate.Alias,
                                 config.JobCertificate.PrivateKeyPassword,
-                                Encoding.UTF8.GetBytes(certPem), "yes", "keypair");
+                                Encoding.UTF8.GetBytes(certPem), "yes", "keypair",config.CertificateStoreDetails.StorePath);
 
                             var content = importResult.Result;
 
@@ -319,7 +319,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
-                                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
+                                var commitResponse = client.GetCommitResponse();
                                 if (commitResponse.Result.Status == "success")
                                 {
                                     var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
@@ -387,7 +387,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             var importResult = client.ImportCertificate(config.JobCertificate.Alias,
                                 config.JobCertificate.PrivateKeyPassword,
-                                Encoding.UTF8.GetBytes(certPem), "no", "certificate");
+                                Encoding.UTF8.GetBytes(certPem), "no", "certificate",config.CertificateStoreDetails.StorePath);
 
                             var content = importResult.Result;
 
@@ -398,7 +398,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
-                                var commitResponse = client.GetCommitResponse(config.CertificateStoreDetails.StorePath);
+                                var commitResponse = client.GetCommitResponse();
                                 if (commitResponse.Result.Status == "success")
                                 {
                                     var trustedRoot =
