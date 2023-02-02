@@ -319,12 +319,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
+                                var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                                var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
+
                                 var commitResponse = client.GetCommitResponse();
                                 if (commitResponse.Result.Status == "success")
                                 {
-                                    var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
-                                    var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
-
                                     if (trustedRoot && rootResponse.Status == "error")
                                     {
                                         warnings += "Setting to Trusted Root Failed. ";
@@ -398,13 +398,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                             if (content.Status == "success")
                             {
+                                var trustedRoot =
+                                    Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
+                                var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
+
                                 var commitResponse = client.GetCommitResponse();
                                 if (commitResponse.Result.Status == "success")
                                 {
-                                    var trustedRoot =
-                                        Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
-                                    var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
-
 
                                     if (trustedRoot && rootResponse.Status == "error")
                                     {
