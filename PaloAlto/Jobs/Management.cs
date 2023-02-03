@@ -17,9 +17,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Requests;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -52,6 +55,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private string ServerPassword { get; set; }
 
         private JobProperties StoreProperties { get; set; }
+        private JobEntryParams JobEntryParams { get; set; }
 
         private string ServerUserName { get; set; }
 
@@ -64,7 +68,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger = LogHandler.GetClassLogger<Management>();
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
-                new JsonSerializerSettings {DefaultValueHandling = DefaultValueHandling.Populate});
+                new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+
+            var json = JsonConvert.SerializeObject(jobConfiguration.JobProperties, Formatting.Indented);
+            JobEntryParams = JsonConvert.DeserializeObject<JobEntryParams>(
+                json,new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+
             return PerformManagement(jobConfiguration);
         }
 
@@ -323,6 +332,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 var trustedRoot = Convert.ToBoolean(config.JobProperties["Trusted Root"].ToString());
                                 var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client);
 
+                                //2. Set the bindings and warn if they could not be set
+                                var bindingsResponse = SetBindings(config, client, config.CertificateStoreDetails.StorePath);
+                                if (bindingsResponse.Result.Status == "error")
+                                {
+                                    warnings += "Could not Set The Bindings. ";
+                                }
+
                                 var commitResponse = client.GetCommitResponse();
                                 if (commitResponse.Result.Status == "success")
                                 {
@@ -473,6 +489,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage =
                         $"Management/Add {e.Message}"
                 };
+            }
+        }
+
+        private Task<ErrorSuccessResponse> SetBindings(ManagementJobConfiguration config, PaloAltoClient client,string templateName)
+        {
+            //Handle the Profile Bindings
+            try
+            {
+                var profileRequest = new EditProfileRequest
+                {
+                    Name = JobEntryParams.TlsProfileName,
+                    Certificate = config.JobCertificate.Alias
+                };
+                var pMinVersion = new ProfileMinVersion { Text = JobEntryParams.TlsMinVersion };
+                var pMaxVersion = new ProfileMaxVersion { Text = JobEntryParams.TlsMaxVersion };
+                var pSettings = new ProfileProtocolSettings { MinVersion = pMinVersion, MaxVersion = pMaxVersion };
+                profileRequest.ProtocolSettings = pSettings;
+
+                var reqWriter = new StringWriter();
+                var reqSerializer = new XmlSerializer(typeof(EditProfileRequest));
+                reqSerializer.Serialize(reqWriter, profileRequest);
+                _logger.LogTrace($"Profile Request {reqWriter}");
+
+                return client.SubmitEditProfile(profileRequest,templateName);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occurred in Management.SetBindings {LogHandler.FlattenException(e)}");
+                throw;
             }
         }
 
