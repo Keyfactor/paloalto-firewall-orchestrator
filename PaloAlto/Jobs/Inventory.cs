@@ -71,6 +71,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace(
                     $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
+                
                 //Get the list of certificates and Trusted Roots
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
@@ -79,7 +80,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 //Change the path if you are pointed to a Panorama Device
                 CertificateListResponse rawCertificatesResult;
-                if (config.CertificateStoreDetails.StorePath.Length > 1)
+                if (IsPanoramaDevice(config))
                     rawCertificatesResult =
                         client.GetCertificateList(
                                 $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry")
@@ -89,20 +90,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
-
-                //Debug Write Certificate List Response from Palo Alto
-                var listWriter = new StringWriter();
-                var listSerializer = new XmlSerializer(typeof(CertificateListResponse));
-                listSerializer.Serialize(listWriter, rawCertificatesResult);
-                _logger.LogTrace($"Certificate List Result {listWriter}");
+                LogResponse(certificatesResult); //Trace Write Certificate List Response from Palo Alto
 
                 var trustedRootPayload = client.GetTrustedRootList().Result;
-
-                //Debug Write Trusted Root List Response from Palo Alto
-                var resWriter = new StringWriter();
-                var resSerializer = new XmlSerializer(typeof(TrustedRootListResponse));
-                resSerializer.Serialize(resWriter, trustedRootPayload);
-                _logger.LogTrace($"Certificate Trusted List Result {resWriter}");
+                LogResponse(trustedRootPayload); //Trace Write Trusted Cert List Response from Palo Alto
 
                 var warningFlag = false;
                 var sb = new StringBuilder();
@@ -156,30 +147,48 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Submitted Inventory To Keyfactor via submitInventory.Invoke");
 
                 _logger.MethodExit(LogLevel.Debug);
-                if (warningFlag)
-                {
-                    _logger.LogTrace("Found Warning");
-                    return new JobResult
-                    {
-                        Result = OrchestratorJobStatusJobResult.Warning,
-                        JobHistoryId = config.JobHistoryId,
-                        FailureMessage = sb.ToString()
-                    };
-                }
-
-                _logger.LogTrace("Return Success");
-                return new JobResult
-                {
-                    Result = OrchestratorJobStatusJobResult.Success,
-                    JobHistoryId = config.JobHistoryId,
-                    FailureMessage = sb.ToString()
-                };
+                return ReturnJobResult(config, warningFlag, sb);
             }
             catch (Exception e)
             {
                 _logger.LogError($"PerformInventory Error: {e.Message}");
                 throw;
             }
+        }
+
+        private JobResult ReturnJobResult(InventoryJobConfiguration config, bool warningFlag, StringBuilder sb)
+        {
+            if (warningFlag)
+            {
+                _logger.LogTrace("Found Warning");
+                return new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Warning,
+                    JobHistoryId = config.JobHistoryId,
+                    FailureMessage = sb.ToString()
+                };
+            }
+
+            _logger.LogTrace("Return Success");
+            return new JobResult
+            {
+                Result = OrchestratorJobStatusJobResult.Success,
+                JobHistoryId = config.JobHistoryId,
+                FailureMessage = sb.ToString()
+            };
+        }
+
+        private static bool IsPanoramaDevice(InventoryJobConfiguration config)
+        {
+            return config.CertificateStoreDetails.StorePath.Length > 1;
+        }
+
+        private void LogResponse<T>(T content)
+        {
+            var resWriter = new StringWriter();
+            var resSerializer = new XmlSerializer(typeof(T));
+            resSerializer.Serialize(resWriter, content);
+            _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
         protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey)

@@ -193,12 +193,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name)
+        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name,string templateName)
         {
             try
             {
+                if (templateName == "/")
+                    templateName = "";
                 var uri =
-                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}";
+                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
