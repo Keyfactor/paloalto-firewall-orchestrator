@@ -44,6 +44,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private string ServerPassword { get; set; }
         private string ServerUserName { get; set; }
 
+        private JobProperties StoreProperties { get; set; }
+
         public string ExtensionName => "PaloAlto";
 
         public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration,
@@ -51,10 +53,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         {
             _logger = LogHandler.GetClassLogger<Inventory>();
             _logger.MethodEntry(LogLevel.Debug);
+            StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
+                jobConfiguration.CertificateStoreDetails.Properties,
+                new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+
             return PerformInventory(jobConfiguration, submitInventoryUpdate);
         }
 
-        private string ResolvePamField(string name, string value)
+        public string ResolvePamField(string name, string value)
         {
             _logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
             return _resolver.Resolve(value);
@@ -67,6 +73,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry(LogLevel.Debug);
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+
+                var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
+                    config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
+                    config.JobHistoryId, ServerUserName, ServerPassword);
+                if (!valid) return result;
 
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace(
@@ -108,7 +119,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         {
                             _logger.LogTrace(
                                 $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy");
+                            var bindings =
+                                client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, c.Name).Result;
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy",bindings,false);
                         }
                         catch
                         {
@@ -131,7 +144,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         var cert = new X509Certificate2(bytes);
                         _logger.LogTrace(
                             $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
-                        BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey);
+                        var bindings =
+                            client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, trustedRootCert.Name).Result;
+                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey,bindings,true));
                     }
                     catch
                     {
@@ -191,11 +206,21 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
-        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey)
+        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, GetProfileByCertificateResponse bindings,bool trustedRoot)
         {
             try
             {
                 _logger.MethodEntry();
+
+                //Add Entry Params so the show up in the UI Inventory Store Popup
+                var siteSettingsDict = new Dictionary<string, object>
+                {
+                    { "ProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
+                    { "TlsMinVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text},
+                    { "TlsMaxVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text },
+                    { "Trusted Root", trustedRoot},
+                };
+
                 _logger.LogTrace($"Alias: {alias} Pem: {certPem} PrivateKey: {privateKey}");
                 var acsi = new CurrentInventoryItem
                 {
@@ -203,7 +228,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     Certificates = new[] {certPem},
                     ItemStatus = OrchestratorInventoryItemStatus.Unknown,
                     PrivateKeyEntry = privateKey,
-                    UseChainLevel = false
+                    UseChainLevel = false,
+                    Parameters = siteSettingsDict
                 };
 
                 return acsi;

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto
 {
-    internal class JobProperties
+    public class JobProperties
     {
         [JsonProperty("DeviceGroup")]
         [DefaultValue("")]

@@ -69,8 +69,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings {DefaultValueHandling = DefaultValueHandling.Populate});
-
             var json = JsonConvert.SerializeObject(jobConfiguration.JobProperties, Formatting.Indented);
+
             JobEntryParams = JsonConvert.DeserializeObject<JobEntryParams>(
                 json, new JsonSerializerSettings {DefaultValueHandling = DefaultValueHandling.Populate});
 
@@ -90,6 +90,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry();
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+
+                var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
+                    config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
+                    config.JobHistoryId, ServerUserName, ServerPassword);
+                if (!valid) return result;
 
                 var complete = new JobResult
                 {
@@ -165,7 +170,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     warnings += "Commit To Device Failed";
                 }
 
-                return ReturnJobResult(config, warnings, success, BuildPaloError(response.Result));
+                return ReturnJobResult(config, warnings, success, Validators.BuildPaloError(response.Result));
             }
             catch (Exception e)
             {
@@ -259,17 +264,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     config.CertificateStoreDetails.StorePath);
 
                                 if (trustedRoot && rootResponse.Status == "error")
-                                    warnings += $"Setting to Trusted Root Failed. {BuildPaloError(rootResponse)}";
+                                    warnings +=
+                                        $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
 
                                 //3. Check if Bindings were added in the entry params and if so bind the cert to a tls profile in palo
-                                var bindingsValidation = ValidateBindings();
+                                var bindingsValidation = Validators.ValidateBindings(JobEntryParams);
                                 if (string.IsNullOrEmpty(bindingsValidation))
                                 {
                                     var bindingsResponse = SetBindings(config, client,
                                         config.CertificateStoreDetails.StorePath);
                                     if (bindingsResponse.Result.Status == "error")
                                         warnings +=
-                                            $"Could not Set The Bindings. There was an error calling out to bindings in the device. {BuildPaloError(bindingsResponse.Result)}";
+                                            $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
                                 }
                                 else
                                 {
@@ -308,7 +314,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     config.CertificateStoreDetails.StorePath);
 
                                 if (trustedRoot && rootResponse.Status == "error")
-                                    warnings += $"Setting to Trusted Root Failed. {BuildPaloError(rootResponse)}";
+                                    warnings +=
+                                        $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
 
                                 //3. Try to commit to firewall or Palo Alto then Push to the devices
                                 warnings = CommitChanges(config, client, warnings);
@@ -463,17 +470,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return warnings;
         }
 
-        private string BuildPaloError(ErrorSuccessResponse bindingsResponseResult)
-        {
-            var errorResponse = string.Empty;
-            foreach (var errorLine in bindingsResponseResult.LineMsg.Line) errorResponse += errorLine + ", ";
-
-            //remove extra comma at the end
-            if (!string.IsNullOrEmpty(errorResponse)) return errorResponse.Substring(0, errorResponse.Length - 2);
-
-            return errorResponse;
-        }
-
         private Task<ErrorSuccessResponse> SetBindings(ManagementJobConfiguration config, PaloAltoClient client,
             string templateName)
         {
@@ -527,19 +523,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogError($"Error Occurred in Management.SetTrustedRoot {LogHandler.FlattenException(e)}");
                 throw;
             }
-        }
-
-        private string ValidateBindings()
-        {
-            var warnings = string.Empty;
-
-            if (string.IsNullOrEmpty(JobEntryParams.TlsProfileName)) warnings += "You are missing the TlsProfileName, ";
-
-            if (string.IsNullOrEmpty(JobEntryParams.TlsMinVersion)) warnings += "You are missing the TlsMin Field, ";
-
-            if (string.IsNullOrEmpty(JobEntryParams.TlsMinVersion)) warnings += "You are missing the TlsMax Field, ";
-
-            return warnings;
         }
     }
 }
