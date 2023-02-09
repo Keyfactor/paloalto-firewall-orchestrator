@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -38,19 +39,19 @@ namespace PaloAltoTestConsole
         public static string BindingName { get; set; }
         public static string TlsMinVersion { get; set; }
         public static string TlsMaxVersion { get; set; }
-
+        public static string Overwrite { get; set; }
+        public static string ManagementType { get; set; }
 
         private static async Task Main(string[] args)
         {
             var arguments = new Dictionary<string, string>();
-
+            Thread.Sleep(10000);
             foreach (var argument in args)
             {
                 var splitted = argument.Split('=');
 
                 if (splitted.Length == 2) arguments[splitted[0]] = splitted[1];
             }
-
             if (args.Length > 0)
             {
                 CaseName = arguments["-casename"];
@@ -80,15 +81,17 @@ namespace PaloAltoTestConsole
             var isPanorama = !Convert.ToBoolean(StorePath == "/");
 
             // Display message to user to provide parameters.
-            Console.WriteLine("Running ");
+            Console.WriteLine("Running");
 
             switch (CaseName)
             {
                 case "Inventory":
+                    Console.WriteLine("Running Inventory");
                     InventoryJobConfiguration invJobConfig;
                     invJobConfig = isPanorama
                         ? GetPanoramaInventoryJobConfiguration()
                         : GetInventoryJobConfiguration();
+                    Console.WriteLine("Got Inventory Config");
                     SubmitInventoryUpdate sui = GetItems;
                     var secretResolver = new Mock<IPAMSecretResolver>();
                     secretResolver.Setup(m => m.Resolve(It.Is<string>(s => s == invJobConfig.ServerUsername)))
@@ -96,35 +99,41 @@ namespace PaloAltoTestConsole
                     secretResolver.Setup(m => m.Resolve(It.Is<string>(s => s == invJobConfig.ServerPassword)))
                         .Returns(() => invJobConfig.ServerPassword);
                     var inv = new Inventory(secretResolver.Object);
-
+                    Console.WriteLine("Created Inventory Object With Constructor");
                     var invResponse = inv.ProcessJob(invJobConfig, sui);
+                    Console.WriteLine("Back From Inventory");
                     Console.Write(JsonConvert.SerializeObject(invResponse));
                     break;
                 case "Management":
                     Console.WriteLine("Select Management Type Add or Remove");
-                    var mgmtType = Console.ReadLine();
-                    if (mgmtType == "Add")
+                    string mgmtType;
+                    mgmtType = args.Length == 0 ? Console.ReadLine() : arguments["-managementtype"];
+
+                    if (mgmtType?.ToUpper() == "ADD")
                     {
                         if (args.Length > 0)
                         {
-                            BindingName = arguments["-storepath"];
+                            BindingName = arguments["-bindingname"];
                             CertAlias = arguments["-certalias"];
                             TlsMinVersion = arguments["-tlsminversion"];
                             TlsMaxVersion= arguments["-tlsmaxversion"];
                             TrustedRoot= arguments["-trustedroot"];
+                            Overwrite = arguments["-overwrite"];
                         }
                         else
                         {
                             Console.WriteLine("Enter Binding Name");
                             BindingName = Console.ReadLine();
-                            Console.WriteLine("Enter Cert Alias");
-                            CertAlias = Console.ReadLine();
                             Console.WriteLine("Enter Tls Min Version");
                             TlsMinVersion = Console.ReadLine();
                             Console.WriteLine("Enter Tls Max Version");
                             TlsMaxVersion = Console.ReadLine();
+                            Console.WriteLine("Enter Cert Alias");
+                            CertAlias = Console.ReadLine();
                             Console.WriteLine("Trusted Root (True or False)?");
                             TrustedRoot = Console.ReadLine();
+                            Console.WriteLine("Overwrite (True or False)?");
+                            Overwrite = Console.ReadLine();
                         }
 
 
@@ -140,6 +149,7 @@ namespace PaloAltoTestConsole
 
                         var result = mgmt.ProcessJob(jobConfiguration);
                         Console.Write(JsonConvert.SerializeObject(result));
+                        Console.ReadLine();
                     }
 
                     if (mgmtType == "Remove")
@@ -192,11 +202,24 @@ namespace PaloAltoTestConsole
 
         public static ManagementJobConfiguration GetManagementJobConfiguration()
         {
+            var trustedRootReplaceString = "\"Trusted Root\": false";
+            if (TrustedRoot.ToUpper() == "TRUE")
+            {
+                trustedRootReplaceString = "\"Trusted Root\": true";
+            }
+
+            var overWriteReplaceString = "\"Overwrite\": false";
+            if (Overwrite.ToUpper() == "TRUE")
+            {
+                overWriteReplaceString = "\"Overwrite\": true";
+            }
+            
             var fileContent = File.ReadAllText("PanoramaMgmt.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
                 .Replace("ClientMachineGoesHere", ClientMachine).Replace("TlsProfileNameGoesHere", BindingName)
-                .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion);
+                .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion)
+                .Replace("\"Trusted Root\": false",trustedRootReplaceString).Replace("\"Overwrite\": false",overWriteReplaceString);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
             return result;

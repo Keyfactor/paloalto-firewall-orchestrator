@@ -73,7 +73,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var uri = $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry/@name&key={ApiKey}";
+                var uri =
+                    $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry/@name&key={ApiKey}";
                 var response = await GetXmlResponseAsync<NamedListResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -88,7 +89,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var uri = $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/device-group/entry/@name&key={ApiKey}";
+                var uri =
+                    $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/device-group/entry/@name&key={ApiKey}";
                 var response = await GetXmlResponseAsync<NamedListResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -138,20 +140,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var editXml = $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
+                var editXml =
+                    $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
                 string uri;
 
                 //if not Panorama use firewall path
                 if (templateName == "/")
                 {
                     templateName = "";
-                    uri = $@"/api/?type=config&action=edit&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={templateName}";
+                    uri =
+                        $@"/api/?type=config&action=edit&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={templateName}";
                 }
                 else
                 {
-                    uri = $@"/api/?type=config&action=edit&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry&element={editXml}&key={ApiKey}&target-tpl={templateName}";
+                    uri =
+                        $@"/api/?type=config&action=edit&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry&element={editXml}&key={ApiKey}&target-tpl={templateName}";
                 }
-                               
+
                 var response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -162,13 +167,17 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string templateName,string certificate)
+        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string templateName,
+            string certificate)
         {
             try
             {
-                var xPath = templateName == "/" ? $"/config/shared/ssl-tls-service-profile/entry[@name='{certificate}']": $"/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[./certificate='{certificate}']";
+                var xPath = templateName == "/"
+                    ? $"/config/shared/ssl-tls-service-profile/entry[@name='{certificate}']"
+                    : $"/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[./certificate='{certificate}']";
                 var uri = $"/api/?type=config&action=get&target-tpl={templateName}&xpath={xPath}&key={ApiKey}";
-                var response = await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
+                var response =
+                    await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
             catch (Exception e)
@@ -239,14 +248,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name,string templateName)
+        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string templateName)
         {
             try
             {
+                string uri;
                 if (templateName == "/")
+                {
                     templateName = "";
-                var uri =
-                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
+                    uri =
+                        $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
+                }
+                else
+                {
+                    uri =
+                        $@"/api/?type=config&action=set&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
+                }
+
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
