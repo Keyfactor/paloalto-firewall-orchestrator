@@ -188,16 +188,25 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return config.CertificateStoreDetails.StorePath.Length > 1;
         }
 
-        private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client)
+        private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client,string certificateName)
         {
             try
             {
-                var importResult = client.GetCertificateByName(config.JobCertificate.Alias);
-                var content = importResult.Result;
+                CertificateListResponse rawCertificatesResult;
 
-                if (content.ToUpper().Contains("BEGIN CERTIFICATE")) return true;
+                if (IsPanoramaDevice(config))
+                    rawCertificatesResult =
+                        client.GetCertificateList(
+                                $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry[@name='{certificateName}']")
+                            .Result;
+                else
+                    rawCertificatesResult = client.GetCertificateList($"/config/shared/certificate/entry[@name='{certificateName}']").Result;
 
-                return false;
+                var certificatesResult =
+                    rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
+
+                return  certificatesResult.Count > 0;
+
             }
             catch (Exception e)
             {
@@ -229,7 +238,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    var duplicate = CheckForDuplicate(config, client);
+                    var duplicate = CheckForDuplicate(config, client,config.JobCertificate.Alias);
                     _logger.LogTrace($"Duplicate? = {duplicate}");
 
                     //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
