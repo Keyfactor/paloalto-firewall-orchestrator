@@ -18,7 +18,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
-using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
