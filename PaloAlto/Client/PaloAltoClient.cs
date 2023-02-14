@@ -235,10 +235,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
+                string uri;
                 if (templateName == "/")
+                {
                     templateName = "";
-                var uri =
-                    $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
+                }
+                else
+                {
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
+                }
+
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)

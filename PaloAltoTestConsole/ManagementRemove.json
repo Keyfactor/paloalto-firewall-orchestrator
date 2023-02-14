@@ -1,8 +1,8 @@
 {
   "LastInventory": [],
   "CertificateStoreDetails": {
-    "ClientMachine": "20.172.165.91",
-    "StorePath": "CertificatesTemplate",
+    "ClientMachine": "ClientMachineGoesHere",
+    "StorePath": "TemplateNameGoesHere",
     "StorePassword": null,
     "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"DeviceGroupGoesHere\"}",
     "Type": 105

@@ -154,10 +154,17 @@ namespace PaloAltoTestConsole
 
                     if (mgmtType == "Remove")
                     {
-                        Console.WriteLine("Alias Enter Alias Name");
-                        var alias = Console.ReadLine();
+                        if (args.Length > 0)
+                        {
+                            CertAlias = arguments["-certalias"];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Enter Cert Alias");
+                            CertAlias = Console.ReadLine();
+                        }
 
-                        var jobConfig = GetRemoveJobConfiguration(alias);
+                        var jobConfig = GetRemoveJobConfiguration();
 
                         var mgmtSecretResolver = new Mock<IPAMSecretResolver>();
                         mgmtSecretResolver.Setup(m => m.Resolve(It.Is<string>(s => s == jobConfig.ServerUsername)))
@@ -225,7 +232,7 @@ namespace PaloAltoTestConsole
             return result;
         }
 
-        public static ManagementJobConfiguration GetRemoveJobConfiguration(string alias)
+        public static ManagementJobConfiguration GetRemoveJobConfiguration()
         {
             var fileContent = File.ReadAllText("ManagementRemove.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
