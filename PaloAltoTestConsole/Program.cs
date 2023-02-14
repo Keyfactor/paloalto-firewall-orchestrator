@@ -175,7 +175,8 @@ namespace PaloAltoTestConsole
 
                         var result = mgmt.ProcessJob(jobConfig);
 
-                        if (result.Result == OrchestratorJobStatusJobResult.Success) Console.Write("Success");
+                        Console.Write(JsonConvert.SerializeObject(result));
+                        Console.ReadLine();
                     }
 
                     break;
