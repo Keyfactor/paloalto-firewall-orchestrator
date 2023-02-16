@@ -151,7 +151,7 @@ namespace PaloAltoTestConsole
                         Console.ReadLine();
                     }
 
-                    if (mgmtType == "Remove")
+                    if (mgmtType.ToUpper() == "REMOVE")
                     {
                         if (args.Length > 0)
                         {
@@ -171,9 +171,8 @@ namespace PaloAltoTestConsole
                         mgmtSecretResolver.Setup(m => m.Resolve(It.Is<string>(s => s == jobConfig.ServerPassword)))
                             .Returns(() => jobConfig.ServerPassword);
                         var mgmt = new Management(mgmtSecretResolver.Object);
-
                         var result = mgmt.ProcessJob(jobConfig);
-
+                        Thread.Sleep(5000);
                         Console.Write(JsonConvert.SerializeObject(result));
                         Console.ReadLine();
                     }

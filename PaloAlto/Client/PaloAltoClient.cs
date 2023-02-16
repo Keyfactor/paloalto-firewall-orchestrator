@@ -329,7 +329,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         }
 
 
-        private async Task<T> GetXmlResponseAsync<T>(HttpResponseMessage response)
+        public async Task<T> GetXmlResponseAsync<T>(HttpResponseMessage response)
         {
             try
             {
@@ -348,7 +348,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        private async Task<string> GetResponseAsync(HttpResponseMessage response)
+        public async Task<string> GetResponseAsync(HttpResponseMessage response)
         {
             try
             {

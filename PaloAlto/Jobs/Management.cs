@@ -145,32 +145,36 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
-                    config.CertificateStoreDetails.StorePath);
+                    config.CertificateStoreDetails.StorePath).Result;
+                
                 LogResponse(response);
 
-                var commitResponse = client.GetCommitResponse();
-                if (commitResponse.Result.Status == "success")
+                if (response.Status == "success")
                 {
-                    //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
-                    var deviceGroup = StoreProperties?.DeviceGroup;
-
-                    //If there is a template and device group then push to all firewall devices because it is Panorama
-                    if (IsPanoramaDevice(config) && deviceGroup?.Length > 0)
+                    var commitResponse = client.GetCommitResponse();
+                    if (commitResponse.Result.Status == "success")
                     {
-                        Thread.Sleep(120000); //Some delay built in so pushes to devices work
-                        var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
-                        if (commitAllResponse.Result.Status != "success")
-                            warnings += "The push to firewall devices failed. ";
+                        //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
+                        var deviceGroup = StoreProperties?.DeviceGroup;
+
+                        //If there is a template and device group then push to all firewall devices because it is Panorama
+                        if (IsPanoramaDevice(config) && deviceGroup?.Length > 0)
+                        {
+                            Thread.Sleep(120000); //Some delay built in so pushes to devices work
+                            var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
+                            if (commitAllResponse.Result.Status != "success")
+                                warnings += "The push to firewall devices failed. ";
+                        }
+
+                        success = true;
                     }
-
-                    success = true;
-                }
-                else
-                {
-                    warnings += "Commit To Device Failed";
+                    else
+                    {
+                        warnings += "Commit To Device Failed";
+                    }
                 }
 
-                return ReturnJobResult(config, warnings, success, Validators.BuildPaloError(response.Result));
+                return ReturnJobResult(config, warnings, success, Validators.BuildPaloError(response));
             }
             catch (Exception e)
             {
