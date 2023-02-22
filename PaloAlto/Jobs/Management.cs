@@ -260,7 +260,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             certPem = GetPemFile(config);
                             _logger.LogTrace($"Got certPem {certPem}");
 
-                            //1. Import the Keypair to Palo Alto
+                            //1. If duplicate, delete the old cert first, otherwise you'll get a private/public Key mismatch from Palo
+                            if (duplicate)
+                            {
+                                var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
+                                    config.CertificateStoreDetails.StorePath).Result;
+                                if (delResponse.Status == "Error")
+                                {
+                                    //Delete Failed Return Error
+                                    return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                                }
+                            }
+
+                            //1a. Import the Keypair to Palo Alto
                             var importResult = client.ImportCertificate(config.JobCertificate.Alias,
                                 config.JobCertificate.PrivateKeyPassword,
                                 Encoding.UTF8.GetBytes(certPem), "yes", "keypair",
