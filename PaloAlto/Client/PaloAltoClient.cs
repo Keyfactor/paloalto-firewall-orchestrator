@@ -298,7 +298,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ImportCertificateResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
+        public async Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
             string includeKey, string category, string templateName)
         {
             try
@@ -318,7 +318,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 var pfxContent = new ByteArrayContent(bytes);
                 pfxContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-x509-ca-cert");
                 requestContent.Add(pfxContent, "\"file\"", $"\"{name}.pem\"");
-                return await GetXmlResponseAsync<ImportCertificateResponse>(
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(
                     await HttpClient.PostAsync(uri, requestContent));
             }
             catch (Exception e)

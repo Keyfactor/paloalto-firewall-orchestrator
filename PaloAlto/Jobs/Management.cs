@@ -301,7 +301,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 success = true;
                             }
 
-                            return ReturnJobResult(config, warnings, success, content.Text);
+                            var errorMsg = "Unknown Error has occurred.";
+                            if(content.LineMsg!=null)
+                            {
+                                errorMsg = Validators.BuildPaloError(content);
+                            }
+                            else
+                            {
+                                errorMsg = content.Text;
+                            }
+                            return ReturnJobResult(config, warnings, success, errorMsg);
                         }
                         else
                         {
