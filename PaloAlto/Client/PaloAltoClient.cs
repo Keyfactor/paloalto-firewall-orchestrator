@@ -245,7 +245,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 else
                 {
                     uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
+                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
                 }
 
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
@@ -253,6 +253,32 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SubmitDeleteTrustedRoot(string name, string templateName)
+        {
+            try
+            {
+                string uri;
+                if (templateName == "/")
+                {
+                    templateName = "";
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/shared/ssl-decrypt/trusted-root-CA/member[text()='{name}']&key={ApiKey}&target-tpl={templateName}";
+                }
+                else
+                {
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-decrypt/trusted-root-CA/member[text()='{name}']&key={ApiKey}&target-tpl={templateName}";
+                }
+
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteTrustedRoot: {e.Message}");
                 throw;
             }
         }

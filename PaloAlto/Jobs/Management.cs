@@ -68,11 +68,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger = LogHandler.GetClassLogger<Management>();
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
-                new JsonSerializerSettings {DefaultValueHandling = DefaultValueHandling.Populate});
+                new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
             var json = JsonConvert.SerializeObject(jobConfiguration.JobProperties, Formatting.Indented);
 
             JobEntryParams = JsonConvert.DeserializeObject<JobEntryParams>(
-                json, new JsonSerializerSettings {DefaultValueHandling = DefaultValueHandling.Populate});
+                json, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
 
             return PerformManagement(jobConfiguration);
         }
@@ -146,7 +146,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
                     config.CertificateStoreDetails.StorePath).Result;
-                
+
                 LogResponse(response);
 
                 if (response.Status == "success")
@@ -192,7 +192,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return config.CertificateStoreDetails.StorePath.Length > 1;
         }
 
-        private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client,string certificateName)
+        private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client, string certificateName)
         {
             try
             {
@@ -209,7 +209,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
 
-                return  certificatesResult.Count > 0;
+                return certificatesResult.Count > 0;
 
             }
             catch (Exception e)
@@ -242,7 +242,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    var duplicate = CheckForDuplicate(config, client,config.JobCertificate.Alias);
+                    var duplicate = CheckForDuplicate(config, client, config.JobCertificate.Alias);
                     _logger.LogTrace($"Duplicate? = {duplicate}");
 
                     //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
@@ -263,10 +263,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             //1. If duplicate, delete the old cert/bindings/trustedroot first, otherwise you'll get a private/public Key mismatch and binding errors from Palo
                             if (duplicate)
                             {
-                                //1a. See if there are bindings for this certificate 
-                                if (!Validators.ValidateBindings(JobEntryParams).Contains("You are missing the TlsProfileName") && client.GetBinding(JobEntryParams, config.CertificateStoreDetails.StorePath).Result.Result.TotalCount==1)
+                                //1a. See if there are bindings for this certificate need to to delete/insert them so you can replace the cert
+                                if (!Validators.ValidateBindings(JobEntryParams).Contains("You are missing the TlsProfileName") && client.GetBinding(JobEntryParams, config.CertificateStoreDetails.StorePath).Result.Result.TotalCount == 1)
                                 {
-                                    var delBindingsResponse = client.SubmitDeleteBinding(JobEntryParams,config.CertificateStoreDetails.StorePath).Result;
+                                    var delBindingsResponse = client.SubmitDeleteBinding(JobEntryParams, config.CertificateStoreDetails.StorePath).Result;
                                     if (delBindingsResponse.Status.ToUpper() == "ERROR")
                                     {
                                         //Delete Failed Return Error
@@ -274,12 +274,31 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     }
                                 }
 
+                                //1b. See if this is a trusted root, if so, you need to set this to false so the delete/insert will work
                                 var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
                                     config.CertificateStoreDetails.StorePath).Result;
                                 if (delResponse.Status.ToUpper() == "ERROR")
                                 {
-                                    //Delete Failed Return Error
-                                    return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                                    var msg = Validators.BuildPaloError(delResponse);
+                                    if (msg.Contains("trusted-root-CA")) //Can't delete because Trusted Root
+                                    {
+                                        var delTrustedResponse = client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
+                                    config.CertificateStoreDetails.StorePath).Result;
+                                        if (delTrustedResponse.Status.ToUpper() == "ERROR")
+                                        {
+                                            return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delTrustedResponse));
+                                        }
+                                        var delRespTryTwo = client.SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath).Result;
+                                        if (delRespTryTwo.Status.ToUpper() == "ERROR")
+                                        {
+                                            return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //Delete Failed Return Error
+                                        return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                                    }
                                 }
                             }
 
@@ -292,7 +311,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             LogResponse(content);
 
                             //If 1. was successful, then set trusted root, bindings then commit
-                            if (content.Status == "success")
+                            if (content.Status.ToUpper() == "SUCCESS")
                             {
                                 //2.Validate if this is going to have the trusted Root
                                 var trustedRoot = Convert.ToBoolean(JobEntryParams.TrustedRoot);
@@ -325,7 +344,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             }
 
                             var errorMsg = "Unknown Error has occurred.";
-                            if(content.LineMsg!=null)
+                            if (content.LineMsg != null)
                             {
                                 errorMsg = Validators.BuildPaloError(content);
                             }
@@ -350,7 +369,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             LogResponse(content);
 
                             //if 1. was successful then set trusted root and commit, no bindings allowed without private key 
-                            if (content.Status == "success")
+                            if (content.Status.ToUpper() == "SUCCESS")
                             {
                                 //2.Validate if this is going to have the trusted Root
                                 var trustedRoot =
@@ -526,9 +545,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     Name = JobEntryParams.TlsProfileName,
                     Certificate = config.JobCertificate.Alias
                 };
-                var pMinVersion = new ProfileMinVersion {Text = JobEntryParams.TlsMinVersion};
-                var pMaxVersion = new ProfileMaxVersion {Text = JobEntryParams.TlsMaxVersion};
-                var pSettings = new ProfileProtocolSettings {MinVersion = pMinVersion, MaxVersion = pMaxVersion};
+                var pMinVersion = new ProfileMinVersion { Text = JobEntryParams.TlsMinVersion };
+                var pMaxVersion = new ProfileMaxVersion { Text = JobEntryParams.TlsMaxVersion };
+                var pSettings = new ProfileProtocolSettings { MinVersion = pMinVersion, MaxVersion = pMaxVersion };
                 profileRequest.ProtocolSettings = pSettings;
 
                 var reqWriter = new StringWriter();
