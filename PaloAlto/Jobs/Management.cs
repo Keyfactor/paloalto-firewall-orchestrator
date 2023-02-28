@@ -260,12 +260,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             certPem = GetPemFile(config);
                             _logger.LogTrace($"Got certPem {certPem}");
 
-                            //1. If duplicate, delete the old cert first, otherwise you'll get a private/public Key mismatch from Palo
+                            //1. If duplicate, delete the old cert/bindings/trustedroot first, otherwise you'll get a private/public Key mismatch and binding errors from Palo
                             if (duplicate)
                             {
+                                //1a. See if there are bindings for this certificate 
+                                if (!Validators.ValidateBindings(JobEntryParams).Contains("You are missing the TlsProfileName") && client.GetBinding(JobEntryParams, config.CertificateStoreDetails.StorePath).Result.Result.TotalCount==1)
+                                {
+                                    var delBindingsResponse = client.SubmitDeleteBinding(JobEntryParams,config.CertificateStoreDetails.StorePath).Result;
+                                    if (delBindingsResponse.Status.ToUpper() == "ERROR")
+                                    {
+                                        //Delete Failed Return Error
+                                        return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delBindingsResponse));
+                                    }
+                                }
+
                                 var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
                                     config.CertificateStoreDetails.StorePath).Result;
-                                if (delResponse.Status == "Error")
+                                if (delResponse.Status.ToUpper() == "ERROR")
                                 {
                                     //Delete Failed Return Error
                                     return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
@@ -288,7 +299,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client,
                                     config.CertificateStoreDetails.StorePath);
 
-                                if (trustedRoot && rootResponse.Status == "error")
+                                if (trustedRoot && rootResponse.Status.ToUpper() == "ERROR")
                                     warnings +=
                                         $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
 
@@ -298,7 +309,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 {
                                     var bindingsResponse = SetBindings(config, client,
                                         config.CertificateStoreDetails.StorePath);
-                                    if (bindingsResponse.Result.Status == "error")
+                                    if (bindingsResponse.Result.Status.ToUpper() == "ERROR")
                                         warnings +=
                                             $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
                                 }
@@ -347,7 +358,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 var rootResponse = SetTrustedRoot(trustedRoot, config.JobCertificate.Alias, client,
                                     config.CertificateStoreDetails.StorePath);
 
-                                if (trustedRoot && rootResponse.Status == "error")
+                                if (trustedRoot && rootResponse.Status.ToUpper() == "ERROR")
                                     warnings +=
                                         $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
 

@@ -1,4 +1,5 @@
-﻿using System.Xml.Serialization;
+﻿using System;
+using System.Xml.Serialization;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
 {
@@ -10,8 +11,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
         [XmlAttribute(AttributeName = "dirtyId")]
         public int DirtyId { get; set; }
 
-        [XmlAttribute(AttributeName = "time")]
-        public string Time { get; set; }
+        [XmlIgnore]
+        public DateTime Time { get; set; }
+
+        [XmlElement("Time")]
+        public string DateTimeString
+        {
+            get => this.Time.ToString("yyyy-MM-dd HH:mm:ss");
+            set => this.Time = DateTime.Parse(value);
+        }
 
         [XmlText]
         public string Text { get; set; }

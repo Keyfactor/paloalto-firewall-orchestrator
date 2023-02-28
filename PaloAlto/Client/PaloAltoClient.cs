@@ -278,7 +278,58 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
             catch (Exception e)
             {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitSetTrustedRoot: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<GetProfileByCertificateResponse> GetBinding(JobEntryParams jobEntryParams, string templateName)
+        {
+            try
+            {
+                string uri;
+                if (templateName == "/")
+                {
+                    templateName = "";
+                    uri =
+                        $@"/api/?type=config&action=get&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
+                }
+                else
+                {
+                    uri =
+                        $@"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
+                }
+                return await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetBinding: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SubmitDeleteBinding(JobEntryParams jobEntryParams, string templateName)
+        {
+            try
+            {
+                string uri;
+                if (templateName == "/")
+                {
+                    templateName = "";
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
+                }
+                else
+                {
+                    uri =
+                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
+                }
+
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteBinding: {e.Message}");
                 throw;
             }
         }
@@ -293,7 +344,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
             catch (Exception e)
             {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitSetForwardTrust: {e.Message}");
                 throw;
             }
         }

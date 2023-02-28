@@ -34,7 +34,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
         [XmlIgnore]
         public DateTime Time { get; set; }
 
-        [XmlElement("Time")]
+        [XmlElement("time")]
         public string DateTimeString
         {
             get => this.Time.ToString("yyyy-MM-dd HH:mm:ss");

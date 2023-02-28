@@ -17,11 +17,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace PaloAltoTestConsole
 {
@@ -43,6 +47,13 @@ namespace PaloAltoTestConsole
 
         private static async Task Main(string[] args)
         {
+
+            var xmlString = "<response status=\"success\" code=\"19\"><result total-count=\"1\" count=\"1\"><entry name=\"TestBindings\" admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\"><protocol-settings admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\"><min-version admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">tls1-0</min-version><max-version admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">max</max-version></protocol-settings><certificate admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">23201</certificate></entry></result></response>";
+            var serializer = new XmlSerializer(typeof(GetProfileByCertificateResponse));
+            var xmlReader = XmlReader.Create(new StringReader(xmlString));
+            var sResult= (GetProfileByCertificateResponse)serializer.Deserialize(xmlReader);
+            
+
             var arguments = new Dictionary<string, string>();
             Thread.Sleep(10000);
             foreach (var argument in args)
