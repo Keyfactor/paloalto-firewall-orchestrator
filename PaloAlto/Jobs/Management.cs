@@ -343,7 +343,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 success = true;
                             }
 
-                            var errorMsg = "Unknown Error has occurred.";
+                            string errorMsg;
                             if (content.LineMsg != null)
                             {
                                 errorMsg = Validators.BuildPaloError(content);
