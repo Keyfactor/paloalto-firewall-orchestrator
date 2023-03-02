@@ -44,16 +44,12 @@ namespace PaloAltoTestConsole
         public static string TlsMaxVersion { get; set; }
         public static string Overwrite { get; set; }
         public static string ManagementType { get; set; }
+        public static string CertificateContent { get; set; }
 
         private static async Task Main(string[] args)
         {
 
-            var xmlString = "<response status=\"success\" code=\"19\"><result total-count=\"1\" count=\"1\"><entry name=\"TestBindings\" admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\"><protocol-settings admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\"><min-version admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">tls1-0</min-version><max-version admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">max</max-version></protocol-settings><certificate admin=\"bhill\" dirtyId=\"1\" time=\"2023/02/27 08:19:41\">23201</certificate></entry></result></response>";
-            var serializer = new XmlSerializer(typeof(GetProfileByCertificateResponse));
-            var xmlReader = XmlReader.Create(new StringReader(xmlString));
-            var sResult= (GetProfileByCertificateResponse)serializer.Deserialize(xmlReader);
-            
-
+           
             var arguments = new Dictionary<string, string>();
             Thread.Sleep(10000);
             foreach (var argument in args)
@@ -121,6 +117,12 @@ namespace PaloAltoTestConsole
 
                     if (mgmtType?.ToUpper() == "ADD")
                     {
+                        Console.WriteLine("Start Generated Cert in KF API");
+                        var client = new KeyfactorClient();
+                        var kfResult = client.EnrollCertificate().Result;
+                        CertificateContent = kfResult.CertificateInformation.Pkcs12Blob;
+                        Console.WriteLine("End Generated Cert in KF API");
+
                         if (args.Length > 0)
                         {
                             BindingName = arguments["-bindingname"];
@@ -159,7 +161,6 @@ namespace PaloAltoTestConsole
 
                         var result = mgmt.ProcessJob(jobConfiguration);
                         Console.Write(JsonConvert.SerializeObject(result));
-                        Console.ReadLine();
                     }
 
                     if (mgmtType.ToUpper() == "REMOVE")
@@ -185,7 +186,6 @@ namespace PaloAltoTestConsole
                         var result = mgmt.ProcessJob(jobConfig);
                         Thread.Sleep(5000);
                         Console.Write(JsonConvert.SerializeObject(result));
-                        Console.ReadLine();
                     }
 
                     break;
@@ -236,7 +236,8 @@ namespace PaloAltoTestConsole
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
                 .Replace("ClientMachineGoesHere", ClientMachine).Replace("TlsProfileNameGoesHere", BindingName)
                 .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion)
-                .Replace("\"Trusted Root\": false",trustedRootReplaceString).Replace("\"Overwrite\": false",overWriteReplaceString);
+                .Replace("\"Trusted Root\": false",trustedRootReplaceString).Replace("\"Overwrite\": false",overWriteReplaceString)
+                .Replace("CertificateContentGoesHere", CertificateContent);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
             return result;

@@ -133,7 +133,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 var warnings = string.Empty;
-                var success = false;
 
                 _logger.MethodEntry();
                 _logger.LogTrace(
@@ -144,37 +143,17 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
-                var response = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
-                    config.CertificateStoreDetails.StorePath).Result;
+                if (!DeleteCertificate(config, client, warnings, out var deleteResult)) return deleteResult;
+                
+                warnings = CommitChanges(config, client, warnings);
 
-                LogResponse(response);
-
-                if (response.Status == "success")
+                if (warnings.Length > 0)
                 {
-                    var commitResponse = client.GetCommitResponse();
-                    if (commitResponse.Result.Status == "success")
-                    {
-                        //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
-                        var deviceGroup = StoreProperties?.DeviceGroup;
-
-                        //If there is a template and device group then push to all firewall devices because it is Panorama
-                        if (IsPanoramaDevice(config) && deviceGroup?.Length > 0)
-                        {
-                            Thread.Sleep(120000); //Some delay built in so pushes to devices work
-                            var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
-                            if (commitAllResponse.Result.Status != "success")
-                                warnings += "The push to firewall devices failed. ";
-                        }
-
-                        success = true;
-                    }
-                    else
-                    {
-                        warnings += "Commit To Device Failed";
-                    }
+                    deleteResult.FailureMessage = warnings;
+                    deleteResult.Result = OrchestratorJobStatusJobResult.Warning;
                 }
-
-                return ReturnJobResult(config, warnings, success, Validators.BuildPaloError(response));
+                
+                return deleteResult;
             }
             catch (Exception e)
             {
@@ -260,7 +239,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             certPem = GetPemFile(config);
                             _logger.LogTrace($"Got certPem {certPem}");
 
-                            //1. If duplicate, delete the old cert/bindings/trustedroot first, otherwise you'll get a private/public Key mismatch and binding errors from Palo
+                            //1. If duplicate, delete the old cert/bindings/Trusted Root first, otherwise you'll get a private/public Key mismatch and binding errors from Palo
                             if (duplicate)
                             {
                                 //1a. See if there are bindings for this certificate need to to delete/insert them so you can replace the cert
@@ -275,31 +254,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                 }
 
                                 //1b. See if this is a trusted root, if so, you need to set this to false so the delete/insert will work
-                                var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
-                                    config.CertificateStoreDetails.StorePath).Result;
-                                if (delResponse.Status.ToUpper() == "ERROR")
-                                {
-                                    var msg = Validators.BuildPaloError(delResponse);
-                                    if (msg.Contains("trusted-root-CA")) //Can't delete because Trusted Root
-                                    {
-                                        var delTrustedResponse = client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
-                                    config.CertificateStoreDetails.StorePath).Result;
-                                        if (delTrustedResponse.Status.ToUpper() == "ERROR")
-                                        {
-                                            return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delTrustedResponse));
-                                        }
-                                        var delRespTryTwo = client.SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath).Result;
-                                        if (delRespTryTwo.Status.ToUpper() == "ERROR")
-                                        {
-                                            return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        //Delete Failed Return Error
-                                        return ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
-                                    }
-                                }
+                                if (!DeleteCertificate(config, client, warnings, out var deleteErrorResult)) return deleteErrorResult;
                             }
 
                             //1a. Import the Keypair to Palo Alto
@@ -417,6 +372,51 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         $"Management/Add {e.Message}"
                 };
             }
+        }
+
+        private static bool DeleteCertificate(ManagementJobConfiguration config, PaloAltoClient client, string warnings,
+            out JobResult deleteResult)
+        {
+            var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
+                config.CertificateStoreDetails.StorePath).Result;
+            if (delResponse.Status.ToUpper() == "ERROR")
+            {
+                var msg = Validators.BuildPaloError(delResponse);
+                if (msg.Contains("trusted-root-CA")) //Can't delete because Trusted Root
+                {
+                    var delTrustedResponse = client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
+                        config.CertificateStoreDetails.StorePath).Result;
+                    if (delTrustedResponse.Status.ToUpper() == "ERROR")
+                    {
+                        {
+                            deleteResult = ReturnJobResult(config, warnings, false,
+                                Validators.BuildPaloError(delTrustedResponse));
+                            return false;
+                        }
+                    }
+
+                    var delRespTryTwo = client
+                        .SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath).Result;
+                    if (delRespTryTwo.Status.ToUpper() == "ERROR")
+                    {
+                        {
+                            deleteResult = ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    //Delete Failed Return Error
+                    {
+                        deleteResult = ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                        return false;
+                    }
+                }
+            }
+
+            deleteResult = ReturnJobResult(config, warnings, true, Validators.BuildPaloError(delResponse));
+            return true;
         }
 
         private static JobResult ReturnJobResult(ManagementJobConfiguration config, string warnings, bool success,
