@@ -17,15 +17,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace PaloAltoTestConsole
 {
@@ -46,7 +42,9 @@ namespace PaloAltoTestConsole
         public static string ManagementType { get; set; }
         public static string CertificateContent { get; set; }
 
+#pragma warning disable 1998
         private static async Task Main(string[] args)
+#pragma warning restore 1998
         {
 
            
@@ -109,6 +107,7 @@ namespace PaloAltoTestConsole
                     var invResponse = inv.ProcessJob(invJobConfig, sui);
                     Console.WriteLine("Back From Inventory");
                     Console.Write(JsonConvert.SerializeObject(invResponse));
+                    Console.ReadLine();
                     break;
                 case "Management":
                     Console.WriteLine("Select Management Type Add or Remove");
@@ -117,12 +116,6 @@ namespace PaloAltoTestConsole
 
                     if (mgmtType?.ToUpper() == "ADD")
                     {
-                        Console.WriteLine("Start Generated Cert in KF API");
-                        var client = new KeyfactorClient();
-                        var kfResult = client.EnrollCertificate().Result;
-                        CertificateContent = kfResult.CertificateInformation.Pkcs12Blob;
-                        Console.WriteLine("End Generated Cert in KF API");
-
                         if (args.Length > 0)
                         {
                             BindingName = arguments["-bindingname"];
@@ -148,6 +141,11 @@ namespace PaloAltoTestConsole
                             Overwrite = Console.ReadLine();
                         }
 
+                        Console.WriteLine("Start Generated Cert in KF API");
+                        var client = new KeyfactorClient();
+                        var kfResult = client.EnrollCertificate($"www.{CertAlias}.com").Result;
+                        CertificateContent = kfResult.CertificateInformation.Pkcs12Blob;
+                        Console.WriteLine("End Generated Cert in KF API");
 
                         var jobConfiguration = GetManagementJobConfiguration();
                         var mgmtSecretResolver = new Mock<IPAMSecretResolver>();
@@ -161,6 +159,7 @@ namespace PaloAltoTestConsole
 
                         var result = mgmt.ProcessJob(jobConfiguration);
                         Console.Write(JsonConvert.SerializeObject(result));
+                        Console.ReadLine();
                     }
 
                     if (mgmtType.ToUpper() == "REMOVE")
@@ -186,6 +185,7 @@ namespace PaloAltoTestConsole
                         var result = mgmt.ProcessJob(jobConfig);
                         Thread.Sleep(5000);
                         Console.Write(JsonConvert.SerializeObject(result));
+                        Console.ReadLine();
                     }
 
                     break;

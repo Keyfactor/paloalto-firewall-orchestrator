@@ -9,7 +9,7 @@ namespace PaloAltoTestConsole
 {
     public class KeyfactorClient
     {
-        public async Task<KeyfactorEnrollmentResult> EnrollCertificate()
+        public async Task<KeyfactorEnrollmentResult> EnrollCertificate(string commonName)
         {
             var options = new RestClientOptions("https://bhillkf10.kfdelivery.com");
             var client = new RestClient(options);
@@ -23,7 +23,7 @@ namespace PaloAltoTestConsole
                 CustomFriendlyName = "2 Year Web Server",
                 Password = "sldfklsdfsldjfk",
                 PopulateMissingValuesFromAD = false,
-                Subject = "CN=www.yahoo.com",
+                Subject = $"CN={commonName}",
                 IncludeChain = true,
                 RenewalCertificateId = 0,
                 CertificateAuthority = "DC-CA.Command.local\\CommandCA1",
@@ -31,7 +31,7 @@ namespace PaloAltoTestConsole
                 Template = "2YearTestWebServer"
             };
             SANs sans = new SANs();
-            List<string> dnsList = new List<string> { "www.yahoo.com"};
+            List<string> dnsList = new List<string> { $"{commonName}" };
             sans.DNS = dnsList;
             enrollRequest.SANs = sans;
             request.AddBody(enrollRequest);
