@@ -77,15 +77,13 @@ Password |This is the API Key obtained from the Palo Alto PA-VM Firewall Device.
 *** 
 
 #### TEST CASES
-Case Number|Store Path|GroupName|Case Name|Enrollment Params|Expected Results|Passed|Screenshot
-----|-------|---------|---------------|------------------------------------|--------------|----------------|-------------------------
-PAN-01|CertificatesTemplate|Group1|Install New Cert No Bindings Deploy to Firewall|**Alias:** TC1<br/>**BindingName:**<br/>**TLSMinVersion:**:<br/>**TlsMaxVersion:**<br/>**TrustedRoot:**:False<br/>**Overwrite:**False|Install Cert Deploy To Devices Warn About Bindings|True|![](images/TC1-KFResult.png) ![](images/TC1-PanResults.png) ![](images/TC1-FWResults.png)
-PAN-02|CertificatesTemplate|Group1|Install New Cert No Bindings Deploy to Firewall Trusted Root|**Alias:** TCPAN02<br/>**BindingName:**<br/>**TLSMinVersion:**:<br/>**TlsMaxVersion:**<br/>**TrustedRoot:**:True<br/>**Overwrite:**False|Install Cert Deploy To Devices Warn About Bindings and Cert is Trusted Root|True|![](images/TC2-KFResult.png) ![](images/TC2-PanResults.png) ![](images/TC2-FWResults.png)
-PAN-03|CertificatesTemplate|Group1|Install New Cert With Bindings Deploy to Firewall **not** Trusted Root|**Alias:** TCPAN03<br/>**BindingName:**TestBindings<br/>**TLSMinVersion:**:tls1-2<br/>**TlsMaxVersion:**max<br/>**TrustedRoot:**:False<br/>**Overwrite:**False|Install Cert Deploy To Devices and Bind To Tls Profile|True|![](images/TC3-KFResult.png) ![](images/TC3-PanResults1.png) ![](images/TC3-PanResults2.png ![](images/TC3-FWResults1.png) ![](images/TC3-FWResults2.png)
-PAN-04|CertificatesTemplate|Group1|Install New Cert With Bindings Deploy to Firewall Trusted Root|**Alias:** PANTC04<br/>**BindingName:**TestBindings<br/>**TLSMinVersion:**:tls1-2<br/>**TlsMaxVersion:**max<br/>**TrustedRoot:**:True<br/>**Overwrite:**False|Install Cert Deploy To Devices and Bind To Tls Profile cert is Trusted Root|True|![](images/TC4-KFResult.png) ![](images/TC4-PanResults1.png) ![](images/TC4-PanResults2.png ![](images/TC4-FWResults1.png) ![](images/TC4-FWResults2.png)
-PAN-05|CertificatesTemplate|Group1|Overwrite Bound Certificate **Without** Overwrite Flag|**Alias:** PANTC04<br/>**BindingName:**TestBindings<br/>**TLSMinVersion:**:tls1-2<br/>**TlsMaxVersion:**max<br/>**TrustedRoot:**:True<br/>**Overwrite:**False|Keyfactor will not allow this without overwrite flag and will throw error|True|![](images/TC5-KFResult.png)
-PAN-06|CertificatesTemplate|Group1|Overwrite Bound Certificate **With** Overwrite Flag|**Alias:** PANTC04<br/>**BindingName:**TestBindings<br/>**TLSMinVersion:**:tls1-2<br/>**TlsMaxVersion:**max<br/>**TrustedRoot:**:True<br/>**Overwrite:**True|Error Is Returned because private keys don't match|True|![](images/TC6-KFResult.png)
-PAN-07|CertificatesTemplate|Group1|Overwrite Unbound Certificate **With** Overwrite Flag|**Alias:** TCPAN02<br/>**BindingName:**<br/>**TLSMinVersion:**:<br/>**TlsMaxVersion:**<br/>**TrustedRoot:**:False<br/>**Overwrite:**True|Certificate will be replaced in Panorama|True|![](images/TC7-KFResult.png)
+Case Number|Store Path|Screenshot/Description
+-----------|----------|----------------------
+TC1|/|![](images/TC1.png)
+TC2|/|![](images/TC2.png)
+TC3|/|![](images/TC3.png)
+TC4|/|![](images/TC4.png)
 
+Fix Private Key issue when overwrite flag, don't include it
 
 
