@@ -1,8 +1,8 @@
-# Palo Alto PA-VM Firewall
+# Palo Alto Orchestrator
 
-Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory.
+Palo Alto Panorama/Firewall Orchestrator for Add, Remove and Inventory.
 
-#### Integration status: Production - Ready for use in production environments.
+#### Integration status: Pilot - Ready for use in test environments. Not for use in production.
 
 ## About the Keyfactor Universal Orchestrator Capability
 
@@ -14,9 +14,9 @@ The Universal Orchestrator is the successor to the Windows Orchestrator. This Ca
 
 
 
-## Support for Palo Alto PA-VM Firewall
+## Support for Palo Alto Orchestrator
 
-Palo Alto PA-VM Firewall is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative.
+Palo Alto Orchestrator is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative.
 
 ###### To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
 ___
