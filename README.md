@@ -133,15 +133,10 @@ DeviceGroup   |Device Group     |String |              |Unchecked    |No        
 NAME          |  DISPLAY NAME	| TYPE           | DEFAULT VALUE | DEPENDS ON | REQUIRED WHEN |DESCRIPTION
 --------------|-----------------|----------------|-------------- |-------------|---------------|--------------
 Trusted Root  |Trusted Root     |Bool            |False          |Unchecked    |Adding an Entry|Will set the certificate as Trusted Root in Panorama or on the Firewall
-TlsMinVersion |TLS Min Version  |Multiple Choice |              |Unchecked    |Yes           |Palo Alto Api Password
-ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes           |Requires SSL Connection
-DeviceGroup   |Device Group     |String |              |Unchecked    |No            |Device Group on Panorama that changes will be pushed to
-
-Entry Parameters|Display Name| Trusted Root
-Entry Parameters|Type|Boolean
-Entry Parameters|Default Value|false
-Entry Parameters|Required When|Adding an Entry
-
+TlsMinVersion |TLS Min Version  |Multiple Choice |               |Unchecked    |No             |Min TLS Version for the Binding (,tls1-0,tls1-1,tls1-2) note first multiple choice item is empty
+TlsMaxVersion |TLS Max Version  |Multiple Choice |               |Unchecked    |No             |Max TLS Version for the Binding (,tls1-0,tls1-1,tls1-2,max) note first multiple choice item is empty
+TlsProfileName|TLS Profile Name |String          |               |Unchecked    |No             |Name of the binding to deploy certificate to
+ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |Yes            |Requires SSL Connection
 
 
 **2. Register the PaloAlto Orchestrator with Keyfactor**
@@ -151,22 +146,25 @@ See Keyfactor InstallingKeyfactorOrchestrators.pdf Documentation.  Get from your
 
 In Keyfactor Command create a new Certificate Store similar to the one below
 
-![](images/CertStore1.gif)
-![](images/CertStore2.gif)
-
 #### STORE CONFIGURATION 
 CONFIG ELEMENT	|DESCRIPTION
 ----------------|---------------
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
 Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
-Client Machine	|The hostname of the PA-VM Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
-Store Path	|device
+Client Machine	|The hostname of the Panorama or Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
+Store Path	|If Panorama it is the name of the Template in Panorama if Firewall then "/"
 Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
 Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
 Use SSL	|This should be checked.
-User	|This is not necessary.
-Password |This is the API Key obtained from the Palo Alto PA-VM Firewall Device.  This will have to be obtained by making the following API Call.
+User	|ApiUser Setup for either Panorama or the Firewall Device
+Password |Api Password Setup for the user above
 
+
+#### API User Setup Permissions in Panorama or Firewall Required
+Tab          |  Security Items	
+--------------|--------------------------
+Xml Api       |Report,Log,Configuration,Operational Requests,Commit,Export,Import
+Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates,Panorama/Template Stacks,Panorama/Device Groups,System/Configuration,Plugins/Plugins
 *** 
 
 #### TEST CASES
@@ -194,9 +192,6 @@ TC19|CertificatesTemplate|![](images/TC19.png)
 TC20|CertificatesTemplate|![](images/TC20.png)
 TC21|CertificatesTemplate|![](images/TC21-F.png) ![](images/TC21-P.png)
 TC22|CertificatesTemplate|![](images/TC22-P.png)
-
-
-Fix Private Key issue when overwrite flag, don't include it
 
 
 
