@@ -1,0 +1,21 @@
+{
+  "LastInventory": [],
+  "CertificateStoreDetails": {
+    "ClientMachine": "ClientMachineGoesHere",
+    "StorePath": "/",
+    "StorePassword": "",
+    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"\"}",
+    "Type": 105
+  },
+  "JobCancelled": false,
+  "ServerError": null,
+  "JobHistoryId": 22892,
+  "RequestStatus": 1,
+  "ServerUsername": "UserNameGoesHere",
+  "ServerPassword": "PasswordGoesHere",
+  "UseSSL": true,
+  "JobProperties": null,
+  "JobTypeId": "00000000-0000-0000-0000-000000000000",
+  "JobId": "ffca3981-adb2-4a7f-af09-4d0e1ac380b1",
+  "Capability": "CertStores.PaloAlto.Inventory"
+}

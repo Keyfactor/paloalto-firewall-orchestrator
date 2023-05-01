@@ -1,25 +1,24 @@
-# Palo Alto PA-VM Firewall
+# Palo Alto Orchestrator
 
-Palo Alto PA-VM Firewall Orchestrator for Add, Remove and Inventory.
+Palo Alto Panorama/Firewall Orchestrator for Add, Remove and Inventory.
 
 #### Integration status: Production - Ready for use in production environments.
 
-## About the Keyfactor Universal Orchestrator Capability
+## About the Keyfactor Universal Orchestrator Extension
 
-This repository contains a Universal Orchestrator Capability which is a plugin to the Keyfactor Universal Orchestrator. Within the Keyfactor Platform, Orchestrators are used to manage “certificate stores” &mdash; collections of certificates and roots of trust that are found within and used by various applications.
+This repository contains a Universal Orchestrator Extension which is a plugin to the Keyfactor Universal Orchestrator. Within the Keyfactor Platform, Orchestrators are used to manage “certificate stores” &mdash; collections of certificates and roots of trust that are found within and used by various applications.
 
-The Universal Orchestrator is part of the Keyfactor software distribution and is available via the Keyfactor customer portal. For general instructions on installing Capabilities, see the “Keyfactor Command Orchestrator Installation and Configuration Guide” section of the Keyfactor documentation. For configuration details of this specific Capability, see below in this readme.
+The Universal Orchestrator is part of the Keyfactor software distribution and is available via the Keyfactor customer portal. For general instructions on installing Extensions, see the “Keyfactor Command Orchestrator Installation and Configuration Guide” section of the Keyfactor documentation. For configuration details of this specific Extension see below in this readme.
 
-The Universal Orchestrator is the successor to the Windows Orchestrator. This Capability plugin only works with the Universal Orchestrator and does not work with the Windows Orchestrator.
+The Universal Orchestrator is the successor to the Windows Orchestrator. This Orchestrator Extension plugin only works with the Universal Orchestrator and does not work with the Windows Orchestrator.
 
 
 
-## Support for Palo Alto PA-VM Firewall
+## Support for Palo Alto Orchestrator
 
-Palo Alto PA-VM Firewall is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative.
+Palo Alto Orchestrator is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket with your Keyfactor representative.
 
 ###### To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
-___
 
 
 
@@ -87,23 +86,20 @@ To have the __Server Password__ field resolved by the `Hashicorp-Vault` provider
 
 This text would be entered in as the value for the __Server Password__, instead of entering in the actual password. The Orchestrator will attempt to use the PAM Provider to retrieve the __Server Password__. If PAM should not be used, just directly enter in the value for the field.
 
-
-
-
 ---
 
 
-**Palo Alto PA-VM Firewall Device Configuration**
+**Palo Alto Orchestrator Device Configuration**
 
 **Overview**
 
-The Palo Alto Firewall Orchestrator remotely manages certificates on the Palo Alto PA-VM Firewall Device.
+The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.
 
-This agent implements three job types – Inventory, Management Add, and Management Remove. Below are the steps necessary to configure this AnyAgent.  It supports adding certificates with or without private keys.
+This agent implements three job types – Inventory, Management Add, and Management Remove. Below are the steps necessary to configure this Orchestrator.  It supports adding certificates with or without private keys.
 
 NOTE: Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.
 
-**1. Create the New Certificate Store Type for the PA-VM Firewall Device**
+**1. Create the New Certificate Store Type for either the PA-VM Firewall Device or Panorama**
 
 In Keyfactor Command create a new Certificate Store Type similar to the one below:
 
@@ -122,29 +118,23 @@ Advanced |Store Path Type| Determines how the user will enter the store path whe
 Advanced |Supports Custom Alias	|Determines if an individual entry within a store can have a custom Alias.  This must be Required
 Advanced |Private Key Handling |Determines how the orchestrator deals with private keys.  Optional
 Advanced |PFX Password Style |Determines password style for the PFX Password. Default
-Custom Fields|N/A|There are no custom fields for this implementation.
-Entry Parameters|Display Name| Trusted Root
-Entry Parameters|Type|Boolean
-Entry Parameters|Default Value|false
-Entry Parameters|Required When|Adding an Entry
 
-**Basic Settings:**
+#### CUSTOM FIELDS FOR STORE TYPE
+NAME          |  DISPLAY NAME	| TYPE | DEFAULT VALUE | DEPENDS ON | REQUIRED |DESCRIPTION
+--------------|-----------------|-------|--------------|-------------|---------|--------------
+ServerUsername|Server Username  |Secret |              |Unchecked    |Yes       |Palo Alto Api User Name
+ServerPassword|Server Password  |Secret |              |Unchecked    |Yes       |Palo Alto Api Password
+ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       |Requires SSL Connection
+DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
 
-![](images/CertStoreTypeBasic.gif)
-
-**Advanced Settings:**
-
-![](images/CertStoreTypeAdvanced.gif)
-
-**Custom Fields:**
-
-![](images/CertStoreTypeCustomFields.gif)
-
-**Entry Params:**
-
-![](images/CertStoreTypeEntryParams.gif)
-
-![](images/CertStoreTypeEntryParams2.gif)
+#### ENTRY PARAMETERS FOR STORE TYPE
+NAME          |  DISPLAY NAME	| TYPE           | DEFAULT VALUE | DEPENDS ON | REQUIRED WHEN |DESCRIPTION
+--------------|-----------------|----------------|-------------- |-------------|---------------|--------------
+Trusted Root  |Trusted Root     |Bool            |False          |Unchecked    |Adding an Entry|Will set the certificate as Trusted Root in Panorama or on the Firewall
+TlsMinVersion |TLS Min Version  |Multiple Choice |               |Unchecked    |No             |Min TLS Version for the Binding (,tls1-0,tls1-1,tls1-2) note first multiple choice item is empty
+TlsMaxVersion |TLS Max Version  |Multiple Choice |               |Unchecked    |No             |Max TLS Version for the Binding (,tls1-0,tls1-1,tls1-2,max) note first multiple choice item is empty
+TlsProfileName|TLS Profile Name |String          |               |Unchecked    |No             |Name of the binding to deploy certificate to
+ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |Yes            |Requires SSL Connection
 
 
 **2. Register the PaloAlto Orchestrator with Keyfactor**
@@ -154,57 +144,52 @@ See Keyfactor InstallingKeyfactorOrchestrators.pdf Documentation.  Get from your
 
 In Keyfactor Command create a new Certificate Store similar to the one below
 
-![](images/CertStore1.gif)
-![](images/CertStore2.gif)
-
 #### STORE CONFIGURATION 
 CONFIG ELEMENT	|DESCRIPTION
 ----------------|---------------
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
 Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
-Client Machine	|The hostname of the PA-VM Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
-Store Path	|device
+Client Machine	|The hostname of the Panorama or Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
+Store Path	|If Panorama it is the name of the Template in Panorama if Firewall then "/"
 Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
 Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
 Use SSL	|This should be checked.
-User	|This is not necessary.
-Password |This is the API Key obtained from the Palo Alto PA-VM Firewall Device.  This will have to be obtained by making the following API Call.
+User	|ApiUser Setup for either Panorama or the Firewall Device
+Password |Api Password Setup for the user above
 
-*API Key Generation*
-`
-curl -k -X GET 'https://<firewall>/api/?type=keygen&user=<username>&password=<password>'
-`
+
+#### API User Setup Permissions in Panorama or Firewall Required
+Tab          |  Security Items	
+--------------|--------------------------
+Xml Api       |Report,Log,Configuration,Operational Requests,Commit,Export,Import
+Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates,Panorama/Template Stacks,Panorama/Device Groups,System/Configuration,Plugins/Plugins
 *** 
 
-#### Usage
+#### TEST CASES
+Case Number|Store Path|Screenshot/Description
+-----------|----------|----------------------
+TC1|/|![](images/TC1.png)
+TC2|/|![](images/TC2.png)
+TC3|/|![](images/TC3.png)
+TC4|/|![](images/TC4.png)
+TC5|/|![](images/TC5.png)
+TC6|/|![](images/TC6.png)
+TC7|/|![](images/TC7.png)
+TC8|/|![](images/TC8.png)
+TC9|/|![](images/TC9.png)
+TC10|/|![](images/TC10.png)
+TC11|/|![](images/TC11.png)
+TC12|CertificatesTemplate|![](images/TC12-F.png) ![](images/TC12-P.png)
+TC13|CertificatesTemplate|![](images/TC13-F.png) ![](images/TC13-P.png)
+TC14|CertificatesTemplate|![](images/TC14-F.png) ![](images/TC14-P.png)
+TC15|CertificatesTemplate|![](images/TC15-F.png) ![](images/TC15-P.png)
+TC16|CertificatesTemplate|![](images/TC16-F.png) ![](images/TC16-P.png)
+TC17|CertificatesTemplate|![](images/TC17-F1.png) ![](images/TC17-F2.png) ![](images/TC17-P1.png) ![](images/TC17-P2.png)
+TC18|CertificatesTemplate|![](images/TC18-F1.png) ![](images/TC18-F2.png) ![](images/TC18-P1.png) ![](images/TC18-P2.png)
+TC19|CertificatesTemplate|![](images/TC19.png)
+TC20|CertificatesTemplate|![](images/TC20.png)
+TC21|CertificatesTemplate|![](images/TC21-F.png) ![](images/TC21-P.png)
+TC22|CertificatesTemplate|![](images/TC22-P.png)
 
-**Adding New Certificate**
 
-![](images/AddCertificate.gif)
-
-*** 
-
-**Adding New Certificate With Trusted Root**
-
-![](images/AddWithTrustedRoot.gif)
-
-*** 
-
-**Replace Certficate**
-
-![](images/ReplaceCertificate.gif)
-
-*** 
-
-**Remove Certficate**
-
-![](images/RemoveCertificate.gif)
-
-*** 
-
-**Inventory Locations**
-
-![](images/InventoryLocation1.gif)
-
-![](images/InventoryLocation2.gif)
 
