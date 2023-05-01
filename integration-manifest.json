@@ -2,7 +2,7 @@
   "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
   "integration_type": "orchestrator",
   "name": "Palo Alto Orchestrator",
-  "status": "pilot",
+  "status": "production",
   "update_catalog": true,
   "link_github": true,
   "support_level": "kf-supported",
