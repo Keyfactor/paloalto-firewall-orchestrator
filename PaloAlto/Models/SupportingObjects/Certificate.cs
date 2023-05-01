@@ -1,4 +1,4 @@
-﻿// Copyright 2022 Keyfactor
+﻿// Copyright 2023 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
         [XmlIgnore]
         public DateTime Time { get; set; }
 
-        [XmlElement("Time")]
+        [XmlElement("time")]
         public string DateTimeString
         {
             get => this.Time.ToString("yyyy-MM-dd HH:mm:ss");
