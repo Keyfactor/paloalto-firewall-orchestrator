@@ -1,0 +1,260 @@
+{
+  "LastInventory": [
+    {
+      "Alias": "GeaugaRoof",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "B8D46056C088892258A894EBCB599BC539A9724C"
+      ]
+    },
+    {
+      "Alias": "NewCert",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "1958A89E0CA8C9A54849D738709A4FE1ED870855"
+      ]
+    },
+    {
+      "Alias": "brian",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "634FB01FFBACCBB9EC9E8DF29AE067F73A40A991"
+      ]
+    },
+    {
+      "Alias": "hello",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "869F410795AC751EE2D8E6B391DABC408CA384F0"
+      ]
+    },
+    {
+      "Alias": "evan",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "75D738EB5E2CB49AEBF12DCC899A92BD084FB475"
+      ]
+    },
+    {
+      "Alias": "darrius",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "29C4E2C4C1C4036CAB0F23B78EEC17FAE158A8F1"
+      ]
+    },
+    {
+      "Alias": "face",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "B43991B7D02C9B9604D3E2DC37F161357CAD2EE8"
+      ]
+    },
+    {
+      "Alias": "ac",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "C9DD4A1D8C203E0707B30C82DF6D814E098DCD70"
+      ]
+    },
+    {
+      "Alias": "palodemocert",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "C552053047ECA29524031745174E0800C1525282"
+      ]
+    },
+    {
+      "Alias": "palocommitall",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "F53CB33F74A8EE262110E2C302C4051FC73504ED"
+      ]
+    },
+    {
+      "Alias": "newpanoramacert",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "D72A8BDF3EE7C1848FF05882CA71E1C12466E124"
+      ]
+    },
+    {
+      "Alias": "tscommit",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "EABF46E628B18400BCB4B89ADCC34B340E8BEA1A"
+      ]
+    },
+    {
+      "Alias": "trycommitnow",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "B5DCFE076FB571CA22B36BC6205B9C7A9063EC52"
+      ]
+    },
+    {
+      "Alias": "OGCommit",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "7765061EEC4E83FE7DF37C624774E89A486D1576"
+      ]
+    },
+    {
+      "Alias": "committodevices2",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "6506124604691F8B68064EA095B1635C72A9A07A"
+      ]
+    },
+    {
+      "Alias": "committodevices1",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "970D8EEB0F99D711322717B9CA5FDD2B93859BD7"
+      ]
+    },
+    {
+      "Alias": "AnotherCommit",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "C156B89D1E0984140212DA28F26A0D313E3183C0"
+      ]
+    },
+    {
+      "Alias": "sleepy1",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "8FADE71D3B92BF90BBC975B931A55E55D272F7F8"
+      ]
+    },
+    {
+      "Alias": "Sleepy120",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "FC0510BEF565F43653D8EFDA7277A08E2D4EAFA5"
+      ]
+    },
+    {
+      "Alias": "120try2",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "B2C5FE62DD08B021BE9E45FF97F3A8E1D2550A81"
+      ]
+    },
+    {
+      "Alias": "120Try3",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "8B9AB8305EB2C34C0E876FE58DEDC96B1106987C"
+      ]
+    },
+    {
+      "Alias": "pfxEnrollTest",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "A668CD6908CF4373F7582103CFF204ACC64C8EB3"
+      ]
+    },
+    {
+      "Alias": "BindingsTest2",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "C33F39D4DA97EF4FFB98464AAC6072A30C22A1B8"
+      ]
+    },
+    {
+      "Alias": "BindingsTest3",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "FC14DEAB5F79EF137C8DECF2F0903F13C5DB2C75"
+      ]
+    },
+    {
+      "Alias": "BindingsCert",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "30724888B219D726FDA20CEC51C6FF2EAF995140"
+      ]
+    },
+    {
+      "Alias": "BrianHill33",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "A9E0FF9319DC17820E0804D74CE6BE819C3CA06D"
+      ]
+    },
+    {
+      "Alias": "PaloBindingsTest",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "48AB8F689A34C7D891C403CBDDD11710B347F4EE"
+      ]
+    },
+    {
+      "Alias": "TestBindingsName",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "A1E76DDB960797EDBCFBD403AC6466720B8E4642"
+      ]
+    },
+    {
+      "Alias": "BrianBinder",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "50CB0A34E63D25509B8CF6045F868DDD9ED6CF70"
+      ]
+    },
+    {
+      "Alias": "BenderBinder",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "B30E73266B6F3669DC8AA6859DFF5E64090D2495"
+      ]
+    },
+    {
+      "Alias": "BryceAlexander",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "00D132EDEC0BA3CB9623FACAF9176C5E52B77A8C"
+      ]
+    },
+    {
+      "Alias": "SpeakerCert",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "5BD66F21A08CDC287A9BF2BAA538BF33D229FBAA"
+      ]
+    },
+    {
+      "Alias": "CertAndBindingsToPA",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "72434177210E3D1C63A08E0C26C7A74F7AA4F057"
+      ]
+    },
+    {
+      "Alias": "BindingsPlugTest",
+      "PrivateKeyEntry": false,
+      "Thumbprints": [
+        "A3FD156359129C8F8667879C6360EC2DF38FFDBE"
+      ]
+    }
+  ],
+  "CertificateStoreDetails": {
+    "ClientMachine": "ClientMachineGoesHere",
+    "StorePath": "TemplateNameGoesHere",
+    "StorePassword": "",
+    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"DeviceGroupGoesHere\"}",
+    "Type": 105
+  },
+  "JobCancelled": false,
+  "ServerError": null,
+  "JobHistoryId": 22881,
+  "RequestStatus": 1,
+  "ServerUsername": "UserNameGoesHere",
+  "ServerPassword": "PasswordGoesHere",
+  "UseSSL": true,
+  "JobProperties": null,
+  "JobTypeId": "00000000-0000-0000-0000-000000000000",
+  "JobId": "c7785480-8b15-4e12-b55d-3f73735cad6b",
+  "Capability": "CertStores.PaloAlto.Inventory"
+}

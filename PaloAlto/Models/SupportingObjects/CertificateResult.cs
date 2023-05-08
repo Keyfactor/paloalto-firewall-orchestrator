@@ -1,4 +1,4 @@
-﻿// Copyright 2022 Keyfactor
+﻿// Copyright 2023 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Generic;
 using System.Xml.Serialization;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
@@ -20,8 +21,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
     public class CertificateResult
     {
 
-        [XmlElement(ElementName = "certificate")]
-        public Certificate Certificate { get; set; }
+        [XmlElement(ElementName = "entry")]
+        public List<Entry> Entry { get; set; }
 
         [XmlAttribute(AttributeName = "total-count")]
         public int TotalCount { get; set; }
