@@ -14,4 +14,19 @@
     <ProjectReference Include="..\PaloAlto\PaloAlto.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="FirewallInventory.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ManagementRemove.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="PanoramaInventory.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="PanoramaMgmt.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
