@@ -1,3 +1,5 @@
+2.0.1
+* Fix Epoch Time in Model from int to long to prevent inventory errors
 2.0.0
 * Support for Panorama or Firewall connectivity
 * Commits changes to the Individual Firewall
