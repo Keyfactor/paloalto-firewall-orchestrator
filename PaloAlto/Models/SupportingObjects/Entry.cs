@@ -39,7 +39,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects
         public string CommonName { get; set; }
 
         [XmlElement(ElementName = "expiry-epoch")]
-        public long ExpiryEpoch { get; set; }
+        public int ExpiryEpoch { get; set; }
 
         [XmlElement(ElementName = "ca")]
         public string Ca { get; set; }
