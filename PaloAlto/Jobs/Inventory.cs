@@ -82,7 +82,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace(
                     $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
-                
+
                 //Get the list of certificates and Trusted Roots
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
@@ -118,10 +118,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         try
                         {
                             _logger.LogTrace(
-                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: {c.PrivateKey?.Length > 0}");
                             var bindings =
                                 client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, c.Name).Result;
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy",bindings,false);
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length > 0, bindings, false);
                         }
                         catch
                         {
@@ -146,7 +146,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
                         var bindings =
                             client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, trustedRootCert.Name).Result;
-                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey,bindings,true));
+                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey, bindings, true));
                     }
                     catch
                     {
@@ -206,7 +206,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
-        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, GetProfileByCertificateResponse bindings,bool trustedRoot)
+        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, GetProfileByCertificateResponse bindings, bool trustedRoot)
         {
             try
             {
@@ -225,7 +225,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var acsi = new CurrentInventoryItem
                 {
                     Alias = alias,
-                    Certificates = new[] {certPem},
+                    Certificates = new[] { certPem },
                     ItemStatus = OrchestratorInventoryItemStatus.Unknown,
                     PrivateKeyEntry = privateKey,
                     UseChainLevel = false,
