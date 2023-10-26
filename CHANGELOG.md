@@ -1,3 +1,6 @@
+2.0.2
+* Some Private Keys are ***** and not "dummy" so have to account for both
+  
 2.0.1
 * Fix Epoch Time in Model from int to long to prevent inventory errors
 
