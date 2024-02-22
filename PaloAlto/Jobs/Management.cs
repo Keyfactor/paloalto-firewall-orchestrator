@@ -179,13 +179,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 CertificateListResponse rawCertificatesResult;
 
-                if (IsPanoramaDevice(config))
-                    rawCertificatesResult =
-                        client.GetCertificateList(
-                                $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry[@name='{certificateName}']")
-                            .Result;
-                else
-                    rawCertificatesResult = client.GetCertificateList($"/config/shared/certificate/entry[@name='{certificateName}']").Result;
+               rawCertificatesResult =
+                    client.GetCertificateList(
+                            $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
+                        .Result;
+
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
@@ -254,7 +252,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             }
 
                             //2. Check palo alto for existing thumprints of anything in the chain //todo change path to come from store path
-                            var rawCertificatesResult = client.GetCertificateList($"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry").Result;
+                            var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
                             List<X509Certificate2> certificates = new List<X509Certificate2>();
                             ErrorSuccessResponse content = null;
                             string errorMsg = string.Empty;
