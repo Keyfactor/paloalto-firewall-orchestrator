@@ -90,14 +90,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
                 //Change the path if you are pointed to a Panorama Device
-                CertificateListResponse rawCertificatesResult;
-                if (IsPanoramaDevice(config))
-                    rawCertificatesResult =
-                        client.GetCertificateList(
-                                $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry")
-                            .Result;
-                else
-                    rawCertificatesResult = client.GetCertificateList("/config/shared/certificate/entry").Result;
+                var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
