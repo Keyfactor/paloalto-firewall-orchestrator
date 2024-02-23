@@ -177,12 +177,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         {
             try
             {
-                CertificateListResponse rawCertificatesResult;
-
-               rawCertificatesResult =
-                    client.GetCertificateList(
-                            $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
-                        .Result;
+                var rawCertificatesResult = client.GetCertificateList(
+                        $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
+                    .Result;
 
 
                 var certificatesResult =
@@ -244,14 +241,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             var orderedChainList = GetCertificateChain(config.JobCertificate.Contents, config.JobCertificate.PrivateKeyPassword);
                             var alias = config.JobCertificate.Alias;
 
-                            //1. If the leaf cert is a duplicate then you renename the cert and update it.  So you don't have to delete tls profile and cause downtime
+                            //1. If the leaf cert is a duplicate then you rename the cert and update it.  So you don't have to delete tls profile and cause downtime
                             if (duplicate)
                             {
                                 DateTime currentTime = DateTime.Now;
                                 alias = RightTrimAfter(alias, 19) + "_" + currentTime.ToString("yyMMddHHmmss"); //fix name length 
                             }
 
-                            //2. Check palo alto for existing thumprints of anything in the chain //todo change path to come from store path
+                            //2. Check palo alto for existing thumbprints of anything in the chain
                             var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
                             List<X509Certificate2> certificates = new List<X509Certificate2>();
                             ErrorSuccessResponse content = null;
@@ -314,14 +311,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                                 if (content != null)
                                 {
-                                    if (content.LineMsg != null)
-                                    {
-                                        errorMsg = Validators.BuildPaloError(content);
-                                    }
-                                    else
-                                    {
-                                        errorMsg = content.Text;
-                                    }
+                                    errorMsg = content.LineMsg != null ? Validators.BuildPaloError(content) : content.Text;
                                 }
                             }
                             
@@ -394,34 +384,34 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        private string BuildName((X509Certificate2 certificate, string type) cert)
+        private static string BuildName((X509Certificate2 certificate, string type) cert)
         {
-            string subject = cert.certificate.Subject;
+            string subject = cert.certificate?.Subject;
             string commonName = null;
 
             // Find the common name in the subject string
-            int startIndex = subject.IndexOf("CN=");
-
-            if (startIndex >= 0)
+            if (subject != null)
             {
-                startIndex += 3; // Move startIndex to the beginning of the common name value
-                int endIndex = subject.IndexOf(',', startIndex); // Find the end of the common name value
+                int startIndex = subject.IndexOf("CN=", StringComparison.Ordinal);
 
-                if (endIndex < 0)
+                if (startIndex >= 0)
                 {
-                    // If no comma is found, the common name extends to the end of the string
-                    endIndex = subject.Length;
-                }
+                    startIndex += 3; // Move startIndex to the beginning of the common name value
+                    int endIndex = subject.IndexOf(',', startIndex); // Find the end of the common name value
 
-                // Extract the common name value
-                commonName = subject.Substring(startIndex, endIndex - startIndex);
+                    if (endIndex < 0)
+                    {
+                        // If no comma is found, the common name extends to the end of the string
+                        endIndex = subject.Length;
+                    }
+
+                    // Extract the common name value
+                    commonName = subject.Substring(startIndex, endIndex - startIndex);
+                }
             }
 
             // Replace spaces with underscores
-            if (commonName != null)
-            {
-                commonName = commonName.Replace(" ", "_");
-            }
+            commonName = commonName?.Replace(" ", "_");
 
             //Only 31 characters allowed for cert name
             return DateTime.Now.ToString("yyyyMM") + "_" + RightTrimAfter(commonName, 23);
@@ -683,7 +673,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             // Add leaf certificates to the ordered list
             foreach (X509Certificate2 certificate in certificateCollection)
             {
-                if (!orderedCertificates.Exists(c => c.certificate.Equals(certificate)))
+                if (!orderedCertificates.Exists(c => c.certificate != null && c.certificate.Equals(certificate)))
                 {
                     orderedCertificates.Add((certificate, "leaf"));
                 }
@@ -789,7 +779,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 string[] certDataArray = ExtractCertificateData(responseItem.PublicKey);
 
-                // Remove whitespace characters and parse each certifforicate
+                // Remove whitespace characters and parse each certificate
                 foreach (string certData in certDataArray)
                 {
                     byte[] rawData = Convert.FromBase64String(RemoveWhitespace(certData));
@@ -817,10 +807,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     ? $"Set Trusted Root Response {string.Join(" ,", result.Result.LineMsg.Line)}"
                     : $"Set Trusted Root Response {result.Result.LineMsg.StringMsg}");
                 return result.Result;
-
-
-                _logger.MethodExit(LogLevel.Debug);
-                return null;
             }
             catch (Exception e)
             {

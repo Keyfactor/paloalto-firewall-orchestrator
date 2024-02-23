@@ -186,11 +186,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             };
         }
 
-        private static bool IsPanoramaDevice(InventoryJobConfiguration config)
-        {
-            return config.CertificateStoreDetails.StorePath.Length > 1;
-        }
-
         private void LogResponse<T>(T content)
         {
             var resWriter = new StringWriter();

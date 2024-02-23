@@ -143,20 +143,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 var editXml =
                     $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
-                string uri;
 
-                //if not Panorama use firewall path
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
+                string uri=
                         $@"/api/?type=config&action=edit&xpath={storePath}/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=edit&xpath={storePath}/ssl-tls-service-profile/entry&element={editXml}&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
-                }
 
                 var response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
                 return response;
@@ -284,34 +273,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.SubmitSetTrustedRoot: {e.Message}");
-                throw;
-            }
-        }
-
-        public async Task<GetProfileByCertificateResponse> GetBinding(JobEntryParams jobEntryParams, string storePath)
-        {
-            try
-            {
-                string uri =$@"/api/?type=config&action=get&xpath={storePath}/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
-                return await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetBinding: {e.Message}");
-                throw;
-            }
-        }
-
-        public async Task<ErrorSuccessResponse> SubmitDeleteBinding(JobEntryParams jobEntryParams, string storePath)
-        {
-            try
-            {
-                string uri =$@"/api/?type=config&action=delete&xpath={storePath}/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
-                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteBinding: {e.Message}");
                 throw;
             }
         }
