@@ -317,12 +317,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         }
 
         public async Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
-            string includeKey, string category, string templateName)
+            string includeKey, string category, string storePath)
         {
             try
             {
-                if (templateName == "/")
-                    templateName = "";
+                var templateName=GetTemplateName(storePath);
                 var uri =
                     $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
                 var boundary = $"--------------------------{Guid.NewGuid():N}";
