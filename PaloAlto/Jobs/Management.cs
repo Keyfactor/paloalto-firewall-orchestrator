@@ -248,7 +248,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             if (duplicate)
                             {
                                 DateTime currentTime = DateTime.Now;
-                                alias += alias + "-" + currentTime.ToString("yyyyMMddHHmmss");
+                                alias = RightTrimAfter(alias, 19) + "_" + currentTime.ToString("yyMMddHHmmss"); //fix name length 
                             }
 
                             //2. Check palo alto for existing thumprints of anything in the chain //todo change path to come from store path

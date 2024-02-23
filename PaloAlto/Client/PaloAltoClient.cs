@@ -183,7 +183,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             return templateName;
         }
 
-        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string certificate,string storePath)
+        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string storePath, string certificate)
         {
             try
             {
