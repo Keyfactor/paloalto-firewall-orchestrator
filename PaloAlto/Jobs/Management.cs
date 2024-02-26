@@ -300,10 +300,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                                 warnings +=
                                                     $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
                                         }
-                                        else
-                                        {
-                                            warnings += bindingsValidation;
-                                        }
 
                                         success = true;
                                     }
@@ -311,7 +307,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                                 if (content != null)
                                 {
-                                    errorMsg = content.LineMsg != null ? Validators.BuildPaloError(content) : content.Text;
+                                    errorMsg += content.LineMsg != null ? Validators.BuildPaloError(content) : content.Text;
                                 }
                             }
                             
