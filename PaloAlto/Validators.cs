@@ -62,10 +62,24 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return templateName;
         }
 
+        static bool IsValidPanoramaFormat(string input)
+        {
+            string pattern = @"^/config/devices/entry\[@name='[^\]]+'\]/template/entry\[@name='[^']+'\]/config/shared$";
+            Regex regex = new Regex(pattern);
+            return regex.IsMatch(input);
+        }
+
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
             string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
         {
             var errors = string.Empty;
+
+            //Check path Validity for either panorama shared location or firewall shared location or panorama level certificates
+            if (storePath != "/config/panorama" || storePath != "/config/shared" || !IsValidPanoramaFormat(storePath))
+            {
+                errors +=
+                    "Path is invalid needs to be /config/panorama, /config/shared or in format of /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='TemplateName']/config/shared.";
+            }
 
             // If it is a firewall (store path of /) then you don't need the Group Name
             if (!storePath.Contains("template",System.StringComparison.CurrentCultureIgnoreCase))
