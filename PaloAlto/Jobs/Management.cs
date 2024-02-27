@@ -206,8 +206,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var success = false;
 
                 //Store path is "/" for direct integration with Firewall or the Template Name for integration with Panorama
-                if (config.CertificateStoreDetails.StorePath == "/" ||
-                    config.CertificateStoreDetails.StorePath.Length > 0)
+                if (config.CertificateStoreDetails.StorePath.Length > 0)
                 {
                     _logger.LogTrace(
                         $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Server UserName: {config.ServerUsername}");
@@ -226,134 +225,101 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
                         string certPem;
-                        if (!string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword)) // This is a PFX Entry
+
+                        _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
+
+                        if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
+                            _logger.LogTrace("No Alias Found");
+
+                        certPem = GetPemFile(config);
+                        _logger.LogTrace($"Got certPem {certPem}");
+
+
+                        //1. Get the chain in a list starting with root first, any intermediate then leaf
+                        var orderedChainList = GetCertificateChain(config.JobCertificate.Contents, config.JobCertificate.PrivateKeyPassword);
+                        var alias = config.JobCertificate.Alias;
+
+                        //1. If the leaf cert is a duplicate then you rename the cert and update it.  So you don't have to delete tls profile and cause downtime
+                        if (duplicate)
                         {
-                            _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
+                            DateTime currentTime = DateTime.Now;
+                            alias = RightTrimAfter(alias, 19) + "_" + currentTime.ToString("yyMMddHHmmss"); //fix name length 
+                        }
 
-                            if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
-                                _logger.LogTrace("No Alias Found");
+                        //2. Check palo alto for existing thumbprints of anything in the chain
+                        var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
+                        List<X509Certificate2> certificates = new List<X509Certificate2>();
+                        ErrorSuccessResponse content = null;
+                        string errorMsg = string.Empty;
 
-                            certPem = GetPemFile(config);
-                            _logger.LogTrace($"Got certPem {certPem}");
-
-
-                            //1. Get the chain in a list starting with root first, any intermediate then leaf
-                            var orderedChainList = GetCertificateChain(config.JobCertificate.Contents, config.JobCertificate.PrivateKeyPassword);
-                            var alias = config.JobCertificate.Alias;
-
-                            //1. If the leaf cert is a duplicate then you rename the cert and update it.  So you don't have to delete tls profile and cause downtime
-                            if (duplicate)
+                        foreach (var cert in orderedChainList)
+                        {
+                            //root and intermediate just upload the cert from the chain no private key
+                            if (((cert.type == "root" || cert.type == "intermediate") && !ThumbprintFound(cert.certificate.Thumbprint, certificates, rawCertificatesResult)))
                             {
-                                DateTime currentTime = DateTime.Now;
-                                alias = RightTrimAfter(alias, 19) + "_" + currentTime.ToString("yyMMddHHmmss"); //fix name length 
+                                var certName = BuildName(cert);
+                                var importResult = client.ImportCertificate(certName,
+                                    config.JobCertificate.PrivateKeyPassword,
+                                    Encoding.UTF8.GetBytes(ExportToPem(cert.certificate)), "no", "certificate",
+                                    config.CertificateStoreDetails.StorePath);
+                                content = importResult.Result;
+                                LogResponse(content);
+
+
+                                //Set as trusted Root if you successfully imported the root certificate
+                                if (content != null && content.Status.ToUpper() != "ERROR")
+                                {
+                                    ErrorSuccessResponse rootResponse = null;
+                                    if (cert.type == "root")
+                                        rootResponse = SetTrustedRoot(certName, client, config.CertificateStoreDetails.StorePath);
+
+                                    if (rootResponse != null && rootResponse.Status.ToUpper() == "ERROR")
+                                        warnings +=
+                                            $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
+                                }
                             }
 
-                            //2. Check palo alto for existing thumbprints of anything in the chain
-                            var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
-                            List<X509Certificate2> certificates = new List<X509Certificate2>();
-                            ErrorSuccessResponse content = null;
-                            string errorMsg = string.Empty;
-
-                            foreach (var cert in orderedChainList)
+                            //Leafs need the keypair only put leaf out there if root and intermediate succeeded
+                            if (cert.type == "leaf" && errorMsg.Length == 0)
                             {
-                                //root and intermediate just upload the cert from the chain no private key
-                                if (((cert.type == "root" || cert.type == "intermediate") && !ThumbprintFound(cert.certificate.Thumbprint, certificates, rawCertificatesResult)))
+                                var type = string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword) ? "certificate" : "keypair";
+                                var importResult = client.ImportCertificate(alias,
+                                    config.JobCertificate.PrivateKeyPassword,
+                                    Encoding.UTF8.GetBytes(certPem), "yes", type,
+                                    config.CertificateStoreDetails.StorePath);
+                                content = importResult.Result;
+                                LogResponse(content);
+
+                                //If 1. was successful, then set trusted root, bindings then commit
+                                if (content != null && content.Status.ToUpper() == "SUCCESS")
                                 {
-                                    var certName = BuildName(cert);
-                                    var importResult = client.ImportCertificate(certName,
-                                        config.JobCertificate.PrivateKeyPassword,
-                                        Encoding.UTF8.GetBytes(ExportToPem(cert.certificate)), "no", "certificate",
-                                        config.CertificateStoreDetails.StorePath);
-                                    content = importResult.Result;
-                                    LogResponse(content);
-
-
-                                    //Set as trusted Root if you successfully imported the root certificate
-                                    if (content != null && content.Status.ToUpper() != "ERROR")
+                                    //3. Check if Bindings were added in the entry params and if so bind the cert to a tls profile in palo
+                                    var bindingsValidation = Validators.ValidateBindings(JobEntryParams);
+                                    if (string.IsNullOrEmpty(bindingsValidation))
                                     {
-                                        ErrorSuccessResponse rootResponse = null;
-                                        if (cert.type == "root")
-                                            rootResponse = SetTrustedRoot(certName, client, config.CertificateStoreDetails.StorePath);
-
-                                        if (rootResponse != null && rootResponse.Status.ToUpper() == "ERROR")
+                                        var bindingsResponse = SetBindings(config, client,
+                                            config.CertificateStoreDetails.StorePath);
+                                        if (bindingsResponse.Result.Status.ToUpper() == "ERROR")
                                             warnings +=
-                                                $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
+                                                $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
                                     }
-                                }
-
-                                //Leafs need the keypair only put leaf out there if root and intermediate succeeded
-                                if (cert.type == "leaf" && errorMsg.Length==0)
-                                {
-                                    var importResult = client.ImportCertificate(alias,
-                                        config.JobCertificate.PrivateKeyPassword,
-                                        Encoding.UTF8.GetBytes(certPem), "yes", "keypair",
-                                        config.CertificateStoreDetails.StorePath);
-                                    content = importResult.Result;
-                                    LogResponse(content);
-                                    
-                                    //If 1. was successful, then set trusted root, bindings then commit
-                                    if (content != null && content.Status.ToUpper() == "SUCCESS")
-                                    {
-                                        //3. Check if Bindings were added in the entry params and if so bind the cert to a tls profile in palo
-                                        var bindingsValidation = Validators.ValidateBindings(JobEntryParams);
-                                        if (string.IsNullOrEmpty(bindingsValidation))
-                                        {
-                                            var bindingsResponse = SetBindings(config, client,
-                                                config.CertificateStoreDetails.StorePath);
-                                            if (bindingsResponse.Result.Status.ToUpper() == "ERROR")
-                                                warnings +=
-                                                    $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
-                                        }
-                                        if(errorMsg.Length==0)
-                                            success = true;
-                                    }
-                                }
-
-                                if (content != null)
-                                {
-                                    errorMsg += content.LineMsg != null ? Validators.BuildPaloError(content) : content.Text;
+                                    if (errorMsg.Length == 0)
+                                        success = true;
                                 }
                             }
-                            
-                            //4. Try to commit to firewall or Palo Alto then Push to the devices
-                            if(errorMsg.Length==0)
-                                warnings = CommitChanges(config, client, warnings);
 
-                            return ReturnJobResult(config, warnings, success, errorMsg);
-                        }
-                        else
-                        {
-                            _logger.LogTrace("Adding a certificate without a private key to Palo Alto.....");
-                            certPem = certStart + Pemify(config.JobCertificate.Contents) + certEnd;
-                            _logger.LogTrace($"Pem: {certPem}");
-
-                            //1. Import the Keypair to Palo Alto No Private Key
-                            var importResult = client.ImportCertificate(config.JobCertificate.Alias,
-                                config.JobCertificate.PrivateKeyPassword,
-                                Encoding.UTF8.GetBytes(certPem), "no", "certificate",
-                                config.CertificateStoreDetails.StorePath);
-                            var content = importResult.Result;
-                            LogResponse(content);
-
-                            //if 1. was successful then set trusted root and commit, no bindings allowed without private key 
-                            if (content.Status.ToUpper() == "SUCCESS")
+                            if (content != null)
                             {
-                                //2.Validate if this is going to have the trusted Root
-                                var trustedRoot =
-                                    Convert.ToBoolean(JobEntryParams.TrustedRoot);
-                                var rootResponse = SetTrustedRoot(config.JobCertificate.Alias, client, config.CertificateStoreDetails.StorePath);
-
-                                if (trustedRoot && rootResponse.Status.ToUpper() == "ERROR")
-                                    warnings +=
-                                        $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
-
-                                //3. Try to commit to firewall or Palo Alto then Push to the devices
-                                warnings = CommitChanges(config, client, warnings);
-                                success = true;
+                                errorMsg += content.LineMsg != null ? Validators.BuildPaloError(content) : content.Text;
                             }
-
-                            return ReturnJobResult(config, warnings, success, content.Text);
                         }
+
+
+                        //4. Try to commit to firewall or Palo Alto then Push to the devices
+                        if (errorMsg.Length == 0)
+                            warnings = CommitChanges(config, client, warnings);
+
+                        return ReturnJobResult(config, warnings, success, errorMsg);
                     }
 
                     return new JobResult
@@ -523,7 +489,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             using (var pfxBytesMemoryStream = new MemoryStream(pfxBytes))
             {
                 p = new Pkcs12Store(pfxBytesMemoryStream,
-                    config.JobCertificate.PrivateKeyPassword.ToCharArray());
+                    config.JobCertificate?.PrivateKeyPassword?.ToCharArray());
             }
 
             _logger.LogTrace(
@@ -616,7 +582,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 reqSerializer.Serialize(reqWriter, profileRequest);
                 _logger.LogTrace($"Profile Request {reqWriter}");
 
-                return client.SubmitEditProfile(profileRequest, templateName,config.CertificateStoreDetails.StorePath);
+                return client.SubmitEditProfile(profileRequest, templateName, config.CertificateStoreDetails.StorePath);
             }
             catch (Exception e)
             {
