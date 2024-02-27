@@ -267,18 +267,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     content = importResult.Result;
                                     LogResponse(content);
 
-                                       //Set as trusted Root
-                                    ErrorSuccessResponse rootResponse = null;
-                                    if (cert.type == "root")
-                                        rootResponse = SetTrustedRoot(certName, client, config.CertificateStoreDetails.StorePath);
 
-                                    if (rootResponse != null && rootResponse.Status.ToUpper() == "ERROR")
-                                        warnings +=
-                                            $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
+                                    //Set as trusted Root if you successfully imported the root certificate
+                                    if (content != null && content.Status.ToUpper() != "ERROR")
+                                    {
+                                        ErrorSuccessResponse rootResponse = null;
+                                        if (cert.type == "root")
+                                            rootResponse = SetTrustedRoot(certName, client, config.CertificateStoreDetails.StorePath);
+
+                                        if (rootResponse != null && rootResponse.Status.ToUpper() == "ERROR")
+                                            warnings +=
+                                                $"Setting to Trusted Root Failed. {Validators.BuildPaloError(rootResponse)}";
+                                    }
                                 }
 
-                                //Leafs need the keypair
-                                if (cert.type == "leaf")
+                                //Leafs need the keypair only put leaf out there if root and intermediate succeeded
+                                if (cert.type == "leaf" && errorMsg.Length==0)
                                 {
                                     var importResult = client.ImportCertificate(alias,
                                         config.JobCertificate.PrivateKeyPassword,
@@ -300,8 +304,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                                 warnings +=
                                                     $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
                                         }
-
-                                        success = true;
+                                        if(errorMsg.Length==0)
+                                            success = true;
                                     }
                                 }
 
@@ -312,7 +316,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             }
                             
                             //4. Try to commit to firewall or Palo Alto then Push to the devices
-                            warnings = CommitChanges(config, client, warnings);
+                            if(errorMsg.Length==0)
+                                warnings = CommitChanges(config, client, warnings);
 
                             return ReturnJobResult(config, warnings, success, errorMsg);
                         }
