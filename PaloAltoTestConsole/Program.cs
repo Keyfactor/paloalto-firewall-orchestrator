@@ -51,7 +51,7 @@ namespace PaloAltoTestConsole
             Thread.Sleep(20000);
             foreach (var argument in args)
             {
-                var splitted = argument.Split('=');
+                var splitted = argument.Split('=',2);
 
                 if (splitted.Length == 2) arguments[splitted[0]] = splitted[1];
             }
