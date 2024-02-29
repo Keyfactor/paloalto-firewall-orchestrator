@@ -298,7 +298,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                                     if (string.IsNullOrEmpty(bindingsValidation))
                                     {
                                         var bindingsResponse = SetBindings(config, client,
-                                            config.CertificateStoreDetails.StorePath);
+                                            config.CertificateStoreDetails.StorePath,alias);
                                         if (bindingsResponse.Result.Status.ToUpper() == "ERROR")
                                             warnings +=
                                                 $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
@@ -562,7 +562,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
         private Task<ErrorSuccessResponse> SetBindings(ManagementJobConfiguration config, PaloAltoClient client,
-            string templateName)
+            string templateName,string aliasName)
         {
             //Handle the Profile Bindings
             try
@@ -570,7 +570,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var profileRequest = new EditProfileRequest
                 {
                     Name = JobEntryParams.TlsProfileName,
-                    Certificate = config.JobCertificate.Alias
+                    Certificate = aliasName
                 };
                 var pMinVersion = new ProfileMinVersion { Text = JobEntryParams.TlsMinVersion };
                 var pMaxVersion = new ProfileMaxVersion { Text = JobEntryParams.TlsMaxVersion };
