@@ -34,7 +34,6 @@ namespace PaloAltoTestConsole
         public static string ClientMachine { get; set; }
         public static string DeviceGroup { get; set; }
         public static string StorePath { get; set; }
-        public static string TrustedRoot { get; set; }
         public static string BindingName { get; set; }
         public static string TlsMinVersion { get; set; }
         public static string TlsMaxVersion { get; set; }
@@ -49,7 +48,7 @@ namespace PaloAltoTestConsole
 
            
             var arguments = new Dictionary<string, string>();
-            Thread.Sleep(10000);
+            Thread.Sleep(20000);
             foreach (var argument in args)
             {
                 var splitted = argument.Split('=');
@@ -122,7 +121,6 @@ namespace PaloAltoTestConsole
                             CertAlias = arguments["-certalias"];
                             TlsMinVersion = arguments["-tlsminversion"];
                             TlsMaxVersion= arguments["-tlsmaxversion"];
-                            TrustedRoot= arguments["-trustedroot"];
                             Overwrite = arguments["-overwrite"];
                         }
                         else
@@ -135,8 +133,6 @@ namespace PaloAltoTestConsole
                             TlsMaxVersion = Console.ReadLine();
                             Console.WriteLine("Enter Cert Alias");
                             CertAlias = Console.ReadLine();
-                            Console.WriteLine("Trusted Root (True or False)?");
-                            TrustedRoot = Console.ReadLine();
                             Console.WriteLine("Overwrite (True or False)?");
                             Overwrite = Console.ReadLine();
                         }
@@ -219,11 +215,6 @@ namespace PaloAltoTestConsole
 
         public static ManagementJobConfiguration GetManagementJobConfiguration()
         {
-            var trustedRootReplaceString = "\"Trusted Root\": false";
-            if (TrustedRoot.ToUpper() == "TRUE")
-            {
-                trustedRootReplaceString = "\"Trusted Root\": true";
-            }
 
             var overWriteReplaceString = "\"Overwrite\": false";
             if (Overwrite.ToUpper() == "TRUE")
@@ -236,7 +227,7 @@ namespace PaloAltoTestConsole
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
                 .Replace("ClientMachineGoesHere", ClientMachine).Replace("TlsProfileNameGoesHere", BindingName)
                 .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion)
-                .Replace("\"Trusted Root\": false",trustedRootReplaceString).Replace("\"Overwrite\": false",overWriteReplaceString)
+                .Replace("\"Overwrite\": false",overWriteReplaceString)
                 .Replace("CertificateContentGoesHere", CertificateContent);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);

@@ -13,6 +13,9 @@ namespace PaloAltoTestConsole
         public int KeyfactorId { get; set; }
         public string Pkcs12Blob { get; set; }
         public object Password { get; set; }
+        public string WorkflowInstanceId { get; set; }
+        public int WorkflowReferenceId { get; set; }
+        public List<object> StoreIdsInvalidForRenewal { get; set; }
         public int KeyfactorRequestId { get; set; }
         public string RequestDisposition { get; set; }
         public string DispositionMessage { get; set; }
@@ -21,6 +24,7 @@ namespace PaloAltoTestConsole
 
     public class Metadata
     {
+        public string OID { get; set; }
     }
 
     public class KeyfactorEnrollmentResult
@@ -28,4 +32,6 @@ namespace PaloAltoTestConsole
         public CertificateInformation CertificateInformation { get; set; }
         public Metadata Metadata { get; set; }
     }
+
+
 }

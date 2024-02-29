@@ -1,12 +1,12 @@
 @echo off
 
-cd C:\WhereeverTestConsoleExeIs
-set FWMachine=SomeServer
-set FWApiUser=SomeUser
-set FWApiPassword=SomePassword
-set PAMachine=SomeServer
-set PAApiUser=SomeUser
-set PAApiPassword=SomePassword
+cd C:\Users\bhill\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
+set FWMachine=keyfactorpa.eastus2.cloudapp.azure.com
+set FWApiUser=bhill
+set FWApiPassword=Keyfactor2019!
+set PAMachine=20.172.165.91
+set PAApiUser=bhill
+set PAApiPassword=Keyfactor2019!
 
 
 echo ***********************************
@@ -16,7 +16,7 @@ echo ***********************************
 set clientmachine=%FWMachine%
 set password=%FWApiPassword%
 set user=%FWApiUser%
-set storepath=/
+set storepath=/config/shared
 
 echo ***********************************
 echo Starting Management Test Cases
@@ -27,17 +27,15 @@ set casename=Management
 set cert=%random%
 set casename=Management
 set mgt=add
-set trusted=false
 set overwrite=false
 
 echo ************************************************************************************************************************
-echo TC1 %mgt% with no biding information.  Should do the %mgt% but give you a warning about missing bindings *not* trusted root
+echo TC1 %mgt% with no biding information.  Should do the %mgt% and add anything in the chain
 echo ************************************************************************************************************************
 echo overwrite: %overwrite%
-echo trusted: %trusted%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -trustedroot=%trusted% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
 
 
 set mgt=remove
@@ -46,48 +44,16 @@ set overwrite=false
 
 echo:
 echo *******************************************************************************************************
-echo TC2 %mgt% missing bindings *not* trusted root.  Should %mgt% the cert since there are no dependencies
+echo TC2 %mgt% missing bindings.  Should %mgt% the cert since there are no dependencies
 echo *******************************************************************************************************
 echo overwrite: %overwrite%
 echo trusted: %trusted%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -trustedroot=%trusted% -overwrite=%overwrite%
-
-set trustedRoot=%random%
-set mgt=add
-set trusted=true
-set overwrite=false
-
-echo:
-echo ***********************************************************************************************************************
-echo TC3 %mgt% with no biding information.  Should do the %mgt% but give you a warning about missing bindings *is* trusted root
-echo ***********************************************************************************************************************
-echo overwrite: %overwrite%
-echo trusted: %trusted%
-echo cert name: %trustedRoot%
-
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%trustedRoot% -tlsminversion= -tlsmaxversion= -bindingname= -trustedroot=%trusted% -overwrite=%overwrite%
-
-
-set mgt=remove
-set trusted=true
-set overwrite=false
-
-echo:
-echo **********************************************************************************************************
-echo TC4 %mgt% with no biding information.  Should %mgt% the trusted root certificate and trusted root setting
-echo **********************************************************************************************************
-echo overwrite: %overwrite%
-echo trusted: %trusted%
-echo cert name: %trustedRoot%
-
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%trustedRoot% -tlsminversion= -tlsmaxversion= -bindingname= -trustedroot=%trusted% -overwrite=%overwrite%
-
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
 
 set cert=%random%
 set mgt=add
-set trusted=true
 set overwrite=false
 set tlsmin=tls1-2
 set tlsmax=max
@@ -95,51 +61,9 @@ set bindingname=FirewallOnlyBinding
 
 echo:
 echo *****************************************************************************************************************
-echo TC5 %mgt% with biding information.  Should do the %mgt% and bind to the tls profile, no overwrite is trusted root
+echo TC3 %mgt% with biding information.  Should do the %mgt% and bind to the tls profile, no overwrite is trusted root
 echo *****************************************************************************************************************
 echo overwrite: %overwrite%
-echo trusted: %trusted%
-echo tlsmin: %tlsmin%
-echo tlsmax: %tlsmax%
-echo binding name: %bindingname%
-echo cert name: %cert%
-
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -trustedroot=%trusted% -overwrite=%overwrite%
-
-
-set mgt=add
-set trusted=true
-set overwrite=true
-set tlsmin=tls1-2
-set tlsmax=max
-set bindingname=FirewallOnlyBinding
-
-echo:
-echo *******************************************************************************************************************
-echo TC6 %mgt% with biding information.  Should do the %mgt% and bind to the tls profile, with overwrite is trusted root
-echo *******************************************************************************************************************
-echo overwrite: %overwrite%
-echo trusted: %trusted%
-echo tlsmin: %tlsmin%
-echo tlsmax: %tlsmax%
-echo binding name: %bindingname%
-echo cert name: %cert%
-
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -trustedroot=%trusted% -overwrite=%overwrite%
-
-set mgt=add
-set trusted=true
-set overwrite=false
-set tlsmin=tls1-2
-set tlsmax=max
-set bindingname=FirewallOnlyBinding
-
-echo:
-echo *************************************************************************************************************
-echo TC7 Case No Overwrite with biding information.  Should warn the user that the need the overwrite flag checked
-echo *************************************************************************************************************
-echo overwrite: %overwrite%
-echo trusted: %trusted%
 echo tlsmin: %tlsmin%
 echo tlsmax: %tlsmax%
 echo binding name: %bindingname%
@@ -149,7 +73,6 @@ PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -use
 
 
 set mgt=remove
-set trusted=true
 set overwrite=true
 set tlsmin=tls1-2
 set tlsmax=max
@@ -157,23 +80,78 @@ set bindingname=FirewallOnlyBinding
 
 echo:
 echo **************************************************************************************************************
-echo TC8 Case Try to remove a bound cert, should not be allowed unless you want to delete the binding too not good
+echo TC4 Case Try to remove a bound cert, should not be allowed unless you want to delete the binding too not good
 echo **************************************************************************************************************
 echo overwrite: %overwrite%
-echo trusted: %trusted%
 echo tlsmin: %tlsmin%
 echo tlsmax: %tlsmax%
 echo binding name: %bindingname%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -trustedroot=%trusted% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
+
+
+set mgt=add
+set overwrite=true
+set tlsmin=tls1-2
+set tlsmax=max
+set bindingname=FirewallOnlyBinding
+
+echo:
+echo ***************************************************************************************************************
+echo TC5 %mgt% with biding information.  Should do the %mgt% and bind to the tls profile, with overwrite,rename cert
+echo ***************************************************************************************************************
+echo overwrite: %overwrite%
+echo tlsmin: %tlsmin%
+echo tlsmax: %tlsmax%
+echo binding name: %bindingname%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
+
+set mgt=add
+set overwrite=false
+set tlsmin=tls1-2
+set tlsmax=max
+set bindingname=FirewallOnlyBinding
+
+echo:
+echo *************************************************************************************************************
+echo TC6 Case No Overwrite with biding information.  Should warn the user that the need the overwrite flag checked
+echo *************************************************************************************************************
+echo overwrite: %overwrite%
+echo tlsmin: %tlsmin%
+echo tlsmax: %tlsmax%
+echo binding name: %bindingname%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
+
+set storepath=/config
+set mgt=add
+set overwrite=false
+set tlsmin=tls1-2
+set tlsmax=max
+set bindingname=FirewallOnlyBinding
+
+echo:
+echo ***************************************************
+echo TC7 Invalid Store Path - Job should fail with error
+echo ****************************************************
+echo overwrite: %overwrite%
+echo tlsmin: %tlsmin%
+echo tlsmax: %tlsmax%
+echo binding name: %bindingname%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
 
 echo:
 echo:
 echo ***********************************
 echo Starting Inventory Test Cases
 echo ***********************************
-
+set storepath=/config/shared
 set casename=Inventory
 
 echo:
