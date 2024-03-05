@@ -139,7 +139,6 @@ DeviceGroup   |Device Group     |String |              |Unchecked    |No        
 #### ENTRY PARAMETERS FOR STORE TYPE
 NAME          |  DISPLAY NAME	| TYPE           | DEFAULT VALUE | DEPENDS ON | REQUIRED WHEN |DESCRIPTION
 --------------|-----------------|----------------|-------------- |-------------|---------------|--------------
-Trusted Root  |Trusted Root     |Bool            |False          |Unchecked    |Adding an Entry|Will set the certificate as Trusted Root in Panorama or on the Firewall
 TlsMinVersion |TLS Min Version  |Multiple Choice |               |Unchecked    |No             |Min TLS Version for the Binding (,tls1-0,tls1-1,tls1-2) note first multiple choice item is empty
 TlsMaxVersion |TLS Max Version  |Multiple Choice |               |Unchecked    |No             |Max TLS Version for the Binding (,tls1-0,tls1-1,tls1-2,max) note first multiple choice item is empty
 TlsProfileName|TLS Profile Name |String          |               |Unchecked    |No             |Name of the binding to deploy certificate to
@@ -175,30 +174,31 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 *** 
 
 #### TEST CASES
-Case Number|Store Path|Screenshot/Description
+Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Screenshots
 -----------|----------|----------------------
-TC1|/|![](images/TC1.png)
-TC2|/|![](images/TC2.png)
-TC3|/|![](images/TC3.png)
-TC4|/|![](images/TC4.png)
-TC5|/|![](images/TC5.png)
-TC6|/|![](images/TC6.png)
-TC7|/|![](images/TC7.png)
-TC8|/|![](images/TC8.png)
-TC9|/|![](images/TC9.png)
-TC10|/|![](images/TC10.png)
-TC11|/|![](images/TC11.png)
-TC12|CertificatesTemplate|![](images/TC12-F.png) ![](images/TC12-P.png)
-TC13|CertificatesTemplate|![](images/TC13-F.png) ![](images/TC13-P.png)
-TC14|CertificatesTemplate|![](images/TC14-F.png) ![](images/TC14-P.png)
-TC15|CertificatesTemplate|![](images/TC15-F.png) ![](images/TC15-P.png)
-TC16|CertificatesTemplate|![](images/TC16-F.png) ![](images/TC16-P.png)
-TC17|CertificatesTemplate|![](images/TC17-F1.png) ![](images/TC17-F2.png) ![](images/TC17-P1.png) ![](images/TC17-P2.png)
-TC18|CertificatesTemplate|![](images/TC18-F1.png) ![](images/TC18-F2.png) ![](images/TC18-P1.png) ![](images/TC18-P2.png)
-TC19|CertificatesTemplate|![](images/TC19.png)
-TC20|CertificatesTemplate|![](images/TC20.png)
-TC21|CertificatesTemplate|![](images/TC21-F.png) ![](images/TC21-P.png)
-TC22|CertificatesTemplate|![](images/TC22-P.png)
-
-
+TC1|Firewall Enroll No Bindings|/config/shared|Alias=TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
+TC2|Firewall Remove No Bindings|/config/shared|Alias=TC1|Cert Removed From Firewall|True|![](images/TC2.gif)
+TC3|Firewall Enroll Bindings|/config/shared|Alias=TC3,TLS Min Version=tls1-0,TLS Max Version=max,TLS Profile Name=FirewallOnlyBinding|Cert added to Firewall and Bound to TLS Profile|True|![](images/TC3.gif)
+TC4|Firewall Remove Bound Certificate|/config/shared|N/A|Will not Remove Bound certificate Error Occurs|True|![](images/TC4.gif)
+TC5|Firewall One Click Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC5.gif)
+TC6|Firewall Configure Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC6.gif)
+TC7|Firewall Invalid Store Path|/config|N/A|Errors out with Invalid path.|True|![](images/TC7.gif)
+TC8|Firewall Inventory|/config/shared|N/A|Job Completes with Inventory of certificates from Firewall.|True|![](images/TC8.gif)
+TC9|Panorama Template Enroll No Bindings|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|Alias=TC9|Cert and Chain Installed on Panorama Template and pushed to the firewall.|True|![](images/TC9.gif)
+TC10|Panorama Template Remove No Bindings|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|Alias=TC9|Cert Removed From Panorama and pushed to firewalls|True|![](images/TC10.gif)
+TC11|Panorama Template Enroll Bindings|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|Alias=TC11,TLS Min Version=tls1-0,TLS Max Version=max,TLS Profile Name=TestBindings|Cert added to Pan Template, Bound to TLS Profile and pushed to firewalls|True|![](images/TC11.gif)
+TC12|Panorama Template Remove Bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Will Not Remove Certificate because it is bound.  Error will show.|True|![](images/TC12.gif)
+TC13|Panorama Template One Click Renew Bound Cert|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.  Push to Firewalls|True|![](images/TC13.gif)
+TC14|Panorama Template Configure Renew Bound Cert|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC14.gif)
+TC15|Panorama Template Invalid **Template** in Store Path|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate1']/config/shared|N/A|Errors out saying template does not exist|True|![](images/TC15.gif)
+TC16|Panorama Template Invalid Store Path|/config/devices[@name='CertificatesTemplate1']/config/shared|N/A|Errors out saying invalid path|True|![](images/TC16.gif)
+TC17|Panorama Template Inventory|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Job Completes with Inventory of certificates from Panorama Template.|True|![](images/TC17.gif)
+TC18|Panorama Enroll No Bindings|/config/panorama|Alias=TC18|Cert and Chain Installed on Panorama|True|![](images/TC18.gif)
+TC19|Panorama Remove No Bindings|/config/panorama|Alias=TC19|Cert Removed From Panorama|True|![](images/TC19.gif)
+TC20|Panorama Remove No Bindings|/config/panorama|Alias=TC20,TLS Min Version=tls1-0,TLS Max Version=max,TLS Profile Name=PanLevelBindings|Cert added to Panorama and Bound to TLS Profile|True|![](images/TC20.gif)
+TC21|Panorama Remove Bound Certificate|/config/panorama|N/A|Will not Remove Bound certificate Error Occurs|True|![](images/TC21.gif)
+TC22|Panorama One Click Renew Bound Cert|/config/panorama|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC22.gif)
+TC23|Panorama Configure Renew Bound Cert|/config/panorama|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC23.gif)
+TC24|Panorama Invalid Store Path|/panorama|N/A|Errors out with Invalid path.|True|![](images/TC24.gif)
+TC25|Panorama Inventory|/config/panorama|N/A|Job Completes with Inventory of certificates from Panorama.|True|![](images/TC25.gif)
 
