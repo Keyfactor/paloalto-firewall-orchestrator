@@ -173,7 +173,9 @@ Xml Api       |Report,Log,Configuration,Operational Requests,Commit,Export,Impor
 Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates,Panorama/Template Stacks,Panorama/Device Groups,System/Configuration,Plugins/Plugins
 *** 
 
-#### TEST CASES
+## Test Cases
+<details>
+<summary>Firewall, Panorama Template and Panorama Level</summary>
 Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Screenshots
 -------|----------|------------------|--------------------|----------------------------|----|--------
 TC1|Firewall Enroll No Bindings|/config/shared|**Alias**:<br>TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
@@ -201,4 +203,6 @@ TC22|Panorama One Click Renew Bound Cert|/config/panorama|N/A|Renews cert create
 TC23|Panorama Configure Renew Bound Cert|/config/panorama|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC23.gif)
 TC24|Panorama Invalid Store Path|/panorama|N/A|Errors out with Invalid path.|True|![](images/TC24.gif)
 TC25|Panorama Inventory|/config/panorama|N/A|Job Completes with Inventory of certificates from Panorama.|True|![](images/TC25.gif)
+
+</details>
 
