@@ -176,6 +176,7 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 ## Test Cases
 <details>
 <summary>Firewall, Panorama Template and Panorama Level</summary>
+
 Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Screenshots
 -------|----------|------------------|--------------------|----------------------------|----|--------
 TC1|Firewall Enroll No Bindings|/config/shared|**Alias**:<br>TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
