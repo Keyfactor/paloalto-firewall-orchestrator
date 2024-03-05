@@ -75,7 +75,7 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 
 #### TEST CASES
 Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Screenshots
------------|----------|----------------------|--------------|---------------|---------------|----------------
+-------|----------|------------------|--------------------|----------------------------|----|--------
 TC1|Firewall Enroll No Bindings|/config/shared|Alias=TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
 TC2|Firewall Remove No Bindings|/config/shared|Alias=TC1|Cert Removed From Firewall|True|![](images/TC2.gif)
 TC3|Firewall Enroll Bindings|/config/shared|Alias=TC3,TLS Min Version=tls1-0,TLS Max Version=max,TLS Profile Name=FirewallOnlyBinding|Cert added to Firewall and Bound to TLS Profile|True|![](images/TC3.gif)
