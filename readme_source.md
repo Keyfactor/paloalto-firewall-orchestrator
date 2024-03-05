@@ -48,9 +48,9 @@ ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |
 **2. Register the PaloAlto Orchestrator with Keyfactor**
 See Keyfactor InstallingKeyfactorOrchestrators.pdf Documentation.  Get from your Keyfactor contact/representative.
 
-**3. Create a Palo Alto Certificate Store within Keyfactor Command**
-
-In Keyfactor Command create a new Certificate Store similar to the one below
+<details>
+<summary>PaloAlto Certificate Store</summary>
+In Keyfactor Command, navigate to Certificate Stores from the Locations Menu.  Click the Add button to create a new Certificate Store using the settings defined below.
 
 #### STORE CONFIGURATION 
 CONFIG ELEMENT	|DESCRIPTION
@@ -58,13 +58,14 @@ CONFIG ELEMENT	|DESCRIPTION
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
 Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
 Client Machine	|The hostname of the Panorama or Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
-Store Path	|If Panorama it is the name of the Template in Panorama if Firewall then "/"
+Store Path	| /config/panorama for Panorama Level Certs, /config/shared if pointed directly to a Firewall, /config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config<br>/shared if using Panorama Templates where 'CertificateTemplate' is the actual name of the template
 Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
 Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
 Use SSL	|This should be checked.
 User	|ApiUser Setup for either Panorama or the Firewall Device
 Password |Api Password Setup for the user above
 
+</details>
 
 #### API User Setup Permissions in Panorama or Firewall Required
 Tab          |  Security Items	
