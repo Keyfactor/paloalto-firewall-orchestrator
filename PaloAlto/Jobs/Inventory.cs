@@ -203,7 +203,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //Add Entry Params so the show up in the UI Inventory Store Popup
                 var siteSettingsDict = new Dictionary<string, object>
                 {
-                    { "ProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
+                    { "TlsProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
                     { "TlsMinVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text},
                     { "TlsMaxVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text },
                     { "Trusted Root", trustedRoot},

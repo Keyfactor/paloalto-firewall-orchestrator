@@ -176,9 +176,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         {
             try
             {
-                var xPath = storePath.Contains("template",StringComparison.CurrentCultureIgnoreCase)
-                    ? $"{storePath}/ssl-tls-service-profile/entry[@name='{certificate}']"
-                    : $"{storePath}/ssl-tls-service-profile/entry[./certificate='{certificate}']";
+                var xPath = $"{storePath}/ssl-tls-service-profile/entry[./certificate='{certificate}']";
                 var uri = $"/api/?type=config&action=get&target-tpl={GetTemplateName(storePath)}&xpath={xPath}&key={ApiKey}";
                 var response =
                     await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
