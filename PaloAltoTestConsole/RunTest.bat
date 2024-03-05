@@ -1,12 +1,12 @@
 @echo off
 
 cd C:\Users\bhill\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
-set FWMachine=keyfactorpa.eastus2.cloudapp.azure.com
-set FWApiUser=bhill
-set FWApiPassword=Keyfactor2019!
-set PAMachine=20.172.165.91
-set PAApiUser=bhill
-set PAApiPassword=Keyfactor2019!
+set FWMachine=urlToFW
+set FWApiUser=someuser
+set FWApiPassword=PWToFirewall
+set PAMachine=urlToPan
+set PAApiUser=PanUser
+set PAApiPassword=PanPassword
 
 
 goto :PAN
