@@ -178,7 +178,7 @@ Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Scree
 -------|----------|------------------|--------------------|----------------------------|----|--------
 TC1|Firewall Enroll No Bindings|/config/shared|Alias=TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
 TC2|Firewall Remove No Bindings|/config/shared|Alias=TC1|Cert Removed From Firewall|True|![](images/TC2.gif)
-TC3|Firewall Enroll Bindings|/config/shared|Alias=TC3<br>TLS Min Version=tls1-0<br>TLS Max Version=max<br>TLS Profile Name=FirewallOnlyBinding|Cert added to Firewall and Bound to TLS Profile|True|![](images/TC3.gif)
+TC3|Firewall Enroll Bindings|/config/shared|**Alias**:<br>TC3<br>TLS Min Version=tls1-0<br>TLS Max Version=max<br>TLS Profile Name=FirewallOnlyBinding|Cert added to Firewall and Bound to TLS Profile|True|![](images/TC3.gif)
 TC4|Firewall Remove Bound Certificate|/config/shared|N/A|Will not Remove Bound certificate Error Occurs|True|![](images/TC4.gif)
 TC5|Firewall One Click Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC5.gif)
 TC6|Firewall Configure Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC6.gif)
