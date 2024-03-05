@@ -169,12 +169,10 @@ echo cert name: %cert%
 
 PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% 
 
-:PAN
-
 echo:
-echo ***********************************
-echo Starting Single Panorama Test Cases
-echo ***********************************
+echo *********************************************
+echo Starting Panorama Shared Template Test Cases
+echo *********************************************
 
 set clientmachine=%PAMachine%
 set password=%PAApiPassword%
@@ -367,4 +365,120 @@ echo cert name: %cert%
 
 PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt%
 
+:PAN
+
+echo:
+echo *********************************************
+echo Starting Panorama Level certs Test Cases
+echo *********************************************
+
+set clientmachine=%PAMachine%
+set password=%PAApiPassword%
+set user=%PAApiUser%
+echo:
+echo ***********************************
+echo Starting Management Test Cases
+echo ***********************************
+set casename=Management
+
+set cert=%random%
+set storepath=/config/panorama
+set casename=Management
+set mgt=add
+set overwrite=false
+echo:
+echo ****************************************************
+echo TC22 Install Certificate Pan Level with No Bindings
+echo ****************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+
+echo:
+echo *************************************************************
+echo TC23 Duplicate Certificate No overwrite flag should warn user
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+
+set overwrite=true
+
+echo:
+echo *************************************************************
+echo TC24 Duplicate Certificate overwrite flag renames certificate
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+
+set mgt=remove
+
+echo:
+echo *************************************************************
+echo TC25 Delete unbound certificate should delete this.
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+
+set cert=%random%
+set mgt=add
+set overwrite=true
+set tlsmin=tls1-2
+set tlsmax=max
+set bindingname=PanLevelBindings
+
+echo:
+echo *************************************************************
+echo TC26 Create Certificate and Bind To TLS Profile
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo tlsmin: %tlsmin%
+echo tlsmax: %tlsmax%
+echo bindingname: %bindingname%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
+
+set mgt=remove
+
+echo:
+echo *************************************************************
+echo TC27 Delete bound certificate should warn user can't do this
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+
+
+set mgt=add
+set overwrite=true
+set tlsmin=tls1-2
+set tlsmax=max
+set bindingname=PanLevelBindings
+
+echo:
+echo *************************************************************
+echo TC28 Replace bound certificate, should rename and rebind
+echo *************************************************************
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo tlsmin: %tlsmin%
+echo tlsmax: %tlsmax%
+echo bindingname: %bindingname%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion=%tlsmin% -tlsmaxversion=%tlsmax% -bindingname=%bindingname% -overwrite=%overwrite%
 @pause
