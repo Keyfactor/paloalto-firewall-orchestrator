@@ -16,7 +16,7 @@
         "supportsDiscovery": false,
         "supportsManagementAdd": true,
         "supportsManagementRemove": true,
-        "supportsReenrollment": true,
+        "supportsReenrollment": false,
         "supportsInventory": true,
         "platformSupport": "Unused"
       },
@@ -28,7 +28,108 @@
         "supportsReenrollment": false,
         "supportsInventory": false,
         "platformSupport": "Unused"
-      }
+      },
+      "store_types": [
+{
+"Name": "PaloAlto",
+"ShortName": "PaloAlto",
+"Capability": "PaloAlto",
+"LocalStore": false,
+"SupportedOperations": {
+"Add": true,
+"Create": false,
+"Discovery": false,
+"Enrollment": false,
+"Remove": true
+},
+"Properties": [
+{
+"Name": "ServerUsername",
+"DisplayName": "Server Username",
+"Type": "Secret",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+},
+{
+"Name": "ServerPassword",
+"DisplayName": "Server Password",
+"Type": "Secret",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+},
+{
+"Name": "ServerUseSsl",
+"DisplayName": "Use SSL",
+"Type": "Bool",
+"DependsOn": null,
+"DefaultValue": "true",
+"Required": true
+},
+{
+"Name": "DeviceGroup",
+"DisplayName": "Device Group",
+"Type": "String",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+}
+],
+"EntryParameters": [
+{
+"Name": "TlsMinVersion",
+"DisplayName": "TLS Min Version",
+"Type": "MultipleChoice",
+"RequiredWhen": {
+"HasPrivateKey": false,
+"OnAdd": false,
+"OnRemove": false,
+"OnReenrollment": false
+},
+"Options": ",tls1-0,tls1-1,tls1-2"
+},
+{
+"Name": "TLSMaxVersion",
+"DisplayName": "TLS Max Version",
+"Type": "MultipleChoice",
+"RequiredWhen": {
+"HasPrivateKey": false,
+"OnAdd": false,
+"OnRemove": false,
+"OnReenrollment": false
+},
+"Options": ",tls1-0,tls1-1,tls1-2,max"
+},
+{
+"Name": "TlsProfileName",
+"DisplayName": "TLS Profile Name",
+"Type": "String",
+"RequiredWhen": {
+"HasPrivateKey": false,
+"OnAdd": false,
+"OnRemove": false,
+"OnReenrollment": false
+}
+}
+],
+"PasswordOptions": {
+"EntrySupported": false,
+"StoreRequired": false,
+"Style": "Default"
+},
+"PrivateKeyAllowed": "Optional",
+"JobProperties": [
+"TlsMinVersion",
+"TLSMaxVersion",
+"TlsProfileName"
+],
+"ServerRequired": true,
+"PowerShell": false,
+"BlueprintAllowed": false,
+"CustomAliasAllowed": "Required"
+}
+]
     }
   }
 }
