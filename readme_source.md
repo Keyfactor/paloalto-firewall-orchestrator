@@ -1,15 +1,3 @@
-**Palo Alto Orchestrator Device Configuration**
-
-**Overview**
-
-The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.
-
-This agent implements three job types – Inventory, Management Add, and Management Remove. Below are the steps necessary to configure this Orchestrator.  It supports adding certificates with or without private keys.
-
-NOTE: Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.
-
-**1. Create the New Certificate Store Type for either the PA-VM Firewall Device or Panorama**
-
 <details>
 	<summary>Cert Store Type Configuration</summary>
 	
@@ -48,9 +36,6 @@ TlsProfileName|TLS Profile Name |String          |               |Unchecked    |
 ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |Yes            |Requires SSL Connection
 
 </details>
-
-**2. Register the PaloAlto Orchestrator with Keyfactor**
-See Keyfactor InstallingKeyfactorOrchestrators.pdf Documentation.  Get from your Keyfactor contact/representative.
 
 <details>
 <summary>PaloAlto Certificate Store</summary>
