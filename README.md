@@ -39,7 +39,7 @@ The Keyfactor Universal Orchestrator may be installed on either Windows or Linux
 |Supports Management Remove|&check; |  |
 |Supports Create Store|  |  |
 |Supports Discovery|  |  |
-|Supports Renrollment|&check; |  |
+|Supports Renrollment|  |  |
 |Supports Inventory|&check; |  |
 
 
