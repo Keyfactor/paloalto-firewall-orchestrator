@@ -2,6 +2,7 @@
 * Support for Pan Level Certficates
 * Support for Pushing Entire Certificate Chain to Panorama
 * Auto Detection of Trusted Root Certificates
+* Fix Inventory Check For Private Key from Dummy to Anything
 
 2.0.1
 * Fix Epoch Time in Model from int to long to prevent inventory errors
