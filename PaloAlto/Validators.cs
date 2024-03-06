@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Linq;
+using System.Text.RegularExpressions;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -46,13 +47,42 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return errorResponse;
         }
 
+        private static string GetTemplateName(string storePath)
+        {
+            string pattern = @"\/template\/entry\[@name='([^']+)'\]";
+            Regex regex = new Regex(pattern);
+            Match match = regex.Match(storePath);
+
+            string templateName = string.Empty;
+            if (match.Success)
+            {
+                templateName = match.Groups[1].Value;
+            }
+
+            return templateName;
+        }
+
+        static bool IsValidPanoramaFormat(string input)
+        {
+            string pattern = @"^/config/devices/entry\[@name='[^\]]+'\]/template/entry\[@name='[^']+'\]/config/shared$";
+            Regex regex = new Regex(pattern);
+            return regex.IsMatch(input);
+        }
+
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
             string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
         {
             var errors = string.Empty;
 
+            //Check path Validity for either panorama shared location or firewall shared location or panorama level certificates
+            if (storePath != "/config/panorama" && storePath != "/config/shared" && !IsValidPanoramaFormat(storePath))
+            {
+                errors +=
+                    "Path is invalid needs to be /config/panorama, /config/shared or in format of /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='TemplateName']/config/shared.";
+            }
+
             // If it is a firewall (store path of /) then you don't need the Group Name
-            if (storePath== "/")
+            if (!storePath.Contains("template",System.StringComparison.CurrentCultureIgnoreCase))
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
                     errors +=
@@ -60,7 +90,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                 }
 
             // Considered Panorama device if store path is not "/" and there is a valid value for store path
-            if (storePath != "/")
+            if (storePath.Contains("template", System.StringComparison.CurrentCultureIgnoreCase))
             {
                 var client =
                     new PaloAltoClient(clientMachine,
@@ -84,7 +114,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
 
                 //Validate Template Exists in Panorama, required for Panorama
                 var templateList = client.GetTemplateList();
-                var templates = templateList.Result.Result.Entry.Where(d => d.Name == storePath);
+                var templates = templateList.Result.Result.Entry.Where(d => d.Name == GetTemplateName(storePath));
                 if (!templates.Any())
                 {
                     errors +=

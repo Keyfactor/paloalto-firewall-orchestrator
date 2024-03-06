@@ -90,14 +90,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
                 //Change the path if you are pointed to a Panorama Device
-                CertificateListResponse rawCertificatesResult;
-                if (IsPanoramaDevice(config))
-                    rawCertificatesResult =
-                        client.GetCertificateList(
-                                $"/config/devices/entry/template/entry[@name='{config.CertificateStoreDetails.StorePath}']//certificate/entry")
-                            .Result;
-                else
-                    rawCertificatesResult = client.GetCertificateList("/config/shared/certificate/entry").Result;
+                var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
@@ -118,10 +111,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         try
                         {
                             _logger.LogTrace(
-                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: {c.PrivateKey?.Length > 0}");
                             var bindings =
                                 client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, c.Name).Result;
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy",bindings,false);
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0,bindings,false);
                         }
                         catch
                         {
@@ -193,11 +186,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             };
         }
 
-        private static bool IsPanoramaDevice(InventoryJobConfiguration config)
-        {
-            return config.CertificateStoreDetails.StorePath.Length > 1;
-        }
-
         private void LogResponse<T>(T content)
         {
             var resWriter = new StringWriter();
@@ -215,7 +203,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //Add Entry Params so the show up in the UI Inventory Store Popup
                 var siteSettingsDict = new Dictionary<string, object>
                 {
-                    { "ProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
+                    { "TlsProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
                     { "TlsMinVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text},
                     { "TlsMaxVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text },
                     { "Trusted Root", trustedRoot},
