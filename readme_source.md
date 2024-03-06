@@ -1,3 +1,4 @@
+## CERT STORE SETUP AND GENERAL PERMISSIONS
 <details>
 	<summary>Cert Store Type Configuration</summary>
 	
