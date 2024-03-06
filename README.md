@@ -39,7 +39,7 @@ The Keyfactor Universal Orchestrator may be installed on either Windows or Linux
 |Supports Management Remove|&check; |  |
 |Supports Create Store|  |  |
 |Supports Discovery|  |  |
-|Supports Renrollment|&check; |  |
+|Supports Renrollment|  |  |
 |Supports Inventory|&check; |  |
 
 
@@ -110,6 +110,9 @@ NOTE: Palo Alto does not support incremental certificate inventory. If you have 
 
 **1. Create the New Certificate Store Type for either the PA-VM Firewall Device or Panorama**
 
+<details>
+	<summary>Cert Store Type Configuration</summary>
+	
 In Keyfactor Command create a new Certificate Store Type similar to the one below:
 
 #### STORE TYPE CONFIGURATION
@@ -144,6 +147,7 @@ TlsMaxVersion |TLS Max Version  |Multiple Choice |               |Unchecked    |
 TlsProfileName|TLS Profile Name |String          |               |Unchecked    |No             |Name of the binding to deploy certificate to
 ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |Yes            |Requires SSL Connection
 
+</details>
 
 **2. Register the PaloAlto Orchestrator with Keyfactor**
 See Keyfactor InstallingKeyfactorOrchestrators.pdf Documentation.  Get from your Keyfactor contact/representative.
@@ -157,7 +161,7 @@ CONFIG ELEMENT	|DESCRIPTION
 ----------------|---------------
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
 Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
-Client Machine	|The hostname of the Panorama or Firewall.  Sample is "keyfactorpa.eastus2.cloudapp.azure.com".
+Client Machine	|The hostname of the Panorama or Firewall.  Sample is "palourl.cloudapp.azure.com".
 Store Path	| **Panorama Level Certs:**<br>/config/panorama<br>**Firewall Certs:**<br>/config/shared<br>**Panorama Template Certs:**<br>/config<br>/devices<br>/entry[@name='localhost.localdomain']<br>/template<br>/entry[@name='CertificatesTemplate']<br>/config<br>/shared<br> if using Panorama Templates where 'CertificateTemplate' is the actual name of the template
 Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
 Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
