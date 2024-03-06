@@ -23,7 +23,6 @@
   "ServerPassword": "PasswordGoesHere",
   "UseSSL": true,
   "JobProperties": {
-    "Trusted Root": false,
     "TlsMinVersion": "TlsMinVersionGoesHere",
     "TLSMaxVersion": "TlsMaxVersionGoesHere",
     "TlsProfileName": "TlsProfileNameGoesHere"

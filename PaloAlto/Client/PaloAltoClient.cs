@@ -17,6 +17,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
@@ -136,26 +137,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitEditProfile(EditProfileRequest request, string templateName)
+        public async Task<ErrorSuccessResponse> SubmitEditProfile(EditProfileRequest request, string templateName, string storePath)
         {
             try
             {
                 var editXml =
                     $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
-                string uri;
 
-                //if not Panorama use firewall path
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=edit&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=edit&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry&element={editXml}&key={ApiKey}&target-tpl={templateName}";
-                }
+                string uri=
+                        $@"/api/?type=config&action=edit&xpath={storePath}/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
 
                 var response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
                 return response;
@@ -167,15 +157,27 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string templateName,
-            string certificate)
+        private string GetTemplateName(string storePath)
+        {
+            string pattern = @"\/template\/entry\[@name='([^']+)'\]";
+            Regex regex = new Regex(pattern);
+            Match match = regex.Match(storePath);
+
+            string templateName = string.Empty;
+            if (match.Success)
+            {
+                templateName = match.Groups[1].Value;
+            }
+
+            return templateName;
+        }
+
+        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string storePath, string certificate)
         {
             try
             {
-                var xPath = templateName == "/"
-                    ? $"/config/shared/ssl-tls-service-profile/entry[@name='{certificate}']"
-                    : $"/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[./certificate='{certificate}']";
-                var uri = $"/api/?type=config&action=get&target-tpl={templateName}&xpath={xPath}&key={ApiKey}";
+                var xPath = $"{storePath}/ssl-tls-service-profile/entry[./certificate='{certificate}']";
+                var uri = $"/api/?type=config&action=get&target-tpl={GetTemplateName(storePath)}&xpath={xPath}&key={ApiKey}";
                 var response =
                     await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
                 return response;
@@ -231,23 +233,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string templateName)
+        public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath)
         {
             try
             {
-                string uri;
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={templateName}";
-                }
-
+                string uri =$@"/api/?type=config&action=delete&xpath={storePath}/certificate/entry[@name='{name}']&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -257,23 +247,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitDeleteTrustedRoot(string name, string templateName)
+        public async Task<ErrorSuccessResponse> SubmitDeleteTrustedRoot(string name, string storePath)
         {
             try
             {
-                string uri;
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/shared/ssl-decrypt/trusted-root-CA/member[text()='{name}']&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-decrypt/trusted-root-CA/member[text()='{name}']&key={ApiKey}&target-tpl={templateName}";
-                }
-
+                string uri= $@"/api/?type=config&action=delete&xpath={storePath}/ssl-decrypt/trusted-root-CA/member[text()='{name}']&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -283,23 +261,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string templateName)
+        public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string storePath)
         {
             try
             {
-                string uri;
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=set&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={templateName}";
-                }
-
+                string uri = $@"/api/?type=config&action=set&xpath={storePath}/ssl-decrypt&element=<trusted-root-CA><member>{name}</member></trusted-root-CA>&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
                 return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
             }
             catch (Exception e)
@@ -309,79 +275,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<GetProfileByCertificateResponse> GetBinding(JobEntryParams jobEntryParams, string templateName)
-        {
-            try
-            {
-                string uri;
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=get&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
-                }
-                return await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetBinding: {e.Message}");
-                throw;
-            }
-        }
-
-        public async Task<ErrorSuccessResponse> SubmitDeleteBinding(JobEntryParams jobEntryParams, string templateName)
-        {
-            try
-            {
-                string uri;
-                if (templateName == "/")
-                {
-                    templateName = "";
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
-                }
-                else
-                {
-                    uri =
-                        $@"/api/?type=config&action=delete&xpath=/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='{templateName}']/config/shared/ssl-tls-service-profile/entry[@name='{jobEntryParams.TlsProfileName}']&key={ApiKey}&target-tpl={templateName}";
-                }
-
-                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteBinding: {e.Message}");
-                throw;
-            }
-        }
-
-        public async Task<ErrorSuccessResponse> SubmitSetForwardTrust(string name)
-        {
-            try
-            {
-                var uri =
-                    $@"/api/?type=config&action=set&xpath=/config/shared/ssl-decrypt&element=<forward-trust-certificate><rsa>{name}</rsa></forward-trust-certificate>&key={ApiKey}";
-                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitSetForwardTrust: {e.Message}");
-                throw;
-            }
-        }
-
         public async Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
-            string includeKey, string category, string templateName)
+            string includeKey, string category, string storePath)
         {
             try
             {
-                if (templateName == "/")
-                    templateName = "";
+                var templateName=GetTemplateName(storePath);
                 var uri =
                     $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
                 var boundary = $"--------------------------{Guid.NewGuid():N}";
