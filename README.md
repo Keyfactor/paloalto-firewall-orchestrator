@@ -156,12 +156,16 @@ Password |Api Password Setup for the user above
 
 </details>
 
-#### API User Setup Permissions in Panorama or Firewall Required
+<details>
+<summary>API User Setup Permissions in Panorama or Firewall Required</summary>
+
 Tab          |  Security Items	
 --------------|--------------------------
 Xml Api       |Report,Log,Configuration,Operational Requests,Commit,Export,Import
 Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates,Panorama/Template Stacks,Panorama/Device Groups,System/Configuration,Plugins/Plugins
 *** 
+
+</details>
 
 ## Test Cases
 <details>
