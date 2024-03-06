@@ -243,7 +243,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         if (duplicate)
                         {
                             DateTime currentTime = DateTime.Now;
-                            alias = RightTrimAfter(alias, 19) + "_" + currentTime.ToString("yyMMddHHmmss"); //fix name length 
+                            alias = GenerateName(alias); //fix name length 
                         }
 
                         //2. Check palo alto for existing thumbprints of anything in the chain
@@ -399,6 +399,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 // return the input string unchanged
                 return input;
             }
+        }
+
+        public static string GenerateName(string name)
+        {
+            string currentTime = DateTime.Now.ToString("yyMMddHHmmss");
+
+            // Trim the name to 18 characters
+            string trimmedName = name.Length > 18 ? name.Substring(0, 18) : name;
+
+            // Append underscore and current time
+            string generatedName = trimmedName + "_" + currentTime;
+
+            return generatedName;
         }
 
         private static bool DeleteCertificate(ManagementJobConfiguration config, PaloAltoClient client, string warnings,
