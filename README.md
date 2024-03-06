@@ -98,6 +98,7 @@ This text would be entered in as the value for the __Server Password__, instead 
 ---
 
 
+## CERT STORE SETUP AND GENERAL PERMISSIONS
 <details>
 	<summary>Cert Store Type Configuration</summary>
 	
