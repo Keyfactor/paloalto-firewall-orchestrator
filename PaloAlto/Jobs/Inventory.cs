@@ -111,10 +111,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         try
                         {
                             _logger.LogTrace(
-                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: dummy (from PA API)");
+                                $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: {c.PrivateKey?.Length > 0}");
                             var bindings =
                                 client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, c.Name).Result;
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey == "dummy",bindings,false);
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0,bindings,false);
                         }
                         catch
                         {
