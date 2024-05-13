@@ -1,3 +1,6 @@
+2.1.1
+* Bug - Add Renew Failure Object Reference Error when Adding/Renewing a cert.
+
 2.1.0
 * Support for Pan Level Certficates
 * Support for Pushing Entire Certificate Chain to Panorama
