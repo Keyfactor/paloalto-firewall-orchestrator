@@ -1,3 +1,6 @@
+2.1.1
+* Object Reference Error When Checking for Items without public key - Will cause add/remove to fail
+
 2.1.0
 * Support for Pan Level Certficates
 * Support for Pushing Entire Certificate Chain to Panorama
