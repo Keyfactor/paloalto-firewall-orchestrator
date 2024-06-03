@@ -18,6 +18,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
@@ -66,6 +68,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return _resolver.Resolve(value);
         }
 
+        static string GetVirtualSystemFromPath(string path)
+        {
+            string pattern = @"vsys/entry\[@name='([^']*)'\]";
+
+            Match match = Regex.Match(path, pattern);
+
+            if (match.Success)
+            {
+                string vsysName = match.Groups[1].Value;
+                return vsysName;
+            }
+            else
+            {
+                return "";
+            }
+        }
+
         private JobResult PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)
         {
             try
@@ -112,9 +131,36 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         {
                             _logger.LogTrace(
                                 $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: {c.PrivateKey?.Length > 0}");
-                            var bindings =
-                                client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, c.Name).Result;
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0,bindings,false);
+
+                            var bindingList=new Dictionary<string,object>();
+                            if (config.CertificateStoreDetails.StorePath.Contains("/vsys"))
+                            {
+                                var vsys = GetVirtualSystemFromPath(config.CertificateStoreDetails.StorePath);
+                                var drBindings = client.GetDecryptionRuleBindings(c.Name, vsys).Result;
+                                var tlsBindings = client.GetTlsProfileBindings(c.Name, vsys).Result;
+                                if (tlsBindings.Length > 0)
+                                {
+                                    var tlsCsv = GetTlsCsv(tlsBindings, c.Name);
+                                    bindingList.Add("TlsProfile", tlsCsv);
+                                }
+
+                                if (drBindings.Length > 0)
+                                {
+                                    var drCsv = GetDrBindingsCsv(drBindings);
+                                    bindingList.Add("DecryptionRule", drCsv);
+                                }
+                            }
+                            else
+                            {
+                                var tlsBindings = client.GetTlsProfileBindings(c.Name).Result;
+                                if (tlsBindings.Length > 0)
+                                {
+                                    var tlsCsv = GetTlsCsv(tlsBindings, c.Name);
+                                    bindingList.Add("TlsProfile", tlsCsv);
+                                }
+                            }
+
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0, bindingList, false);
                         }
                         catch
                         {
@@ -137,9 +183,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         var cert = new X509Certificate2(bytes);
                         _logger.LogTrace(
                             $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
-                        var bindings =
-                            client.GetProfileByCertificate(config.CertificateStoreDetails.StorePath, trustedRootCert.Name).Result;
-                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey,bindings,true));
+                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey,new Dictionary<string, object>(), true));
                     }
                     catch
                     {
@@ -162,6 +206,26 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogError($"PerformInventory Error: {e.Message}");
                 throw;
             }
+        }
+
+        public static string GetDrBindingsCsv(string xmlContent)
+        {
+            XDocument doc = XDocument.Parse(xmlContent);
+            var names = doc.Descendants("entry")
+                .Select(e => e.Attribute("name")?.Value)
+                .Where(name => !string.IsNullOrEmpty(name));
+
+            return string.Join(", ", names);
+        }
+
+        static string GetTlsCsv(string xmlResponse, string certificateName)
+        {
+            XDocument doc = XDocument.Parse(xmlResponse);
+            var entries = doc.Descendants("entry")
+                .Where(e => (string)e.Element("certificate") == certificateName)
+                .Select(e => (string)e.Attribute("name"));
+
+            return string.Join(",", entries);
         }
 
         private JobResult ReturnJobResult(InventoryJobConfiguration config, bool warningFlag, StringBuilder sb)
@@ -194,20 +258,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
-        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, GetProfileByCertificateResponse bindings,bool trustedRoot)
+        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, Dictionary<string,object> bindings,bool trustedRoot)
         {
             try
             {
                 _logger.MethodEntry();
-
-                //Add Entry Params so the show up in the UI Inventory Store Popup
-                var siteSettingsDict = new Dictionary<string, object>
-                {
-                    { "TlsProfileName", string.IsNullOrEmpty(bindings.Result?.Entry?.Name)?"":bindings.Result?.Entry?.Name},
-                    { "TlsMinVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MinVersion?.Text},
-                    { "TlsMaxVersion", string.IsNullOrEmpty(bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text)?"":bindings.Result?.Entry?.ProtocolSettings?.MaxVersion?.Text },
-                    { "Trusted Root", trustedRoot},
-                };
 
                 _logger.LogTrace($"Alias: {alias} Pem: {certPem} PrivateKey: {privateKey}");
                 var acsi = new CurrentInventoryItem
@@ -217,7 +272,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     ItemStatus = OrchestratorInventoryItemStatus.Unknown,
                     PrivateKeyEntry = privateKey,
                     UseChainLevel = false,
-                    Parameters = siteSettingsDict
+                    Parameters = bindings
                 };
 
                 return acsi;

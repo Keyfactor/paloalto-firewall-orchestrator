@@ -69,13 +69,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return regex.IsMatch(input);
         }
 
+        static bool IsValidFirewallVsysFormat(string input)
+        {
+            string pattern = @"^/config/devices/entry\[@name='localhost\.localdomain'\]/vsys/entry\[@name='[^']+'\]$";
+            return Regex.IsMatch(input, pattern);
+
+        }
+
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
             string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
         {
             var errors = string.Empty;
 
             //Check path Validity for either panorama shared location or firewall shared location or panorama level certificates
-            if (storePath != "/config/panorama" && storePath != "/config/shared" && !IsValidPanoramaFormat(storePath))
+            if (storePath != "/config/panorama" && storePath != "/config/shared" && !IsValidPanoramaFormat(storePath) && !IsValidFirewallVsysFormat(storePath))
             {
                 errors +=
                     "Path is invalid needs to be /config/panorama, /config/shared or in format of /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='TemplateName']/config/shared.";

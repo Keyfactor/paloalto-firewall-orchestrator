@@ -48,7 +48,7 @@ namespace PaloAltoTestConsole
 
            
             var arguments = new Dictionary<string, string>();
-            Thread.Sleep(20000);
+            //Thread.Sleep(20000);
             foreach (var argument in args)
             {
                 var splitted = argument.Split('=',2);

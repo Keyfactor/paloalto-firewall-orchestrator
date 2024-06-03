@@ -119,6 +119,26 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<CommitResponse> GetDecryptionRulesByCertName(string certName,string vsysName)
+        {
+            try
+            {
+                var xpath =
+                    $"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{vsysName}']/rulebase/decryption/rules[.//ssl-inbound-inspection='{certName}']";
+
+                var uri =
+                    $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
+
+                var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup)
         {
             try
@@ -233,6 +253,56 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<string> GetDecryptionRuleBindings(string certificateName,string vsysName)
+        {
+            try
+            {
+                var xPath = $"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{vsysName}']/rulebase/decryption/rules[.//ssl-inbound-inspection='{certificateName}']";
+                var uri = $"/api/?type=config&key={ApiKey}&xpath={xPath}";
+                
+                return await GetResponseAsync(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateByName: {e.Message}");
+                throw;
+            }
+        }
+
+
+        public async Task<string> GetTlsProfileBindings(string certificateName, string vsysName)
+        {
+            try
+            {
+                var xPath = $"/config/devices/entry/vsys/entry[@name='{vsysName}']/ssl-tls-service-profile";
+                var uri = $"/api/?type=config&key={ApiKey}&xpath={xPath}";
+
+                return await GetResponseAsync(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateByName: {e.Message}");
+                throw;
+            }
+        }
+
+
+        public async Task<string> GetTlsProfileBindings(string certificateName)
+        {
+            try
+            {
+                var xPath = "/config/shared/ssl-tls-service-profile";
+                var uri = $"/api/?type=config&key={ApiKey}&xpath={xPath}";
+
+                return await GetResponseAsync(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateByName: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath)
         {
             try
@@ -260,6 +330,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 throw;
             }
         }
+
 
         public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string storePath)
         {
@@ -339,6 +410,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 throw;
             }
         }
+
+
 
         private void EnsureSuccessfulResponse(HttpResponseMessage response)
         {
