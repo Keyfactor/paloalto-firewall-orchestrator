@@ -1,12 +1,12 @@
 @echo off
 
-cd C:\Users\bhill\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
-set FWMachine=panoramafw2.eastus.cloudapp.azure.com
-set FWApiUser=bhill
-set FWApiPassword=Keyfactor2019!
-set PAMachine=20.172.165.91
-set PAApiUser=bhill
-set PAApiPassword=Keyfactor2019!
+cd C:\Users\asdf\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
+set FWMachine=asfd
+set FWApiUser=asfd
+set FWApiPassword=asfdsdfa
+set PAMachine=afsd
+set PAApiUser=bhisadfll
+set PAApiPassword=adfssadf
 
 GOTO:PANTemplateVsys
 echo ***********************************
