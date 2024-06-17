@@ -23,10 +23,6 @@
   "ServerPassword": "PasswordGoesHere",
   "UseSSL": true,
   "JobProperties": {
-    "Trusted Root": false,
-    "TlsMinVersion": "TlsMinVersionGoesHere",
-    "TLSMaxVersion": "TlsMaxVersionGoesHere",
-    "TlsProfileName": "ProfileNameGoesHere"
   },
   "JobTypeId": "00000000-0000-0000-0000-000000000000",
   "JobId": "ba6248e2-eb3f-4403-9974-8df0e9f15f98",

@@ -34,9 +34,6 @@ namespace PaloAltoTestConsole
         public static string ClientMachine { get; set; }
         public static string DeviceGroup { get; set; }
         public static string StorePath { get; set; }
-        public static string BindingName { get; set; }
-        public static string TlsMinVersion { get; set; }
-        public static string TlsMaxVersion { get; set; }
         public static string Overwrite { get; set; }
         public static string ManagementType { get; set; }
         public static string CertificateContent { get; set; }
@@ -48,7 +45,7 @@ namespace PaloAltoTestConsole
 
            
             var arguments = new Dictionary<string, string>();
-            //Thread.Sleep(20000);
+            Thread.Sleep(20000);
             foreach (var argument in args)
             {
                 var splitted = argument.Split('=',2);
@@ -117,20 +114,11 @@ namespace PaloAltoTestConsole
                     {
                         if (args.Length > 0)
                         {
-                            BindingName = arguments["-bindingname"];
                             CertAlias = arguments["-certalias"];
-                            TlsMinVersion = arguments["-tlsminversion"];
-                            TlsMaxVersion= arguments["-tlsmaxversion"];
                             Overwrite = arguments["-overwrite"];
                         }
                         else
                         {
-                            Console.WriteLine("Enter Binding Name");
-                            BindingName = Console.ReadLine();
-                            Console.WriteLine("Enter Tls Min Version");
-                            TlsMinVersion = Console.ReadLine();
-                            Console.WriteLine("Enter Tls Max Version");
-                            TlsMaxVersion = Console.ReadLine();
                             Console.WriteLine("Enter Cert Alias");
                             CertAlias = Console.ReadLine();
                             Console.WriteLine("Overwrite (True or False)?");
@@ -225,8 +213,7 @@ namespace PaloAltoTestConsole
             var fileContent = File.ReadAllText("PanoramaMgmt.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
-                .Replace("ClientMachineGoesHere", ClientMachine).Replace("TlsProfileNameGoesHere", BindingName)
-                .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion)
+                .Replace("ClientMachineGoesHere", ClientMachine)
                 .Replace("\"Overwrite\": false",overWriteReplaceString)
                 .Replace("CertificateContentGoesHere", CertificateContent);
             var result =
@@ -239,8 +226,7 @@ namespace PaloAltoTestConsole
             var fileContent = File.ReadAllText("ManagementRemove.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
-                .Replace("ClientMachineGoesHere", ClientMachine).Replace("TlsProfileNameGoesHere", BindingName)
-                .Replace("TlsMaxVersionGoesHere", TlsMaxVersion).Replace("TlsMinVersionGoesHere", TlsMinVersion);
+                .Replace("ClientMachineGoesHere", ClientMachine);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
             return result;

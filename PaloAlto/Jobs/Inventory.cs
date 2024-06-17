@@ -18,11 +18,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -68,23 +65,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return _resolver.Resolve(value);
         }
 
-        static string GetVirtualSystemFromPath(string path)
-        {
-            string pattern = @"vsys/entry\[@name='([^']*)'\]";
-
-            Match match = Regex.Match(path, pattern);
-
-            if (match.Success)
-            {
-                string vsysName = match.Groups[1].Value;
-                return vsysName;
-            }
-            else
-            {
-                return "";
-            }
-        }
-
         private JobResult PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)
         {
             try
@@ -92,12 +72,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry(LogLevel.Debug);
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+                _logger.LogTrace("Got Server User Name and Password");
 
                 var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
                     config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
                     config.JobHistoryId, ServerUserName, ServerPassword);
                 if (!valid) return result;
 
+                _logger.LogTrace("Store Properties are Valid");
                 _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
                 _logger.LogTrace(
                     $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
@@ -131,36 +113,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         {
                             _logger.LogTrace(
                                 $"Building Cert List Inventory Item Alias: {c.Name} Pem: {c.PublicKey} Private Key: {c.PrivateKey?.Length > 0}");
-
-                            var bindingList=new Dictionary<string,object>();
-                            if (config.CertificateStoreDetails.StorePath.Contains("/vsys"))
-                            {
-                                var vsys = GetVirtualSystemFromPath(config.CertificateStoreDetails.StorePath);
-                                var drBindings = client.GetDecryptionRuleBindings(c.Name, vsys).Result;
-                                var tlsBindings = client.GetTlsProfileBindings(c.Name, vsys).Result;
-                                if (tlsBindings.Length > 0)
-                                {
-                                    var tlsCsv = GetTlsCsv(tlsBindings, c.Name);
-                                    bindingList.Add("TlsProfile", tlsCsv);
-                                }
-
-                                if (drBindings.Length > 0)
-                                {
-                                    var drCsv = GetDrBindingsCsv(drBindings);
-                                    bindingList.Add("DecryptionRule", drCsv);
-                                }
-                            }
-                            else
-                            {
-                                var tlsBindings = client.GetTlsProfileBindings(c.Name).Result;
-                                if (tlsBindings.Length > 0)
-                                {
-                                    var tlsCsv = GetTlsCsv(tlsBindings, c.Name);
-                                    bindingList.Add("TlsProfile", tlsCsv);
-                                }
-                            }
-
-                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0, bindingList, false);
+                            
+                            return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0, false);
                         }
                         catch
                         {
@@ -183,7 +137,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         var cert = new X509Certificate2(bytes);
                         _logger.LogTrace(
                             $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
-                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey,new Dictionary<string, object>(), true));
+                        inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey, true));
                     }
                     catch
                     {
@@ -206,26 +160,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogError($"PerformInventory Error: {e.Message}");
                 throw;
             }
-        }
-
-        public static string GetDrBindingsCsv(string xmlContent)
-        {
-            XDocument doc = XDocument.Parse(xmlContent);
-            var names = doc.Descendants("entry")
-                .Select(e => e.Attribute("name")?.Value)
-                .Where(name => !string.IsNullOrEmpty(name));
-
-            return string.Join(", ", names);
-        }
-
-        static string GetTlsCsv(string xmlResponse, string certificateName)
-        {
-            XDocument doc = XDocument.Parse(xmlResponse);
-            var entries = doc.Descendants("entry")
-                .Where(e => (string)e.Element("certificate") == certificateName)
-                .Select(e => (string)e.Attribute("name"));
-
-            return string.Join(",", entries);
         }
 
         private JobResult ReturnJobResult(InventoryJobConfiguration config, bool warningFlag, StringBuilder sb)
@@ -258,7 +192,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
-        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey, Dictionary<string,object> bindings,bool trustedRoot)
+        protected virtual CurrentInventoryItem BuildInventoryItem(string alias, string certPem, bool privateKey,bool trustedRoot)
         {
             try
             {
@@ -271,8 +205,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     Certificates = new[] {certPem},
                     ItemStatus = OrchestratorInventoryItemStatus.Unknown,
                     PrivateKeyEntry = privateKey,
-                    UseChainLevel = false,
-                    Parameters = bindings
+                    UseChainLevel = false
                 };
 
                 return acsi;
