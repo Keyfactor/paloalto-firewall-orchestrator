@@ -584,10 +584,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private string CommitChanges(ManagementJobConfiguration config, PaloAltoClient client, string warnings)
         {
             _logger.MethodEntry();
-            var commitResponse = client.GetCommitResponse();
+            var commitResponse = client.GetCommitResponse().Result;
             _logger.LogTrace("Got client commit response, attempting to log it");
             LogResponse(commitResponse);
-            if (commitResponse.Result.Status == "success")
+            if (commitResponse.Status == "success")
             {
                 _logger.LogTrace("Commit response shows success");
                 //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
@@ -600,16 +600,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
                     Thread.Sleep(120000); //Some delay built in so pushes to devices work
                     _logger.LogTrace("Done sleeping");
-                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
+                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup).Result;
                     _logger.LogTrace("Logging commit response from panorama.");
                     LogResponse(commitAllResponse);
-                    if (commitAllResponse.Result.Status != "success")
-                        warnings += $"The push to firewall devices failed. {commitAllResponse.Result.Text}";
+                    if (commitAllResponse.Status != "success")
+                        warnings += $"The push to firewall devices failed. {commitAllResponse.Text}";
                 }
             }
             else
             {
-                warnings += $"The commit to the device failed. {commitResponse.Result.Text}";
+                warnings += $"The commit to the device failed. {commitResponse.Text}";
             }
 
             return warnings;
