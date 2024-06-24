@@ -174,7 +174,8 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 
 Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Screenshots
 -------|----------|------------------|--------------------|----------------------------|----|--------
-TC1|Firewall Enroll No Bindings|/config/shared|**Alias**:<br>TC1|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
+TC1|Firewall Enroll No Bindings|/config/shared|**Alias**:<br>www.certandchain.com<br>**Overwrite**:<br>false|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
+TC2|Firewall Replace No Bindings|/config/shared|**Alias**:<br>www.certandchain.com<br>**Overwrite**:<br>true|Cert and Chain Installed on Firewall|True|![](images/TC2.gif)
 TC2|Firewall Remove No Bindings|/config/shared|**Alias**:<br>TC1|Cert Removed From Firewall|True|![](images/TC2.gif)
 TC3|Firewall Enroll Bindings|/config/shared|**Alias**:<br>TC3<br>**TLS Min Version**:<br>tls1-0<br>**TLS Max Version**:<br>max<br>**TLS Profile Name**:<br>FirewallOnlyBinding|Cert added to Firewall and Bound to TLS Profile|True|![](images/TC3.gif)
 TC4|Firewall Remove Bound Certificate|/config/shared|N/A|Will not Remove Bound certificate Error Occurs|True|![](images/TC4.gif)
