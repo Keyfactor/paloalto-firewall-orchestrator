@@ -101,6 +101,8 @@ This text would be entered in as the value for the __Server Password__, instead 
 ## Release 2.2 Update on Entry Params
 **Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
 
+**Important Note** Please review the new path considerations in the store section.  It explains how the paths work for Panorama and the Firewalls.  'locahost.localdomain' will always be that constant value.
+
 ## CERT STORE SETUP AND GENERAL PERMISSIONS
 <details>
 	<summary>Cert Store Type Configuration</summary>
