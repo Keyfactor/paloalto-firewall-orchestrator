@@ -157,6 +157,8 @@ Password |Api Password Setup for the user above
 **Important Note** The store path permutations are show below
 
 #### FIREWALL VIRTUAL SYSTEM PATH
+_________________________________
+
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
 
 **localhost.localdomain**: This is a constant value representing the default domain on the firewall.
