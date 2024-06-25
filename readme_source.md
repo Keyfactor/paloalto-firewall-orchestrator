@@ -4,6 +4,22 @@
 	
 In Keyfactor Command create a new Certificate Store Type similar to the one below:
 
+### Release 2.2 Update on Entry Params
+**Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
+
+### Store Path Explanation
+**Important Note** The store path permutations are show below
+
+#### FIREWALL VIRTUAL SYSTEM PATH
+**Path Example: ** /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
+**localhost.localdomain**: This is a constant value representing the default domain on the firewall.
+**vsys1**: This represents a specific virtual system on the firewall.
+
+The complete path is:
+
+/config/devices/entry[@name='localhost.localdomain']: This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
+/vsys/entry[@name='vsys1']: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
+
 #### STORE TYPE CONFIGURATION
 SETTING TAB  |  CONFIG ELEMENT	| DESCRIPTION
 ------|-----------|------------------
