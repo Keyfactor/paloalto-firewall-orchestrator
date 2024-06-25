@@ -50,6 +50,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public Management(IPAMSecretResolver resolver)
         {
             _resolver = resolver;
+            _logger = LogHandler.GetClassLogger<Management>();
+            _logger.LogTrace("Initialized Management with IPAMSecretResolver.");
         }
 
         private string ServerPassword { get; set; }
@@ -65,6 +67,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
             _logger = LogHandler.GetClassLogger<Management>();
+            _logger.LogTrace($"Processing job with configuration: {JsonConvert.SerializeObject(jobConfiguration)}");
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
@@ -75,6 +78,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private string ResolvePamField(string name, string value)
         {
             _logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
+
             return _resolver.Resolve(value);
         }
 
@@ -85,10 +89,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry();
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
+
                 _logger.LogTrace("Validating Store Properties for Management Job");
+
                 var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
                     config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
                     config.JobHistoryId, ServerUserName, ServerPassword);
+
+                _logger.LogTrace($"Validated Store Properties and valid={valid}");
+
                 if (!valid) return result;
                 _logger.LogTrace("Validated Store Properties for Management Job");
                 
@@ -106,6 +115,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace($"Add Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformAddition(config);
                     _logger.LogTrace("Finished Perform Addition Function");
+
                 }
                 else if (config.OperationType.ToString() == "Remove")
                 {
@@ -113,6 +123,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace($"Remove Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformRemoval(config);
                     _logger.LogTrace("Finished Perform Removal Function");
+
                 }
 
                 return complete;
@@ -151,6 +162,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 }
 
                 _logger.LogTrace(
+
                 $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 if (!DeleteCertificate(config, client, warnings, out var deleteResult)) return deleteResult;
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
@@ -158,9 +170,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
+
                 {
+                    _logger.LogTrace("Warnings Found");
                     deleteResult.FailureMessage = warnings;
                     deleteResult.Result = OrchestratorJobStatusJobResult.Warning;
+
                 }
 
                 return deleteResult;
@@ -175,6 +190,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 };
             }
         }
+
 
         private bool SetPanoramaTarget(ManagementJobConfiguration config, PaloAltoClient client)
         {
@@ -200,13 +216,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private bool IsPanoramaDevice(ManagementJobConfiguration config)
         {
             _logger.MethodEntry();
+
             return config.CertificateStoreDetails.StorePath.Length > 1;
         }
 
         private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client, string certificateName)
         {
+            _logger.MethodEntry();
             try
             {
+
                 _logger.MethodEntry();
                 _logger.LogTrace("Getting list to check for duplicates");
                 var rawCertificatesResult = client.GetCertificateList(
@@ -217,6 +236,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
                 _logger.LogTrace("Searched for duplicates in the list");
+
                 _logger.MethodExit();
                 return certificatesResult.Count > 0;
 
@@ -381,6 +401,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         }
 
                         return ReturnJobResult(config, warnings,true, errorMsg);
+
                     }
 
                     return new JobResult
@@ -620,7 +641,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         {
             _logger.MethodEntry();
             _logger.LogTrace("Decode the base64-encoded chain to get the bytes");
+
             byte[] certificateChainBytes = Convert.FromBase64String(jobCertificate);
+            _logger.LogTrace($"Cert Chain Bytes: {certificateChainBytes}");
 
             _logger.LogTrace("Create a collection to hold the certificates");
             X509Certificate2Collection certificateCollection = new X509Certificate2Collection();
@@ -641,15 +664,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace("Add intermediate certificates to the ordered list and mark them as intermediate");
             foreach (X509Certificate2 certificate in certificateCollection)
             {
+
                 _logger.LogTrace("Exclude root certificate");
                 if (!certificate.Equals(rootCertificate))
                 {
                     _logger.LogTrace("Check if the certificate is not the leaf certificate");
+
                     bool isLeaf = true;
                     foreach (X509Certificate2 potentialIssuer in certificateCollection)
                     {
-                        if (certificate.Subject == potentialIssuer.Issuer && !potentialIssuer.Equals(certificate))
+                        _logger.LogTrace("Check if the certificate is not the leaf certificate");
+                        if (certificate?.Subject == potentialIssuer?.Issuer && potentialIssuer!=null && !potentialIssuer.Equals(certificate))
                         {
+                            _logger.LogTrace("Leaf is false");
                             isLeaf = false;
                             break;
                         }
@@ -658,6 +685,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("If the certificate is not the leaf certificate, add it as an intermediate certificate");
                     if (!isLeaf)
                     {
+                        _logger.LogTrace("If the certificate is not the leaf certificate, add it as an intermediate certificate");
                         orderedCertificates.Add((certificate, "intermediate"));
                     }
                 }
@@ -666,8 +694,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace("Add leaf certificates to the ordered list");
             foreach (X509Certificate2 certificate in certificateCollection)
             {
+                _logger.LogTrace("Check for add leaf certificates to the ordered list");
                 if (!orderedCertificates.Exists(c => c.certificate != null && c.certificate.Equals(certificate)))
                 {
+                    _logger.LogTrace("Added leaf certificates to the ordered list");
                     orderedCertificates.Add((certificate, "leaf"));
                 }
             }
@@ -710,6 +740,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
             _logger.MethodExit();
             return null; // Return null if CN is not found
+
         }
 
         private bool IsRootCertificate(X509Certificate2 certificate, X509Certificate2Collection certificates)
@@ -733,9 +764,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 return true;
             }
             _logger.LogTrace("false");
+
             _logger.MethodExit();
             return false;
         }
+
 
         private string ExportToPem(X509Certificate2 certificate)
         {
@@ -749,14 +782,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return builder.ToString();
         }
 
+
         private ErrorSuccessResponse SetTrustedRoot(string jobCertificateAlias, PaloAltoClient client,
             string templateName)
         {
-            _logger.MethodEntry(LogLevel.Debug);
+            _logger.MethodEntry();
             try
             {
-
+                _logger.LogTrace("Setting Trusted Root");
                 var result = client.SubmitSetTrustedRoot(jobCertificateAlias, templateName);
+                _logger.LogTrace("Trusted Root Set");
                 _logger.LogTrace(result.Result.LineMsg.Line.Count > 0
                     ? $"Set Trusted Root Response {string.Join(" ,", result.Result.LineMsg.Line)}"
                     : $"Set Trusted Root Response {result.Result.LineMsg.StringMsg}");
