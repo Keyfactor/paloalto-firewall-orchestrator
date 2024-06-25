@@ -29,12 +29,7 @@ ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       
 DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
 
 #### ENTRY PARAMETERS FOR STORE TYPE
-NAME          |  DISPLAY NAME	| TYPE           | DEFAULT VALUE | DEPENDS ON | REQUIRED WHEN |DESCRIPTION
---------------|-----------------|----------------|-------------- |-------------|---------------|--------------
-TlsMinVersion |TLS Min Version  |Multiple Choice |               |Unchecked    |No             |Min TLS Version for the Binding (,tls1-0,tls1-1,tls1-2) note first multiple choice item is empty
-TlsMaxVersion |TLS Max Version  |Multiple Choice |               |Unchecked    |No             |Max TLS Version for the Binding (,tls1-0,tls1-1,tls1-2,max) note first multiple choice item is empty
-TlsProfileName|TLS Profile Name |String          |               |Unchecked    |No             |Name of the binding to deploy certificate to
-ServerUseSsl  |Use SSL          |Bool            |True           |Unchecked    |Yes            |Requires SSL Connection
+The entry parameters for this version have been eliminated.  It will not longer support new bindings but will just update existing bindings when the certificate is replaced.
 
 </details>
 
@@ -77,18 +72,24 @@ Case Number|Case Name|Store Path|Enrollment Params|Expected Results|Passed|Scree
 TC1|Firewall Enroll No Bindings|/config/shared|**Alias**:<br>www.certandchain.com<br>**Overwrite**:<br>false|Cert and Chain Installed on Firewall|True|![](images/TC1.gif)
 TC2|Firewall Replace No Bindings|/config/shared|**Alias**:<br>www.certandchain.com<br>**Overwrite**:<br>true|Cert and Chain Installed on Firewall|True|![](images/TC2.gif)
 TC3|Firewall Remove Bound Certificate|/config/shared|**Alias**:<br>0.13757535891685202<br>**Overwrite**:<br>false|Cert will **not** be removed because bound|True|![](images/TC3.gif)
-TC4|Firewall Enroll Bindings|/config/shared|**Alias**:0.13757535891685202<br>**Overwrite**:<br>false|Will not replace cert since Overwrite=false|True|![](images/TC3.gif)
-TC4|Firewall Remove Bound Certificate|/config/shared|N/A|Will not Remove Bound certificate Error Occurs|True|![](images/TC4.gif)
-TC5|Firewall One Click Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC5.gif)
-TC6|Firewall Configure Renew Bound Cert|/config/shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC6.gif)
-TC7|Firewall Invalid Store Path|/config|N/A|Errors out with Invalid path.|True|![](images/TC7.gif)
-TC8|Firewall Inventory|/config/shared|N/A|Job Completes with Inventory of certificates from Firewall.|True|![](images/TC8.gif)
-TC9|Panorama Template Enroll No Bindings|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config<br>/shared|**Alias**:<br>TC9|Cert and Chain Installed on Panorama Template and pushed to the firewall.|True|![](images/TC9.gif)
-TC10|Panorama Template Remove No Bindings|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config<br>/shared|**Alias**:<br>TC9|Cert Removed From Panorama and pushed to firewalls|True|![](images/TC10.gif)
-TC11|Panorama Template Enroll Bindings|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template/entry[@name=<br>'CertificatesTemplate']<br>/config<br>/shared|**Alias**:<br>TC11<br>**TLS Min Version**:<br>tls1-0<br>**TLS Max Version**:<br>max<br>**TLS Profile Name**:<br>TestBindings|Cert added to Pan Template, Bound to TLS Profile and pushed to firewalls|True|![](images/TC11.gif)
-TC12|Panorama Template Remove Bound Certificate|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config/<br>shared|N/A|Will Not Remove Certificate because it is bound.  Error will show.|True|![](images/TC12.gif)
-TC13|Panorama Template One Click Renew Bound Cert|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config/<br>shared|N/A|Renews cert create with new name bind.  Leave old one around.  Push to Firewalls|True|![](images/TC13.gif)
-TC14|Panorama Template Configure Renew Bound Cert|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config/<br>shared|N/A|Renews cert create with new name bind.  Leave old one around.|True|![](images/TC14.gif)
+TC4|Firewall Enroll Bindings|/config/shared|**Alias**:0.13757535891685202<br>**Overwrite**:<br>false|Will not replace cert since Overwrite=false|True|![](images/TC4.gif)
+TC5|Firewall Replace Bound Certificate|/config/shared|**Alias**:0.13757535891685202<br>**Overwrite**:<br>true|Will replace cert bindings get automatically updated since Overwrite=true|True|![](images/TC5.gif)
+TC6|Firewall Inventory|/config/shared|N/A|Inventory will finish and certs from shared location inventoried.|True|![](images/TC6.gif)
+TC7|Firewall Inventory With Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|N/A|Will Inventory all certificates from vsys1 on firewall|True|![](images/TC7.gif)
+TC8|Firewall Enroll cert and chain to Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|**Alias**:<br>www.ejbcacertandchain.com|Cert is installed along with chain.|True|![](images/TC8.gif)
+TC9|Firewall Remove unbound cert from Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|N/A|Will remove cert from test case 8 from Firewall Virtual System|True|![](images/TC9.gif)
+TC10|Firewall Remove bound cert from Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|**Alias**:<br>0.8168##|Cert will not be removed because it is bound.|True|![](images/TC10.gif)
+TC11|Firewall Replace without Overwrite on Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|**Alias**:<br>0.8168##<br>**Overwrite**:<br>true|User is warned Overwrite needs checked.|True|![](images/TC11.gif)
+TC12|Firewall Renew cert on Shared and Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1'] and /config/shared|**Alias**:<br>www.renewtester.com|Cert renewed on vsys and shared locations|True|![](images/TC12.gif)
+TC13|Firewall Replace bound cert on Virtual System|/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']|**Alias**:<br>0.8168##<br>**Overwrite**:<br>true|Cert will be replaced and binding updated on vsys.|True|![](images/TC13.gif)
+TC14|Panorama Template Enroll Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.pantemptc1.com|Certificate is enrolled to shared location for template|True|![](images/TC14.gif)
+TC15|Panorama Template Replace Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.pantemptc1.com<br>**Overwrite**:<br>true|Certificate is replaced in shared location for template|True|![](images/TC15.gif)
+TC16|Panorama Template Remove unbound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.pantemptc1.com|Certificate is removed from shared location for template|True|![](images/TC16.gif)
+TC17|Panorama Template Replace bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>LongNameTest<br>**Overwrite**:<br>true|Certificate is replaced, binding updated in shared location for template|True|![](images/TC17.gif)
+TC18|Panorama Template Remove bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>LongNameTest|Certificate is not removed because it is bound|True|![](images/TC18.gif)
+TC19|Panorama Template Shared Inventory|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Certificates are inventoried from this location|True|![](images/TC19.gif)
+TC19|Panorama Template Virtual System Inventory|/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']|N/A|Certificates are inventoried from this template vsys location|True|![](images/TC20.gif)
+
 TC15|Panorama Template Invalid **Template** in Store Path|/config<br>/devices<br>/entry[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate1']<br>/config/<br>shared|N/A|Errors out saying template does not exist|True|![](images/TC15.gif)
 TC16|Panorama Template Invalid Store Path|/config<br>/devices[@name=<br>'CertificatesTemplate1']<br>/config<br>/shared|N/A|Errors out saying invalid path|True|![](images/TC16.gif)
 TC17|Panorama Template Inventory|/config<br>/devices<br>/entry<br>[@name=<br>'localhost.localdomain']<br>/template<br>/entry[@name=<br>'CertificatesTemplate']<br>/config<br>/<br>shared|N/A|Job Completes with Inventory of certificates from Panorama Template.|True|![](images/TC17.gif)
