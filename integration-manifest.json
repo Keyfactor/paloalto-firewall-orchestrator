@@ -84,9 +84,6 @@
 					},
 					"PrivateKeyAllowed": "Optional",
 					"JobProperties": [
-						"TlsMinVersion",
-						"TLSMaxVersion",
-						"TlsProfileName"
 					],
 					"ServerRequired": true,
 					"PowerShell": false,
