@@ -46,7 +46,7 @@ CONFIG ELEMENT	|DESCRIPTION
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
 Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
 Client Machine	|The hostname of the Panorama or Firewall.  Sample is "palourl.cloudapp.azure.com".
-Store Path	| **Panorama Level Certs:**<br>/config/panorama<br>**Firewall Certs:**<br>/config/shared<br>**Panorama Template Certs:**<br>/config<br>/devices<br>/entry[@name='localhost.localdomain']<br>/template<br>/entry[@name='CertificatesTemplate']<br>/config<br>/shared<br> if using Panorama Templates where 'CertificateTemplate' is the actual name of the template
+Store Path	| See Store Path Explanation Section Below
 Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
 Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
 Use SSL	|This should be checked.
@@ -55,6 +55,11 @@ Password |Api Password Setup for the user above
 
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
+
+#### FIREWALL SHARED SYSTEM PATH
+_________________________________
+
+**Path Example** /config/shared
 
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
@@ -65,9 +70,32 @@ _________________________________
 
 **vsys1**: This represents a specific virtual system on the firewall.
 
-**/config/devices/entry[@name='localhost.localdomain']**: This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
+**/config/devices/entry[@name='localhost.localdomain']**: localhost.localdomain is the constant string verbatium, will never change.  This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
 
 **/vsys/entry[@name='vsys1']**: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
+
+#### PANORAMA SHARED TEMPLATE PATH
+_________________________________
+**Path Example**: /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared
+
+**/config**:
+This section indicates that the path is within the configuration section of the Panorama device. It contains all the configuration settings and parameters for the device.
+
+**/devices**:
+This part specifies that the configuration relates to devices managed by Panorama. Panorama can manage multiple devices, such as firewalls.
+
+**/entry[@name='localhost.localdomain']**:
+The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the device.
+
+**/template**:
+This section indicates that the path is within the templates section. Templates in Panorama are used to define configuration settings that can be applied to multiple devices.
+
+**/entry[@name='CertificatesTemplate']**:
+The entry tag with the attribute @name='CertificatesTemplate' identifies a specific template by its name. In this case, it refers to a template named "CertificatesTemplate."
+
+**/config/shared**:
+This part of the path indicates that the configuration settings within this template are shared settings. Shared settings are common configurations that can be used across multiple devices or contexts within the Panorama management system.
+
 
 </details>
 
