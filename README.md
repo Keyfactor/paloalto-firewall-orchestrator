@@ -156,7 +156,7 @@ Password |Api Password Setup for the user above
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
 
-#### FIREWALL SHARED SYSTEM PATH
+#### <u>FIREWALL SHARED SYSTEM PATH</u>
 
 **Path Example** /config/shared
 _________________________________
