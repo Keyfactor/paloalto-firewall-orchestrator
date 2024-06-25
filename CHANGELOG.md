@@ -1,3 +1,9 @@
+2.2.0
+* Removed support for binding cert to new binding location, can only update certs that are previously bound
+* Support for replacing certs on all binding locations both Panorama and Firewalls as long as it was there before
+* Support for Virtual Systems on Firewalls, tested with only Azure Virtual Version of Firewall
+* Support for Virtual Systems on Panorama Templates
+
 2.1.0
 * Support for Pan Level Certficates
 * Support for Pushing Entire Certificate Chain to Panorama
