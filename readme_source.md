@@ -59,7 +59,14 @@ Password |Api Password Setup for the user above
 #### FIREWALL SHARED SYSTEM PATH
 _________________________________
 **Path Example** /config/shared
+
+**/config**:
+This indicates that the path is within the configuration section of the firewall device. It contains all the configuration settings and parameters for the device.
+
+**/shared**:
+This section specifies that the path is within the shared settings. Shared settings are common configurations that can be used across multiple virtual systems (vsys) or contexts within the firewall.
 _________________________________
+
 
 
 
@@ -67,14 +74,22 @@ _________________________________
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
 
-**localhost.localdomain**: This is a constant value representing the default domain on the firewall.
+**/config**:
+This indicates that the path is within the configuration section of the firewall device. It contains all the configuration settings and parameters for the device.
 
-**vsys1**: This represents a specific virtual system on the firewall.
+**/devices**:
+This part specifies that the configuration relates to devices. In the context of a single firewall, this generally refers to the firewall itself.
 
-**/config/devices/entry[@name='localhost.localdomain']**: localhost.localdomain is the constant string verbatium, will never change.  This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
+**/entry[@name='localhost.localdomain']**:
+The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the firewall device.
 
-**/vsys/entry[@name='vsys1']**: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
+**/vsys**:
+This section specifies that the path is within the virtual systems (vsys) section. Virtual systems allow multiple virtualized instances of firewall configurations within a single physical firewall.
+
+**/entry[@name='vsys1']**:
+The entry tag with the attribute @name='vsys1' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys1."
 _________________________________
+
 
 
 
@@ -100,6 +115,55 @@ The entry tag with the attribute @name='CertificatesTemplate' identifies a speci
 **/config/shared**:
 This part of the path indicates that the configuration settings within this template are shared settings. Shared settings are common configurations that can be used across multiple devices or contexts within the Panorama management system.
 _________________________________
+
+
+
+
+#### PANORAMA VIRTUAL SYSTEM PATH
+__________________________________
+**Path Example**: /config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']
+
+**/config**:
+This indicates that the path is within the configuration section of the Panorama device. It contains all the configuration settings and parameters for the device.
+
+**/devices**:
+This part specifies that the configuration relates to devices managed by Panorama. Panorama can manage multiple devices, such as firewalls.
+
+**/entry**:
+This is a generic entry point under devices. However, since it does not have a @name attribute specified at this level, it applies to the broader device category.
+
+**/template**:
+This section indicates that the path is within the templates section. Templates in Panorama are used to define configuration settings that can be applied to multiple devices.
+
+**/entry[@name='CertificatesTemplate']**:
+The entry tag with the attribute @name='CertificatesTemplate' identifies a specific template by its name. In this case, it refers to a template named "CertificatesTemplate."
+
+**/config/devices**:
+This part of the path specifies that the configuration settings within this template apply to devices.
+
+**/entry**:
+This again specifies a generic entry point under devices in the context of the template. This would typically be further defined by specific device attributes, but here it leads to the virtual systems (vsys) section.
+
+**/vsys**:
+This section specifies that the path is within the virtual systems (vsys) section. Virtual systems allow multiple virtualized instances of firewall configurations within a single physical firewall.
+
+**/entry[@name='vsys2']**:
+The entry tag with the attribute @name='vsys2' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys2."
+__________________________________
+
+
+
+
+#### PANORAMA LEVEL
+__________________________________
+**Path Example**: /config/panorama
+
+**/config**:
+This indicates that the path is within the configuration section of the Panorama device. It contains all the configuration settings and parameters for the device.
+
+**/panorama**:
+This section specifies that the path is within the Panorama-specific configuration settings. This part of the configuration contains settings that are specific to the Panorama management system itself, rather than the devices it manages.
+__________________________________
 
 </details>
 
