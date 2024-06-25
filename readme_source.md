@@ -57,14 +57,15 @@ Password |Api Password Setup for the user above
 **Important Note** The store path permutations are show below
 
 #### FIREWALL VIRTUAL SYSTEM PATH
-*Path Example*: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
+**Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
 
-*localhost.localdomain*: This is a constant value representing the default domain on the firewall.
+**localhost.localdomain**: This is a constant value representing the default domain on the firewall.
 
-*vsys1*: This represents a specific virtual system on the firewall.
+**vsys1**: This represents a specific virtual system on the firewall.
 
-/config/devices/entry[@name='localhost.localdomain']: This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
-/vsys/entry[@name='vsys1']: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
+**/config/devices/entry[@name='localhost.localdomain']**: This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
+
+**/vsys/entry[@name='vsys1']**: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
 
 </details>
 
