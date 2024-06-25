@@ -1,135 +1,96 @@
 {
-  "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
-  "integration_type": "orchestrator",
-  "name": "Palo Alto Orchestrator",
-  "status": "production",
-  "update_catalog": true,
-  "link_github": true,
-  "support_level": "kf-supported",
-  "description": "The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.  It supports adding certificates with or without private keys.  Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.",
-  "about": {
-    "orchestrator": {
-      "UOFramework": "10.1",
-      "pam_support": true,
-      "win": {
-        "supportsCreateStore": false,
-        "supportsDiscovery": false,
-        "supportsManagementAdd": true,
-        "supportsManagementRemove": true,
-        "supportsReenrollment": false,
-        "supportsInventory": true,
-        "platformSupport": "Unused"
-      },
-      "linux": {
-        "supportsCreateStore": false,
-        "supportsDiscovery": false,
-        "supportsManagementAdd": false,
-        "supportsManagementRemove": false,
-        "supportsReenrollment": false,
-        "supportsInventory": false,
-        "platformSupport": "Unused"
-      },
-      "store_types": [
-        {
-        "Name": "PaloAlto",
-        "ShortName": "PaloAlto",
-        "Capability": "PaloAlto",
-        "LocalStore": false,
-        "SupportedOperations": {
-        "Add": true,
-        "Create": false,
-        "Discovery": false,
-        "Enrollment": false,
-        "Remove": true
-        },
-        "Properties": [
-        {
-        "Name": "ServerUsername",
-        "DisplayName": "Server Username",
-        "Type": "Secret",
-        "DependsOn": null,
-        "DefaultValue": null,
-        "Required": false
-        },
-        {
-        "Name": "ServerPassword",
-        "DisplayName": "Server Password",
-        "Type": "Secret",
-        "DependsOn": null,
-        "DefaultValue": null,
-        "Required": false
-        },
-        {
-        "Name": "ServerUseSsl",
-        "DisplayName": "Use SSL",
-        "Type": "Bool",
-        "DependsOn": null,
-        "DefaultValue": "true",
-        "Required": true
-        },
-        {
-        "Name": "DeviceGroup",
-        "DisplayName": "Device Group",
-        "Type": "String",
-        "DependsOn": null,
-        "DefaultValue": null,
-        "Required": false
-        }
-        ],
-        "EntryParameters": [
-        {
-        "Name": "TlsMinVersion",
-        "DisplayName": "TLS Min Version",
-        "Type": "MultipleChoice",
-        "RequiredWhen": {
-        "HasPrivateKey": false,
-        "OnAdd": false,
-        "OnRemove": false,
-        "OnReenrollment": false
-        },
-        "Options": ",tls1-0,tls1-1,tls1-2"
-        },
-        {
-        "Name": "TLSMaxVersion",
-        "DisplayName": "TLS Max Version",
-        "Type": "MultipleChoice",
-        "RequiredWhen": {
-        "HasPrivateKey": false,
-        "OnAdd": false,
-        "OnRemove": false,
-        "OnReenrollment": false
-        },
-        "Options": ",tls1-0,tls1-1,tls1-2,max"
-        },
-        {
-        "Name": "TlsProfileName",
-        "DisplayName": "TLS Profile Name",
-        "Type": "String",
-        "RequiredWhen": {
-        "HasPrivateKey": false,
-        "OnAdd": false,
-        "OnRemove": false,
-        "OnReenrollment": false
-        }
-        }
-        ],
-        "PasswordOptions": {
-        "EntrySupported": false,
-        "StoreRequired": false,
-        "Style": "Default"
-        },
-        "PrivateKeyAllowed": "Optional",
-        "JobProperties": [
-        "TlsMinVersion",
-        "TLSMaxVersion",
-        "TlsProfileName"
-        ],
-        "ServerRequired": true,
-        "PowerShell": false,
-        "BlueprintAllowed": false,
-        "CustomAliasAllowed": "Required"
-        }
-        ]
-    }
-  }
+"$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+"integration_type": "orchestrator",
+"name": "Palo Alto Orchestrator",
+"status": "production",
+"update_catalog": true,
+"link_github": true,
+"support_level": "kf-supported",
+"description": "The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.  It supports adding certificates with or without private keys.  Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.",
+"about": {
+"orchestrator": {
+"UOFramework": "10.1",
+"pam_support": true,
+"win": {
+"supportsCreateStore": false,
+"supportsDiscovery": false,
+"supportsManagementAdd": true,
+"supportsManagementRemove": true,
+"supportsReenrollment": false,
+"supportsInventory": true,
+"platformSupport": "Unused"
+},
+"linux": {
+"supportsCreateStore": false,
+"supportsDiscovery": false,
+"supportsManagementAdd": false,
+"supportsManagementRemove": false,
+"supportsReenrollment": false,
+"supportsInventory": false,
+"platformSupport": "Unused"
+},
+"store_types": [
+{
+"Name": "PaloAlto",
+"ShortName": "PaloAlto",
+"Capability": "PaloAlto",
+"LocalStore": false,
+"SupportedOperations": {
+"Add": true,
+"Create": false,
+"Discovery": false,
+"Enrollment": false,
+"Remove": true
+},
+"Properties": [
+{
+"Name": "ServerUsername",
+"DisplayName": "Server Username",
+"Type": "Secret",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+},
+{
+"Name": "ServerPassword",
+"DisplayName": "Server Password",
+"Type": "Secret",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+},
+{
+"Name": "ServerUseSsl",
+"DisplayName": "Use SSL",
+"Type": "Bool",
+"DependsOn": null,
+"DefaultValue": "true",
+"Required": true
+},
+{
+"Name": "DeviceGroup",
+"DisplayName": "Device Group",
+"Type": "String",
+"DependsOn": null,
+"DefaultValue": null,
+"Required": false
+}
+],
+"EntryParameters": [],
+"PasswordOptions": {
+"EntrySupported": false,
+"StoreRequired": false,
+"Style": "Default"
+},
+"PrivateKeyAllowed": "Optional",
+"JobProperties": [
+],
+"ServerRequired": true,
+"PowerShell": false,
+"BlueprintAllowed": false,
+"CustomAliasAllowed": "Required"
+}
+]
+}
+}
 }

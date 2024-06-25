@@ -18,13 +18,11 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Requests;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -59,7 +57,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private string ServerPassword { get; set; }
 
         private JobProperties StoreProperties { get; set; }
-        private JobEntryParams JobEntryParams { get; set; }
 
         private string ServerUserName { get; set; }
 
@@ -74,16 +71,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
-            var json = JsonConvert.SerializeObject(jobConfiguration.JobProperties, Formatting.Indented);
-            
-            _logger.LogTrace($"Job Properties: {json}");
 
-            JobEntryParams = JsonConvert.DeserializeObject<JobEntryParams>(
-                json, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
-            
-            
-            
-            _logger.MethodExit();
             return PerformManagement(jobConfiguration);
         }
 
@@ -102,8 +90,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
 
-                _logger.LogTrace("Validating Store Properties");
-                
+                _logger.LogTrace("Validating Store Properties for Management Job");
+
                 var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
                     config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
                     config.JobHistoryId, ServerUserName, ServerPassword);
@@ -111,7 +99,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace($"Validated Store Properties and valid={valid}");
 
                 if (!valid) return result;
-
+                _logger.LogTrace("Validated Store Properties for Management Job");
+                
                 var complete = new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
@@ -125,14 +114,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("Adding...");
                     _logger.LogTrace($"Add Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformAddition(config);
-                    _logger.LogTrace("Finished Adding...");
+                    _logger.LogTrace("Finished Perform Addition Function");
+
                 }
                 else if (config.OperationType.ToString() == "Remove")
                 {
                     _logger.LogTrace("Removing...");
                     _logger.LogTrace($"Remove Config Json {JsonConvert.SerializeObject(config)}");
                     complete = PerformRemoval(config);
-                    _logger.LogTrace("Finished Removing...");
+                    _logger.LogTrace("Finished Perform Removal Function");
+
                 }
 
                 return complete;
@@ -158,20 +149,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
                         ServerUserName, ServerPassword); //Api base URL Plus Key
+                _logger.LogTrace("Palo Alto Client Created");
+
+                if (!SetPanoramaTarget(config, client))
+                {
+                    return new JobResult
+                    {
+                        Result = OrchestratorJobStatusJobResult.Failure,
+                        JobHistoryId = config.JobHistoryId,
+                        FailureMessage = "Failed To Set Target for Panorama"
+                    };
+                }
 
                 _logger.LogTrace(
-                    $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
+
+                $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 if (!DeleteCertificate(config, client, warnings, out var deleteResult)) return deleteResult;
-                _logger.LogTrace("Committing Changes");
+                _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
                 warnings = CommitChanges(config, client, warnings);
-                _logger.LogTrace("Committed Changes");
-                if (warnings.Length > 0)
+                _logger.LogTrace("Finished Committing Changes.....");
+
+                if (warnings?.Length > 0)
+
                 {
                     _logger.LogTrace("Warnings Found");
                     deleteResult.FailureMessage = warnings;
                     deleteResult.Result = OrchestratorJobStatusJobResult.Warning;
+
                 }
-                _logger.MethodExit();
+
                 return deleteResult;
             }
             catch (Exception e)
@@ -185,9 +191,32 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
+
+        private bool SetPanoramaTarget(ManagementJobConfiguration config, PaloAltoClient client)
+        {
+            _logger.MethodEntry();
+            if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath))
+            {
+                _logger.LogTrace("Trying to Set Panorama Target for Template Vsys Configuration");
+                var targetResult = client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath).Result;
+                _logger.LogTrace("Completed Set Panorama Target for Template Vsys Configuration");
+                if (targetResult != null && targetResult.Status.Equals("error", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    {
+                        var error = targetResult.LineMsg != null ? Validators.BuildPaloError(targetResult):"Could not retrieve error results";
+                        _logger.LogTrace($"Could not set target for Panorama vsys {error}");
+                        return false;
+                    }
+                }
+            }
+            _logger.MethodExit();
+            return true;
+        }
+
         private bool IsPanoramaDevice(ManagementJobConfiguration config)
         {
             _logger.MethodEntry();
+
             return config.CertificateStoreDetails.StorePath.Length > 1;
         }
 
@@ -196,14 +225,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.MethodEntry();
             try
             {
-                _logger.LogTrace("checking for cert list");
+
+                _logger.MethodEntry();
+                _logger.LogTrace("Getting list to check for duplicates");
                 var rawCertificatesResult = client.GetCertificateList(
                         $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
                     .Result;
-                LogResponse(rawCertificatesResult);
-                _logger.LogTrace("Checked for cert list");
+                _logger.LogTrace("Got list to check for duplicates");
+
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
+                _logger.LogTrace("Searched for duplicates in the list");
+
                 _logger.MethodExit();
                 return certificatesResult.Count > 0;
 
@@ -223,9 +256,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 _logger.MethodEntry();
                 var warnings = string.Empty;
-                var success = false;
-
-                //Store path is "/" for direct integration with Firewall or the Template Name for integration with Panorama
+ 
                 if (config.CertificateStoreDetails.StorePath.Length > 0)
                 {
                     _logger.LogTrace(
@@ -236,6 +267,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             ServerUserName, ServerPassword); //Api base URL Plus Key
                     _logger.LogTrace(
                         "Palo Alto Client Created");
+
+                    if (!SetPanoramaTarget(config, client))
+                    {
+                        return new JobResult
+                        {
+                            Result = OrchestratorJobStatusJobResult.Failure,
+                            JobHistoryId = config.JobHistoryId,
+                            FailureMessage = "Failed To Set Target for Panorama"
+                        };
+                    }
+
+                    _logger.LogTrace(
+                        "Finished SetPanoramaTarget Function.");
 
                     var duplicate = CheckForDuplicate(config, client, config.JobCertificate.Alias);
                     _logger.LogTrace($"Duplicate? = {duplicate}");
@@ -253,47 +297,69 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         var certPem = GetPemFile(config);
                         _logger.LogTrace($"Got certPem {certPem}");
 
-                        _logger.LogTrace("About to check chain info");
+
                         //1. Get the chain in a list starting with root first, any intermediate then leaf
-                        var orderedChainList = GetCertificateChain(config.JobCertificate?.Contents, config.JobCertificate?.PrivateKeyPassword);
-                        _logger.LogTrace("Checked chain info");
-                        var alias = config.JobCertificate.Alias;
+                        var orderedChainList = GetCertificateChain(config.JobCertificate.Contents, config.JobCertificate.PrivateKeyPassword);
+                        var alias = config.JobCertificate?.Alias;
+
                         _logger.LogTrace($"Alias {alias}");
-
-                        //1. If the leaf cert is a duplicate then you rename the cert and update it.  So you don't have to delete tls profile and cause downtime
-                        if (duplicate)
-                        {
-                            _logger.LogTrace("Duplicate!");
-                            alias = GenerateName(alias); //fix name length 
-                            _logger.LogTrace($"New Alias {alias}");
-                        }
-
+                        
                         //2. Check palo alto for existing thumbprints of anything in the chain
-                        _logger.LogTrace("Checking for existing thumbprints of anything in the chain");
                         var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
-                        LogResponse(rawCertificatesResult);
-                        _logger.LogTrace("Checked for existing thumbprints of anything in the chain");
-                        List<X509Certificate2> certificates = new List<X509Certificate2>();
+                        _logger.LogTrace("Got Raw Certificate Results");
                         ErrorSuccessResponse content = null;
                         string errorMsg = string.Empty;
 
+                        var caDict = new Dictionary<string, string>();
+                        //1. Get a list of CAs with Thumbprints returned from The Palo Alto Device 
+                        if (rawCertificatesResult != null)
+                        {
+                            _logger.LogTrace("Logging Raw Certificate Results");
+                            LogResponse(rawCertificatesResult);
+                            foreach (var cert in rawCertificatesResult.CertificateResult.Entry)
+                            {
+                                if (cert.PublicKey != null && cert.Ca.Equals("yes",StringComparison.CurrentCultureIgnoreCase))
+                                {
+                                    var pemContent = cert.PublicKey;
+                                    pemContent = Regex.Replace(pemContent, "-----BEGIN CERTIFICATE-----", string.Empty);
+                                    pemContent = Regex.Replace(pemContent, "-----END CERTIFICATE-----", string.Empty);
+                                    _logger.LogTrace(pemContent);
+
+                                    // Convert the PEM string to a byte array
+                                    var certBytes = Convert.FromBase64String(pemContent);
+                                    // Create an X509Certificate2 object from the byte array
+                                    X509Certificate2 certificate = new X509Certificate2(certBytes);
+
+                                    if (certificate.Thumbprint != null && !caDict.ContainsKey(certificate.Thumbprint))
+                                    {
+                                        _logger.LogTrace($"Adding Thumbprint To Dictionary {certificate.Thumbprint} for {certificate.Subject}");
+                                        caDict.Add(certificate.Thumbprint, cert.Name);
+                                    }
+                                }
+                            }
+                        }
+                        
                         foreach (var cert in orderedChainList)
                         {
                             //root and intermediate just upload the cert from the chain no private key
-                            if (((cert.type == "root" || cert.type == "intermediate") && !ThumbprintFound(cert.certificate.Thumbprint, certificates, rawCertificatesResult)))
+                            if (((cert.type == "root" || cert.type == "intermediate") && !caDict.ContainsKey(cert.certificate?.Thumbprint ?? string.Empty)))
                             {
-                                var certName = BuildName(cert);
+                                _logger.LogTrace("Found a root or intermediate cert that was not in the dictionary, Generating name based on subject");
+                                var certName = GenerateCaCertName(cert);
+                                _logger.LogTrace($"Generated Cert Name {certName}");
+                                
                                 var importResult = client.ImportCertificate(certName,
                                     config.JobCertificate.PrivateKeyPassword,
                                     Encoding.UTF8.GetBytes(ExportToPem(cert.certificate)), "no", "certificate",
                                     config.CertificateStoreDetails.StorePath);
                                 content = importResult.Result;
+                                _logger.LogTrace("Logging import result content.");
                                 LogResponse(content);
-
-
+                                
                                 //Set as trusted Root if you successfully imported the root certificate
                                 if (content != null && content.Status.ToUpper() != "ERROR")
                                 {
+                                    _logger.LogTrace("Attempting to set cert to Trusted Root if type is root");
                                     ErrorSuccessResponse rootResponse = null;
                                     if (cert.type == "root")
                                         rootResponse = SetTrustedRoot(certName, client, config.CertificateStoreDetails.StorePath);
@@ -307,30 +373,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             //Leafs need the keypair only put leaf out there if root and intermediate succeeded
                             if (cert.type == "leaf" && errorMsg.Length == 0)
                             {
+                                _logger.LogTrace("Found Leaf Certificate");
                                 var type = string.IsNullOrWhiteSpace(config.JobCertificate.PrivateKeyPassword) ? "certificate" : "keypair";
+                                _logger.LogTrace($"Certificate Type of {type}");
                                 var importResult = client.ImportCertificate(alias,
                                     config.JobCertificate.PrivateKeyPassword,
                                     Encoding.UTF8.GetBytes(certPem), "yes", type,
                                     config.CertificateStoreDetails.StorePath);
+                                _logger.LogTrace("Finished Import About to Log Results...");
                                 content = importResult.Result;
                                 LogResponse(content);
+                                _logger.LogTrace("Finished Logging Import Results...");
 
-                                //If 1. was successful, then set trusted root, bindings then commit
-                                if (content != null && content.Status.ToUpper() == "SUCCESS")
-                                {
-                                    //3. Check if Bindings were added in the entry params and if so bind the cert to a tls profile in palo
-                                    var bindingsValidation = Validators.ValidateBindings(JobEntryParams);
-                                    if (string.IsNullOrEmpty(bindingsValidation))
-                                    {
-                                        var bindingsResponse = SetBindings(config, client,
-                                            config.CertificateStoreDetails.StorePath,alias);
-                                        if (bindingsResponse.Result.Status.ToUpper() == "ERROR")
-                                            warnings +=
-                                                $"Could not Set The Bindings. There was an error calling out to bindings in the device. {Validators.BuildPaloError(bindingsResponse.Result)}";
-                                    }
-                                    if (errorMsg.Length == 0)
-                                        success = true;
-                                }
                             }
 
                             if (content != null)
@@ -339,12 +393,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             }
                         }
 
-
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         if (errorMsg.Length == 0)
+                        {
+                            _logger.LogTrace("Attempting to Commit Changes, no errors were found");
                             warnings = CommitChanges(config, client, warnings);
+                        }
 
-                        return ReturnJobResult(config, warnings, success, errorMsg);
+                        return ReturnJobResult(config, warnings,true, errorMsg);
+
                     }
 
                     return new JobResult
@@ -376,38 +433,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        private static string BuildName((X509Certificate2 certificate, string type) cert)
+        private string GenerateCaCertName((X509Certificate2 certificate, string type) cert)
         {
-            string subject = cert.certificate?.Subject;
-            string commonName = null;
-
-            // Find the common name in the subject string
-            if (subject != null)
-            {
-                int startIndex = subject.IndexOf("CN=", StringComparison.Ordinal);
-
-                if (startIndex >= 0)
-                {
-                    startIndex += 3; // Move startIndex to the beginning of the common name value
-                    int endIndex = subject.IndexOf(',', startIndex); // Find the end of the common name value
-
-                    if (endIndex < 0)
-                    {
-                        // If no comma is found, the common name extends to the end of the string
-                        endIndex = subject.Length;
-                    }
-
-                    // Extract the common name value
-                    commonName = subject.Substring(startIndex, endIndex - startIndex);
-                }
-            }
-
-            // Replace spaces with underscores
-            commonName = commonName?.Replace(" ", "_");
-
-            //Only 31 characters allowed for cert name
-            return DateTime.Now.ToString("yyyyMM") + "_" + RightTrimAfter(commonName, 23);
-
+            DateTime currentDateTime = DateTime.UtcNow;
+            int unixTimestamp = (int) (currentDateTime.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            var isCa = PKI.Extensions.X509Extentions.IsCaCertificate(cert.certificate);
+            _logger.LogTrace($"Ca Certificate? {isCa}");
+            var cn = GetCommonName(cert.certificate?.SubjectName.Name);
+            var certName = RightTrimAfter(unixTimestamp + "_" + cn.Replace(' ', '_'), 31);
+            return certName;
         }
 
         public static string RightTrimAfter(string input, int maxLength)
@@ -426,22 +460,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        public static string GenerateName(string name)
-        {
-            string currentTime = DateTime.Now.ToString("yyMMddHHmmss");
 
-            // Trim the name to 18 characters
-            string trimmedName = name.Length > 18 ? name.Substring(0, 18) : name;
-
-            // Append underscore and current time
-            string generatedName = trimmedName + "_" + currentTime;
-
-            return generatedName;
-        }
-
-        private static bool DeleteCertificate(ManagementJobConfiguration config, PaloAltoClient client, string warnings,
+        private bool DeleteCertificate(ManagementJobConfiguration config, PaloAltoClient client, string warnings,
             out JobResult deleteResult)
         {
+            if (!SetPanoramaTarget(config, client))
+            {
+                deleteResult = ReturnJobResult(config, warnings, false,"Could Not Set Panorama Target");
+                return false;
+            }
+
             var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
                 config.CertificateStoreDetails.StorePath).Result;
             if (delResponse.Status.ToUpper() == "ERROR")
@@ -576,101 +604,72 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private string CommitChanges(ManagementJobConfiguration config, PaloAltoClient client, string warnings)
         {
-            var commitResponse = client.GetCommitResponse();
-            if (commitResponse.Result.Status == "success")
+            _logger.MethodEntry();
+            var commitResponse = client.GetCommitResponse().Result;
+            _logger.LogTrace("Got client commit response, attempting to log it");
+            LogResponse(commitResponse);
+            if (commitResponse.Status == "success")
             {
+                _logger.LogTrace("Commit response shows success");
                 //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
                 var deviceGroup = StoreProperties?.DeviceGroup;
+                _logger.LogTrace($"Device Group {deviceGroup}");
 
                 //If there is a template and device group then push to all firewall devices because it is Panorama
                 if (IsPanoramaDevice(config) && deviceGroup?.Length > 0)
                 {
+                    _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
                     Thread.Sleep(120000); //Some delay built in so pushes to devices work
-                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup);
-                    if (commitAllResponse.Result.Status != "success")
-                        warnings += $"The push to firewall devices failed. {commitAllResponse.Result.Text}";
+                    _logger.LogTrace("Done sleeping");
+                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup).Result;
+                    _logger.LogTrace("Logging commit response from panorama.");
+                    LogResponse(commitAllResponse);
+                    if (commitAllResponse.Status != "success")
+                        warnings += $"The push to firewall devices failed. {commitAllResponse.Text}";
                 }
             }
             else
             {
-                warnings += $"The commit to the device failed. {commitResponse.Result.Text}";
+                warnings += $"The commit to the device failed. {commitResponse.Text}";
             }
 
             return warnings;
         }
 
-        private Task<ErrorSuccessResponse> SetBindings(ManagementJobConfiguration config, PaloAltoClient client,
-            string templateName,string aliasName)
-        {
-            //Handle the Profile Bindings
-            try
-            {
-                var profileRequest = new EditProfileRequest
-                {
-                    Name = JobEntryParams.TlsProfileName,
-                    Certificate = aliasName
-                };
-                var pMinVersion = new ProfileMinVersion { Text = JobEntryParams.TlsMinVersion };
-                var pMaxVersion = new ProfileMaxVersion { Text = JobEntryParams.TlsMaxVersion };
-                var pSettings = new ProfileProtocolSettings { MinVersion = pMinVersion, MaxVersion = pMaxVersion };
-                profileRequest.ProtocolSettings = pSettings;
-
-                var reqWriter = new StringWriter();
-                var reqSerializer = new XmlSerializer(typeof(EditProfileRequest));
-                reqSerializer.Serialize(reqWriter, profileRequest);
-                _logger.LogTrace($"Profile Request {reqWriter}");
-
-                return client.SubmitEditProfile(profileRequest, templateName, config.CertificateStoreDetails.StorePath);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occurred in Management.SetBindings {LogHandler.FlattenException(e)}");
-                throw;
-            }
-        }
 
         private List<(X509Certificate2 certificate, string type)> GetCertificateChain(string jobCertificate, string password)
         {
             _logger.MethodEntry();
-            // Decode the base64-encoded chain to get the bytes
+            _logger.LogTrace("Decode the base64-encoded chain to get the bytes");
+
             byte[] certificateChainBytes = Convert.FromBase64String(jobCertificate);
             _logger.LogTrace($"Cert Chain Bytes: {certificateChainBytes}");
 
-            // Create a collection to hold the certificates
+            _logger.LogTrace("Create a collection to hold the certificates");
             X509Certificate2Collection certificateCollection = new X509Certificate2Collection();
 
-            _logger.LogTrace($"Created certificate collection");
-
-            // Load the certificates from the byte array
+            _logger.LogTrace("Load the certificates from the byte array");
             certificateCollection.Import(certificateChainBytes, password, X509KeyStorageFlags.Exportable);
 
-            _logger.LogTrace($"Imported collection");
-
-            // Identify the root certificate
+            _logger.LogTrace("Identify the root certificate");
             X509Certificate2 rootCertificate = FindRootCertificate(certificateCollection);
 
-            _logger.LogTrace("Found Root Certificate");
-
-            // Create a list to hold the ordered certificates
+            _logger.LogTrace("Create a list to hold the ordered certificates");
             List<(X509Certificate2 certificate, string certType)> orderedCertificates = new List<(X509Certificate2, string)>();
 
-            _logger.LogTrace("Created a list to hold the ordered certificates");
-
-            // Add the root certificate to the ordered list
+            _logger.LogTrace("Add the root certificate to the ordered list");
             if (rootCertificate != null)
                 orderedCertificates.Add((rootCertificate, "root"));
 
-            _logger.LogTrace("Added Root To Collection");
-
-            // Add intermediate certificates to the ordered list and mark them as intermediate
+            _logger.LogTrace("Add intermediate certificates to the ordered list and mark them as intermediate");
             foreach (X509Certificate2 certificate in certificateCollection)
             {
-                _logger.LogTrace("In loop to Add intermediate certificates to the ordered list and mark them as intermediate");
-                // Exclude root certificate
+
+                _logger.LogTrace("Exclude root certificate");
                 if (!certificate.Equals(rootCertificate))
                 {
-                    _logger.LogTrace("Excluded root certificate");
-                    // Check if the certificate is not the leaf certificate
+                    _logger.LogTrace("Check if the certificate is not the leaf certificate");
+
                     bool isLeaf = true;
                     foreach (X509Certificate2 potentialIssuer in certificateCollection)
                     {
@@ -683,7 +682,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         }
                     }
 
-                    // If the certificate is not the leaf certificate, add it as an intermediate certificate
+                    _logger.LogTrace("If the certificate is not the leaf certificate, add it as an intermediate certificate");
                     if (!isLeaf)
                     {
                         _logger.LogTrace("If the certificate is not the leaf certificate, add it as an intermediate certificate");
@@ -692,7 +691,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 }
             }
 
-            // Add leaf certificates to the ordered list
+            _logger.LogTrace("Add leaf certificates to the ordered list");
             foreach (X509Certificate2 certificate in certificateCollection)
             {
                 _logger.LogTrace("Check for add leaf certificates to the ordered list");
@@ -712,148 +711,77 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.MethodEntry();
             foreach (X509Certificate2 certificate in certificates)
             {
-                _logger.LogTrace("Looping through all the certs to find the root");
-
                 if (IsRootCertificate(certificate, certificates))
                 {
-                    _logger.LogTrace("Found Root");
+                    _logger.MethodExit();
                     return certificate;
                 }
             }
+
+            _logger.LogTrace("Return null if no root certificate is found");
             _logger.MethodExit();
-            // Return null if no root certificate is found
             return null;
+        }
+
+        private string GetCommonName(string subject)
+        {
+            _logger.MethodEntry();
+            _logger.LogTrace($"Subject {subject}");
+            // Split the subject into parts
+            var parts = subject.Split(',');
+
+            // Iterate over the parts to find the CN
+            foreach (var part in parts)
+            {
+                if (part.Trim().StartsWith("CN=", StringComparison.OrdinalIgnoreCase))
+                {
+                    return part.Trim().Substring(3).Trim();
+                }
+            }
+            _logger.MethodExit();
+            return null; // Return null if CN is not found
+
         }
 
         private bool IsRootCertificate(X509Certificate2 certificate, X509Certificate2Collection certificates)
         {
             _logger.MethodEntry();
             // Check if the certificate is self-signed
-            if (certificate?.Subject == certificate?.Issuer)
+            if (certificate.Subject == certificate.Issuer)
             {
-                _logger.LogTrace("Subject is equal to issuer");
                 // Check if there is no issuer in the collection with a matching subject
                 foreach (X509Certificate2 issuerCertificate in certificates)
                 {
-                    _logger.LogTrace("Checking if there is no issuer in the collection with matching subject");
-                    if (issuerCertificate.Subject == certificate?.Subject && !issuerCertificate.Equals(certificate))
+                    if (issuerCertificate.Subject == certificate.Subject && !issuerCertificate.Equals(certificate))
                     {
-                        _logger.LogTrace("Subject equal cert subject and issuer cert not equal to certificate");
+                        _logger.LogTrace("false");
                         _logger.MethodExit();
                         return false;
                     }
                 }
+                _logger.LogTrace("true");
                 _logger.MethodExit();
                 return true;
             }
+            _logger.LogTrace("false");
+
             _logger.MethodExit();
             return false;
         }
 
-        private string[] ExtractCertificateData(string text)
-        {
-            _logger.MethodEntry();
-            List<string> certDataList = new List<string>();
-            int startIndex = 0;
 
-            while (startIndex != -1)
-            {
-                startIndex = text.IndexOf("-----BEGIN CERTIFICATE-----", startIndex, StringComparison.Ordinal);
-                if (startIndex != -1)
-                {
-                    int endIndex = text.IndexOf("-----END CERTIFICATE-----", startIndex, StringComparison.Ordinal);
-                    if (endIndex != -1)
-                    {
-                        int length = endIndex - startIndex - "-----BEGIN CERTIFICATE-----".Length;
-                        if (length >= 0)
-                        {
-                            certDataList.Add(text.Substring(startIndex + "-----BEGIN CERTIFICATE-----".Length, length));
-                            startIndex = endIndex + "-----END CERTIFICATE-----".Length;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-            _logger.LogTrace($"Cert Data List: {certDataList?.Count}");
-            _logger.MethodExit();
-            return certDataList.ToArray();
-        }
-
-        public string ExportToPem(X509Certificate2 certificate)
+        private string ExportToPem(X509Certificate2 certificate)
         {
             _logger.MethodEntry();
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("-----BEGIN CERTIFICATE-----");
             builder.AppendLine(Convert.ToBase64String(certificate.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
             builder.AppendLine("-----END CERTIFICATE-----");
-            _logger.LogTrace($"String builder results: {builder?.ToString()}");
+            _logger.LogTrace(builder.ToString());
             _logger.MethodExit();
             return builder.ToString();
         }
 
-        private string RemoveWhitespace(string input)
-        {
-            _logger.MethodEntry();
-            StringBuilder sb = new StringBuilder();
-            foreach (char c in input)
-            {
-                if (!char.IsWhiteSpace(c))
-                {
-                    sb.Append(c);
-                }
-            }
-            _logger.LogTrace($"String builder results: {sb?.ToString()}");
-            _logger.MethodExit();
-            return sb.ToString();
-        }
-
-        private bool ThumbprintFound(string thumbprintToSearch, List<X509Certificate2> certificates, CertificateListResponse rawCertificatesResult)
-        {
-            _logger.MethodEntry();
-            foreach (var responseItem in rawCertificatesResult.CertificateResult.Entry)
-            {
-                _logger.LogTrace("Looping through Thumbprints");
-                string[] certDataArray = null;
-                if (responseItem?.PublicKey != null)
-                {
-                    certDataArray = ExtractCertificateData(responseItem.PublicKey);
-                }
-                else
-                {
-                    // Handle the case where PublicKey is null
-                    _logger.LogTrace("PublicKey is not available.");
-                }
-                _logger.LogTrace("Got CertData Array");
-                if (certDataArray != null)
-                {
-                    // Remove whitespace characters and parse each certificate
-                    foreach (string certData in certDataArray)
-                    {
-                        _logger.LogTrace("Inside removing whitespace");
-                        byte[] rawData = Convert.FromBase64String(RemoveWhitespace(certData));
-                        _logger.LogTrace("Converted From Base64");
-                        X509Certificate2 cert = new X509Certificate2(rawData);
-                        _logger.LogTrace("Adding to collection");
-                        certificates.Add(cert);
-                        _logger.LogTrace("Added to collection");
-                    }
-                }
-            }
-            _logger.LogTrace("Finding Cert");
-            X509Certificate2 foundCertificate = certificates.FirstOrDefault(cert => cert.Thumbprint != null && cert.Thumbprint.Equals(thumbprintToSearch, StringComparison.OrdinalIgnoreCase));
-            _logger.LogTrace($"Found cert {foundCertificate}");
-            _logger.MethodExit();
-            if (foundCertificate != null)
-                return true;
-            return false;
-        }
 
         private ErrorSuccessResponse SetTrustedRoot(string jobCertificateAlias, PaloAltoClient client,
             string templateName)
