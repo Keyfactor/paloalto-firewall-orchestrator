@@ -57,12 +57,11 @@ Password |Api Password Setup for the user above
 **Important Note** The store path permutations are show below
 
 #### FIREWALL SHARED SYSTEM PATH
-_________________________________
 
 **Path Example** /config/shared
+_________________________________
 
 #### FIREWALL VIRTUAL SYSTEM PATH
-_________________________________
 
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
 
@@ -73,9 +72,10 @@ _________________________________
 **/config/devices/entry[@name='localhost.localdomain']**: localhost.localdomain is the constant string verbatium, will never change.  This part of the path refers to the device entry with the name 'localhost.localdomain' under the 'devices' section in the 'config'.
 
 **/vsys/entry[@name='vsys1']**: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
+_________________________________
 
 #### PANORAMA SHARED TEMPLATE PATH
-_________________________________
+
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared
 
 **/config**:
@@ -95,7 +95,7 @@ The entry tag with the attribute @name='CertificatesTemplate' identifies a speci
 
 **/config/shared**:
 This part of the path indicates that the configuration settings within this template are shared settings. Shared settings are common configurations that can be used across multiple devices or contexts within the Panorama management system.
-
+_________________________________
 
 </details>
 
