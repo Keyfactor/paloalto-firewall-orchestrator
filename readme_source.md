@@ -61,6 +61,8 @@ _________________________________
 **Path Example** /config/shared
 _________________________________
 
+
+
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
@@ -73,6 +75,8 @@ _________________________________
 
 **/vsys/entry[@name='vsys1']**: Within the 'localhost.localdomain' device entry, this specifies the entry for the virtual system named 'vsys1'.
 _________________________________
+
+
 
 #### PANORAMA SHARED TEMPLATE PATH
 _________________________________
