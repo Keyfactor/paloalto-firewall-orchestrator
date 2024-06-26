@@ -116,10 +116,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             
                             return BuildInventoryItem(c.Name, c.PublicKey, c.PrivateKey?.Length>0, false);
                         }
-                        catch
+                        catch(Exception e)
                         {
                             _logger.LogWarning(
-                                $"Could not fetch the certificate: {c.Name} associated with issuer {c.Issuer}.");
+                                $"Could not fetch the certificate: {c.Name} associated with issuer {c.Issuer} error {LogHandler.FlattenException(e)}.");
                             sb.Append(
                                 $"Could not fetch the certificate: {c.Name} associated with issuer {c.Issuer}.{Environment.NewLine}");
                             warningFlag = true;
@@ -133,16 +133,17 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         _logger.LogTrace($"Building Trusted Root Inventory Item Alias: {trustedRootCert.Name}");
                         var certificatePem = client.GetCertificateByName(trustedRootCert.Name);
+                        _logger.LogTrace($"Certificate String Back From Palo Pem: {certificatePem.Result}");
                         var bytes = Encoding.ASCII.GetBytes(certificatePem.Result);
                         var cert = new X509Certificate2(bytes);
                         _logger.LogTrace(
                             $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
                         inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey, true));
                     }
-                    catch
+                    catch(Exception e)
                     {
                         _logger.LogWarning(
-                            $"Could not fetch the certificate: {trustedRootCert.Name} associated with issuer {trustedRootCert.Issuer}.");
+                            $"Could not fetch the certificate: {trustedRootCert.Name} associated with issuer {trustedRootCert.Issuer} error {LogHandler.FlattenException(e)}.");
                         sb.Append(
                             $"Could not fetch the certificate: {trustedRootCert.Name} associated with issuer {trustedRootCert.Issuer}.{Environment.NewLine}");
                         warningFlag = true;
