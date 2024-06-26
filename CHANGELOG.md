@@ -1,3 +1,9 @@
+2.2.0
+* Removed support for binding cert to new binding location, can only update certs that are previously bound
+* Support for replacing certs on all binding locations both Panorama and Firewalls as long as it was there before
+* Support for Virtual Systems on Firewalls, tested with only Azure Virtual Version of Firewall
+* Support for Virtual Systems on Panorama Templates
+
 2.1.1
 * Bug - Add Renew Failure Object Reference Error when Adding/Renewing a cert.
 
@@ -17,3 +23,4 @@
 
 1.0.3
 * Added PAM Support for Orchestrator
+
