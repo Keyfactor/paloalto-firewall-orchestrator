@@ -165,8 +165,8 @@ The following table describes the required and optional fields for the `PaloAlto
 | --------- | ----------- | ------------------------- |
 | Category | Select "PaloAlto" or the customized certificate store name from the previous step. | |
 | Container | Optional container to associate certificate store with. | |
-| Client Machine | For the Client Machine field, the user should enter the hostname of the Panorama or Firewall device where the certificates will be managed. For example, 'palourl.cloudapp.azure.com'. | |
-| Store Path | For the Store Path field, the user should enter the appropriate path for the certificate location on the Panorama or Firewall. For example, '/config/panorama' for Panorama Level Certs or '/config/shared' for Firewall Certs. | |
+| Client Machine | The hostname of the Panorama or Firewall. Example: 'palourl.cloudapp.azure.com'. | |
+| Store Path | The specific path for certificate management depending on the target device type. Examples: '/config/panorama' for Panorama Level Certs or '/config/shared' for Firewall Certs. | |
 | Orchestrator | Select an approved orchestrator capable of managing `PaloAlto` certificates. Specifically, one with the `PaloAlto` capability. | |
 
 * **Using kfutil**

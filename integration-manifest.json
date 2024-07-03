@@ -1,5 +1,5 @@
 {
-    "$schema": "/Users/hroszell/coding/dev/staff-tools/keyfactor.github.io/v2/integration-manifest-schema.json",
+    "$schema": "https://keyfactor.github.io/v2/integration-manifest-schema.json",
     "integration_type": "orchestrator",
     "name": "Palo Alto Orchestrator",
     "status": "production",
@@ -7,30 +7,12 @@
     "link_github": true,
     "support_level": "kf-supported",
     "release_dir": "PaloAlto/bin/Release/netcoreapp3.1",
-    "description": "The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.  It supports adding certificates with or without private keys.  Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.",
+    "description": "The PaloAlto Universal Orchestrator extension enables remote management of cryptographic certificates on Palo Alto devices, including inventory, addition, and removal of certificates.",
     "about": {
         "orchestrator": {
             "UOFramework": "10.1",
             "keyfactor_platform_version": "9.10",
             "pam_support": true,
-            "win": {
-                "supportsCreateStore": false,
-                "supportsDiscovery": false,
-                "supportsManagementAdd": true,
-                "supportsManagementRemove": true,
-                "supportsReenrollment": false,
-                "supportsInventory": true,
-                "platformSupport": "Unused"
-            },
-            "linux": {
-                "supportsCreateStore": false,
-                "supportsDiscovery": false,
-                "supportsManagementAdd": false,
-                "supportsManagementRemove": false,
-                "supportsReenrollment": false,
-                "supportsInventory": false,
-                "platformSupport": "Unused"
-            },
             "store_types": [
                 {
                     "Name": "PaloAlto",
@@ -61,8 +43,8 @@
                     "PowerShell": false,
                     "BlueprintAllowed": false,
                     "CustomAliasAllowed": "Required",
-                    "ClientMachineDescription": "For the Client Machine field, the user should enter the hostname of the Panorama or Firewall device where the certificates will be managed. For example, 'palourl.cloudapp.azure.com'.",
-                    "StorePathDescription": "For the Store Path field, the user should enter the appropriate path for the certificate location on the Panorama or Firewall. For example, '/config/panorama' for Panorama Level Certs or '/config/shared' for Firewall Certs."
+                    "ClientMachineDescription": "The hostname of the Panorama or Firewall. Example: 'palourl.cloudapp.azure.com'.",
+                    "StorePathDescription": "The specific path for certificate management depending on the target device type. Examples: '/config/panorama' for Panorama Level Certs or '/config/shared' for Firewall Certs."
                 }
             ]
         }
