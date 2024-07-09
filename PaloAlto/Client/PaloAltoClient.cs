@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Requests;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Microsoft.Extensions.Logging;
@@ -136,6 +137,25 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<ErrorSuccessResponse> SubmitEditProfile(EditProfileRequest request, string templateName, string storePath)
+        {
+            try
+            {
+                var editXml =
+                    $"<entry name=\"{request.Name}\"><protocol-settings><min-version>{request.ProtocolSettings.MinVersion.Text}</min-version><max-version>{request.ProtocolSettings.MaxVersion.Text}</max-version></protocol-settings><certificate>{request.Certificate}</certificate></entry>";
+
+                string uri=
+                        $@"/api/?type=config&action=edit&xpath={storePath}/ssl-tls-service-profile/entry[@name='{request.Name}']&element={editXml}&key={ApiKey}&target-tpl={GetTemplateName(storePath)}";
+
+                var response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SubmitDeleteCertificate: {e.Message}");
+                throw;
+            }
+        }
 
         private string GetTemplateName(string storePath)
         {
@@ -152,6 +172,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             return templateName;
         }
 
+        public async Task<GetProfileByCertificateResponse> GetProfileByCertificate(string storePath, string certificate)
+        {
+            try
+            {
+                var xPath = $"{storePath}/ssl-tls-service-profile/entry[./certificate='{certificate}']";
+                var uri = $"/api/?type=config&action=get&target-tpl={GetTemplateName(storePath)}&xpath={xPath}&key={ApiKey}";
+                var response =
+                    await GetXmlResponseAsync<GetProfileByCertificateResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetProfileByCertificate: {e.Message}");
+                throw;
+            }
+        }
 
         public async Task<AuthenticationResponse> GetAuthenticationResponse()
         {
@@ -197,7 +233,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-
         public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath)
         {
             try
@@ -226,7 +261,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-
         public async Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string storePath)
         {
             try
@@ -241,38 +275,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<ErrorSuccessResponse> SetPanoramaTarget(string storePath)
-        {
-            try
-            {
-                string uri = $"/api/?type=op&cmd=<set><system><setting><target><template><name>{GetTemplateName(storePath)}</name><vsys>{GetVirtualSystemFromPath(storePath)}</vsys></template></target></setting></system></set>&key={ApiKey}";
-                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.SubmitSetTrustedRoot: {e.Message}");
-                throw;
-            }
-        }
-
-
         public async Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
             string includeKey, string category, string storePath)
         {
             try
             {
                 var templateName=GetTemplateName(storePath);
-                var vsys = GetVirtualSystemFromPath(storePath);
-                string uri;
-                if (!Validators.IsValidPanoramaVsysFormat(storePath))
-                {
-                    uri =$@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&vsys={vsys}&key={ApiKey}";
-                }
-                else
-                {
-                    uri = $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&key={ApiKey}";
-                }
-
+                var uri =
+                    $@"/api/?type=import&category={category}&certificate-name={name}&format=pem&include-key={includeKey}&passphrase={passPhrase}&target-tpl={templateName}&target-tpl-vsys=&vsys&key={ApiKey}";
                 var boundary = $"--------------------------{Guid.NewGuid():N}";
                 var requestContent = new MultipartFormDataContent();
                 requestContent.Headers.Remove("Content-Type");
@@ -294,20 +304,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        static string GetVirtualSystemFromPath(string path)
-        {
-            string pattern = @"vsys/entry\[@name='([^']*)'\]";
 
-            Match match = Regex.Match(path, pattern);
-
-            if (match.Success)
-            {
-                string vsysName = match.Groups[1].Value;
-                return vsysName;
-            }
-
-            return "";
-        }
         public async Task<T> GetXmlResponseAsync<T>(HttpResponseMessage response)
         {
             try
@@ -342,8 +339,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 throw;
             }
         }
-
-
 
         private void EnsureSuccessfulResponse(HttpResponseMessage response)
         {
