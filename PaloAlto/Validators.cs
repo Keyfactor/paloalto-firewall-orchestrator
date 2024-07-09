@@ -23,19 +23,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
 {
     public class Validators
     {
-        public static string ValidateBindings(JobEntryParams jobEntryParams)
-        {
-            var warnings = string.Empty;
-
-            if (string.IsNullOrEmpty(jobEntryParams.TlsProfileName)) warnings += "You are missing the TlsProfileName, ";
-
-            if (string.IsNullOrEmpty(jobEntryParams.TlsMinVersion)) warnings += "You are missing the TlsMin Field, ";
-
-            if (string.IsNullOrEmpty(jobEntryParams.TlsMinVersion)) warnings += "You are missing the TlsMax Field, ";
-
-            return warnings;
-        }
-        
+       
         public static string BuildPaloError(ErrorSuccessResponse bindingsResponseResult)
         {
             var errorResponse = string.Empty;
@@ -69,16 +57,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return regex.IsMatch(input);
         }
 
+        static bool IsValidFirewallVsysFormat(string input)
+        {
+            string pattern = @"^/config/devices/entry\[@name='localhost\.localdomain'\]/vsys/entry\[@name='[^']+'\]$";
+            return Regex.IsMatch(input, pattern);
+
+        }
+
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
             string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
         {
             var errors = string.Empty;
 
             //Check path Validity for either panorama shared location or firewall shared location or panorama level certificates
-            if (storePath != "/config/panorama" && storePath != "/config/shared" && !IsValidPanoramaFormat(storePath))
+            if (storePath != "/config/panorama" && storePath != "/config/shared" && !IsValidPanoramaFormat(storePath) && !IsValidFirewallVsysFormat(storePath) && !(IsValidPanoramaVsysFormat(storePath)))
             {
                 errors +=
-                    "Path is invalid needs to be /config/panorama, /config/shared or in format of /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='TemplateName']/config/shared.";
+                    "Path is invalid needs to be /config/panorama, /config/shared or in format of /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='TemplateName']/config/shared or /config/devices/entry/template/entry[@name='TemplateName']/config/devices/entry/vsys/entry[@name='VsysName']";
             }
 
             // If it is a firewall (store path of /) then you don't need the Group Name
@@ -137,6 +132,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             }
 
             return (true, new JobResult());
+        }
+
+        public static bool IsValidPanoramaVsysFormat(string storePath)
+        {
+            string pattern = @"^/config/devices/entry/template/entry\[@name='[^']+'\]/config/devices/entry/vsys/entry\[@name='[^']+'\]$";
+            return Regex.IsMatch(storePath, pattern);
         }
     }
 }

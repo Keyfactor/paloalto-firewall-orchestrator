@@ -13,6 +13,7 @@
       "UOFramework": "10.1",
       "keyfactor_platform_version": "9.10",
       "pam_support": true,
+      "keyfactor_platform_version": "9.10",
       "win": {
         "supportsCreateStore": false,
         "supportsDiscovery": false,
@@ -79,41 +80,7 @@
             }
           ],
           "EntryParameters": [
-            {
-              "Name": "TlsMinVersion",
-              "DisplayName": "TLS Min Version",
-              "Type": "MultipleChoice",
-              "RequiredWhen": {
-                "HasPrivateKey": false,
-                "OnAdd": false,
-                "OnRemove": false,
-                "OnReenrollment": false
-              },
-              "Options": ",tls1-0,tls1-1,tls1-2"
-            },
-            {
-              "Name": "TLSMaxVersion",
-              "DisplayName": "TLS Max Version",
-              "Type": "MultipleChoice",
-              "RequiredWhen": {
-                "HasPrivateKey": false,
-                "OnAdd": false,
-                "OnRemove": false,
-                "OnReenrollment": false
-              },
-              "Options": ",tls1-0,tls1-1,tls1-2,max"
-            },
-            {
-              "Name": "TlsProfileName",
-              "DisplayName": "TLS Profile Name",
-              "Type": "String",
-              "RequiredWhen": {
-                "HasPrivateKey": false,
-                "OnAdd": false,
-                "OnRemove": false,
-                "OnReenrollment": false
-              }
-            }
+
           ],
           "PasswordOptions": {
             "EntrySupported": false,
@@ -122,9 +89,7 @@
           },
           "PrivateKeyAllowed": "Optional",
           "JobProperties": [
-            "TlsMinVersion",
-            "TLSMaxVersion",
-            "TlsProfileName"
+
           ],
           "ServerRequired": true,
           "PowerShell": false,
