@@ -1,3 +1,6 @@
+2.2.1
+* Fixed URL Encoding on Palo Username and Pwd that caused invalid credentials error
+
 2.2.0
 * Removed support for binding cert to new binding location, can only update certs that are previously bound
 * Support for replacing certs on all binding locations both Panorama and Firewalls as long as it was there before

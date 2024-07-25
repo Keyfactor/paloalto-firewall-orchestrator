@@ -34,8 +34,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         public PaloAltoClient(string url, string userName, string password)
         {
             _logger = LogHandler.GetClassLogger<PaloAltoClient>();
-            ServerUserName = userName;
-            ServerPassword = password;
+            ServerUserName = Uri.EscapeDataString(userName);
+            ServerPassword = Uri.EscapeDataString(password);
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
