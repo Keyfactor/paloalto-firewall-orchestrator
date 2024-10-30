@@ -138,12 +138,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-                uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
-                
-                Thread.Sleep(60000); //Some delay built in so pushes to devices work
-
-                response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-
+                if (!String.IsNullOrEmpty(templateStack))
+                {
+                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
+                    Thread.Sleep(60000); //Some delay built in so pushes to devices work
+                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                }
                 return response;
             }
             catch (Exception e)
