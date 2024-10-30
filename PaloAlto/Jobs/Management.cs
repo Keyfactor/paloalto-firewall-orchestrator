@@ -615,13 +615,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var deviceGroup = StoreProperties?.DeviceGroup;
                 _logger.LogTrace($"Device Group {deviceGroup}");
 
+                var templateStack = StoreProperties?.TemplateStack;
+                _logger.LogTrace($"Template Stack {templateStack}");
+
                 //If there is a template and device group then push to all firewall devices because it is Panorama
-                if (IsPanoramaDevice(config) && deviceGroup?.Length > 0)
+                if (IsPanoramaDevice(config))
                 {
                     _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
                     Thread.Sleep(120000); //Some delay built in so pushes to devices work
                     _logger.LogTrace("Done sleeping");
-                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup).Result;
+                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup,config.CertificateStoreDetails.StorePath,templateStack).Result;
                     _logger.LogTrace("Logging commit response from panorama.");
                     LogResponse(commitAllResponse);
                     if (commitAllResponse.Status != "success")

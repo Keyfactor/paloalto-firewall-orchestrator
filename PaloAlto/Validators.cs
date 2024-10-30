@@ -91,10 +91,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                     new PaloAltoClient(clientMachine,
                         serverUserName, serverPassword); //Api base URL Plus Key
 
-                if (string.IsNullOrEmpty(storeProperties?.DeviceGroup))
-                {
-                    errors += "You need to specify a device group when working with Panorama.";
-                }
 
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
