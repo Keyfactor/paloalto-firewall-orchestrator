@@ -77,6 +77,22 @@
               "DependsOn": null,
               "DefaultValue": null,
               "Required": false
+            },
+            {
+              "Name": "InventoryTrustedCerts",
+              "DisplayName": "Inventory Trusted Certs",
+              "Type": "Bool",
+              "DependsOn": null,
+              "DefaultValue": "false",
+              "Required": true
+            },
+            {
+              "Name": "TemplateStack",
+              "DisplayName": "Template Stack",
+              "Type": "String",
+              "DependsOn": null,
+              "DefaultValue": null,
+              "Required": false
             }
           ],
           "EntryParameters": [
