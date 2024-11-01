@@ -22,6 +22,7 @@ using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace PaloAltoTestConsole
 {
@@ -33,6 +34,8 @@ namespace PaloAltoTestConsole
         public static string CertAlias { get; set; }
         public static string ClientMachine { get; set; }
         public static string DeviceGroup { get; set; }
+        public static string InventoryTrusted { get; set; }
+        public static string TemplateStackName { get; set; }
         public static string StorePath { get; set; }
         public static string Overwrite { get; set; }
         public static string ManagementType { get; set; }
@@ -59,6 +62,8 @@ namespace PaloAltoTestConsole
                 Password = arguments["-password"];
                 StorePath = arguments["-storepath"];
                 DeviceGroup = arguments["-devicegroup"];
+                InventoryTrusted = arguments["-inventorytrusted"];
+                TemplateStackName = arguments["-templatestackname"];
                 ClientMachine = arguments["-clientmachine"];
             }
             else
@@ -73,6 +78,10 @@ namespace PaloAltoTestConsole
                 StorePath = Console.ReadLine();
                 Console.WriteLine("Enter DeviceGroup");
                 DeviceGroup = Console.ReadLine();
+                Console.WriteLine("Inventory Trusted");
+                InventoryTrusted = Console.ReadLine();
+                Console.WriteLine("Template Stack Name");
+                TemplateStackName = Console.ReadLine();
                 Console.WriteLine("Enter ClientMachine");
                 ClientMachine = Console.ReadLine();
             }
@@ -184,20 +193,49 @@ namespace PaloAltoTestConsole
 
         public static InventoryJobConfiguration GetInventoryJobConfiguration()
         {
+            var intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": false";
+            if (InventoryTrusted.ToUpper() == "TRUE")
+            {
+                intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": true";
+            }
+
             var fileContent = File.ReadAllText("FirewallInventory.json").Replace("UserNameGoesHere", UserName)
-                .Replace("PasswordGoesHere", Password).Replace("ClientMachineGoesHere", ClientMachine);
+                .Replace("PasswordGoesHere", Password).Replace("ClientMachineGoesHere", ClientMachine)
+                .Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString);
+            var jsonObject = JObject.Parse(fileContent);
+
+            // Navigate to the InventoryTrustedCerts property and set it to true
+            jsonObject["CertificateStoreDetails"]["Properties"] = jsonObject["CertificateStoreDetails"]["Properties"].ToString().Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString);
+
+
             var result =
-                JsonConvert.DeserializeObject<InventoryJobConfiguration>(fileContent);
+                JsonConvert.DeserializeObject<InventoryJobConfiguration>(jsonObject.ToString());
+
             return result;
         }
 
         public static InventoryJobConfiguration GetPanoramaInventoryJobConfiguration()
         {
+            var intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": false";
+            if (InventoryTrusted.ToUpper() == "TRUE")
+            {
+                intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": true";
+            }
+
             var fileContent = File.ReadAllText("PanoramaInventory.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
-                .Replace("ClientMachineGoesHere", ClientMachine).Replace("DeviceGroupGoesHere", DeviceGroup);
+                .Replace("ClientMachineGoesHere", ClientMachine)
+                .Replace("DeviceGroupGoesHere", DeviceGroup);
+
+
+            var jsonObject = JObject.Parse(fileContent);
+
+            // Navigate to the InventoryTrustedCerts property and set it to true
+            jsonObject["CertificateStoreDetails"]["Properties"] = jsonObject["CertificateStoreDetails"]["Properties"].ToString().Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString);
+
+
             var result =
-                JsonConvert.DeserializeObject<InventoryJobConfiguration>(fileContent);
+                JsonConvert.DeserializeObject<InventoryJobConfiguration>(jsonObject.ToString());
             return result;
         }
 
@@ -209,15 +247,29 @@ namespace PaloAltoTestConsole
             {
                 overWriteReplaceString = "\"Overwrite\": true";
             }
-            
+
+            var intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": false";
+            if (InventoryTrusted.ToUpper() == "TRUE")
+            {
+                intentoryTrustedReplaceString = "\"InventoryTrustedCerts\": true";
+            }
+
             var fileContent = File.ReadAllText("PanoramaMgmt.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
+                .Replace("TemplateStackGoesHere", TemplateStackName)
                 .Replace("ClientMachineGoesHere", ClientMachine)
                 .Replace("\"Overwrite\": false",overWriteReplaceString)
                 .Replace("CertificateContentGoesHere", CertificateContent);
+
+            var jsonObject = JObject.Parse(fileContent);
+
+            // Navigate to the InventoryTrustedCerts property and set it to true
+            jsonObject["CertificateStoreDetails"]["Properties"] = jsonObject["CertificateStoreDetails"]["Properties"].ToString().Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString);
+
             var result =
-                JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
+                JsonConvert.DeserializeObject<ManagementJobConfiguration>(jsonObject.ToString());
+
             return result;
         }
 

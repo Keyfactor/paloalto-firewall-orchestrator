@@ -102,6 +102,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<NamedListResponse> GetTemplateStackList()
+        {
+            try
+            {
+                var uri =
+                    $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template-stack/entry/@name&key={ApiKey}";
+                var response = await GetXmlResponseAsync<NamedListResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetDeviceGroupList: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<CommitResponse> GetCommitResponse()
         {
             try

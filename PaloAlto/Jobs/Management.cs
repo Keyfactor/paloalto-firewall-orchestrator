@@ -619,7 +619,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace($"Template Stack {templateStack}");
 
                 //If there is a template and device group then push to all firewall devices because it is Panorama
-                if (IsPanoramaDevice(config))
+                if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) || Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
                 {
                     _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
                     Thread.Sleep(120000); //Some delay built in so pushes to devices work

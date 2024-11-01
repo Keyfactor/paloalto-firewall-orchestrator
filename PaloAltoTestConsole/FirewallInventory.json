@@ -4,7 +4,7 @@
     "ClientMachine": "ClientMachineGoesHere",
     "StorePath": "/",
     "StorePassword": "",
-    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"\"}",
+    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"\",\"InventoryTrustedCerts\": false,\"TemplateStack\":\"TemplateStackGoesHere\"}",
     "Type": 105
   },
   "JobCancelled": false,
