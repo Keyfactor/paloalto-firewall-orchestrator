@@ -32,6 +32,8 @@ ServerUsername|Server Username  |Secret |              |Unchecked    |Yes       
 ServerPassword|Server Password  |Secret |              |Unchecked    |Yes       |Palo Alto Api Password
 ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       |Requires SSL Connection
 DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
+InventoryTrustedCerts|Inventory Trusted Certs|Bool |False|Unchecked  |No        |If false, will not inventory default trusted certs, saves time.
+TemplateStack   |Template Stack     |String |          |Unchecked    |No        |Template stack used for device push of certificates via Template.
 
 #### ENTRY PARAMETERS FOR STORE TYPE
 The entry parameters for this version have been eliminated.  It will not longer support new bindings but will just update existing bindings when the certificate is replaced.
