@@ -127,8 +127,8 @@ Advanced |PFX Password Style |Determines password style for the PFX Password. De
 #### CUSTOM FIELDS FOR STORE TYPE
 NAME          |  DISPLAY NAME	| TYPE | DEFAULT VALUE | DEPENDS ON | REQUIRED |DESCRIPTION
 --------------|-----------------|-------|--------------|-------------|---------|--------------
-ServerUsername|Server Username  |Secret |              |Unchecked    |Yes       |Palo Alto Api User Name
-ServerPassword|Server Password  |Secret |              |Unchecked    |Yes       |Palo Alto Api Password
+ServerUsername|Server Username  |Secret |              |Unchecked    |No       |Palo Alto Api User Name
+ServerPassword|Server Password  |Secret |              |Unchecked    |No       |Palo Alto Api Password
 ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       |Requires SSL Connection
 DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
 InventoryTrustedCerts|Inventory Trusted Certs|Bool |False|Unchecked  |No        |If false, will not inventory default trusted certs, saves time.
