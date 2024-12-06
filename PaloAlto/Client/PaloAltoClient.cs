@@ -18,6 +18,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
@@ -101,6 +102,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<NamedListResponse> GetTemplateStackList()
+        {
+            try
+            {
+                var uri =
+                    $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template-stack/entry/@name&key={ApiKey}";
+                var response = await GetXmlResponseAsync<NamedListResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetDeviceGroupList: {e.Message}");
+                throw;
+            }
+        }
+
         public async Task<CommitResponse> GetCommitResponse()
         {
             try
@@ -118,15 +135,31 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup)
+        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack)
         {
             try
             {
                 //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                var uri =
-                    $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                var uri = string.Empty;
+                if (!String.IsNullOrEmpty(deviceGroup))
+                {
+                     uri =
+                        $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                }
+                else
+                {
+                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{GetTemplateName(storePath)}</name></template></commit-all>&key={ApiKey}";
+                }
+
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+
+                if (!String.IsNullOrEmpty(templateStack))
+                {
+                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
+                    Thread.Sleep(60000); //Some delay built in so pushes to devices work
+                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                }
                 return response;
             }
             catch (Exception e)

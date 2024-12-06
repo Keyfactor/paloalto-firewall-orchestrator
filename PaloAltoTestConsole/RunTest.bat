@@ -8,7 +8,7 @@ set PAMachine=afsd
 set PAApiUser=bhisadfll
 set PAApiPassword=adfssadf
 
-GOTO:PANTemplateVsys
+
 echo ***********************************
 echo Starting Single Firewall Test Cases
 echo ***********************************
@@ -28,6 +28,10 @@ set cert=%random%
 set casename=Management
 set mgt=add
 set overwrite=false
+set inventorytrusted=false
+set templatestackname=""
+
+REM goto :PANTemplates
 
 echo ************************************************************************************************************************
 echo TC1 %mgt%.  Should do the %mgt% and add anything in the chain
@@ -35,12 +39,22 @@ echo ***************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
+
+echo ************************************************************************************************************************
+echo TC1a %mgt% with Template Stack.  Should Error Template Stack not Valid for Firewall
+echo ************************************************************************************************************************
+echo overwrite: %overwrite%
+echo cert name: %cert%
+set templatestackname="CertificatesStack"
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=remove
 set trusted=false
 set overwrite=false
+set templatestackname=""
 
 echo:
 echo *******************************************************************************************************
@@ -50,7 +64,7 @@ echo overwrite: %overwrite%
 echo trusted: %trusted%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=remove
@@ -64,7 +78,7 @@ echo overwrite: %overwrite%
 set /p cert=Please enter bound cert name:
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=false
@@ -76,7 +90,7 @@ echo ***************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 echo:
@@ -87,7 +101,7 @@ set storepath=/config
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=true
@@ -101,9 +115,9 @@ set /p cert=Please enter bound cert name:
 set storepath=/config/shared
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
-
+:firewallinventory
 echo:
 echo:
 echo ***********************************
@@ -113,20 +127,30 @@ set storepath=/config/shared
 set casename=Inventory
 
 echo:
-echo ***************************************************************************************
-echo TC6 Firewall Inventory against firewall should return job status of "2" with no errors
-echo ***************************************************************************************
+echo *************************************************************************************************
+echo TC6 Firewall Inventory against firewall should return job status of "2" with no errors no Trusted
+echo *************************************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% 
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
+
+set inventorytrusted=true
+echo:
+echo ***************************************************************************************************
+echo TC6a Firewall Inventory against firewall should return job status of "2" with no errors with Trusted
+echo ***************************************************************************************************
+echo overwrite: %overwrite%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 :firewallvsys
 echo ***********************************
 echo Starting Firewall Vsys Test Cases
 echo ***********************************
-
+set inventorytrusted=false
 set clientmachine=%FWMachine%
 set password=%FWApiPassword%
 set user=%FWApiUser%
@@ -150,7 +174,7 @@ echo ***************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=remove
@@ -165,7 +189,7 @@ echo overwrite: %overwrite%
 echo trusted: %trusted%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=remove
@@ -179,7 +203,7 @@ echo overwrite: %overwrite%
 set /p cert=Please enter bound cert name:
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=false
@@ -191,7 +215,7 @@ echo ***************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 echo:
@@ -202,7 +226,7 @@ set storepath=/config
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=true
@@ -216,7 +240,7 @@ set /p cert=Please enter bound cert name:
 set storepath=/config/shared
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 echo:
@@ -234,7 +258,7 @@ echo ***************************************************************************
 echo overwrite: %overwrite%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% 
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 echo:
 echo *********************************************
@@ -254,7 +278,7 @@ set casename=Management
 
 
 set cert=%random%
-set storepath=CertificatesTemplate1
+set storepath="/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate1']/config/shared"
 set casename=Management
 set mgt=add
 set overwrite=false
@@ -268,13 +292,29 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
+
+
+echo:
+echo *************************************************************************************************************
+echo TC14a Invalid Template Stack Test, should return a list of valid templates panorama templates to use, error
+echo *************************************************************************************************************
+set storepath="/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared"
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo group name: %devicegroup%
+echo cert name: %cert%
+set templatestackname="InvalidStack"
+
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set casename=Management
 set mgt=add
 set overwrite=false
 set storepath="/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared"
 set devicegroup=Broup2
+set templatestackname=""
 echo:
 echo **********************************************************************************************
 echo TC15 Invalid Group Name, should return a list of valid Groups in panorama to use and error out
@@ -284,7 +324,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set cert=%random%
 set devicegroup=Group1
@@ -300,7 +340,33 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
+
+echo:
+echo ************************************************************************************
+echo TC16a %mgt% push to template only no device group or template stack
+echo ************************************************************************************
+set overwrite=true
+set devicegroup=""
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo group name: %devicegroup%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
+
+echo:
+echo ************************************************************************************
+echo TC16b %mgt% push to template and template stack only no device group
+echo ************************************************************************************
+set templatestackname=CertificatesStack
+echo overwrite: %templatestackname%
+echo overwrite: %overwrite%
+echo store path: %storepath%
+echo group name: %devicegroup%
+echo cert name: %cert%
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=true
@@ -313,7 +379,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=remove
 set overwrite=false
@@ -326,7 +392,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=add
@@ -341,7 +407,7 @@ echo group name: %devicegroup%
 set /p cert=Please enter bound cert name:
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=remove
 set overwrite=false
@@ -354,8 +420,9 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
+:PANInventory
 echo:
 echo:
 echo ***********************************
@@ -373,8 +440,23 @@ echo trusted: %trusted%
 echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
+set inventorytrusted=true
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
+
+
+echo:
+echo *************************************************************************
+echo TC21a Inventory Panorama Certificates from Cert Locations only no Trusted
+echo *************************************************************************
+echo overwrite: %overwrite%
+echo trusted: %trusted%
+echo store path: %storepath%
+echo group name: %devicegroup%
+echo cert name: %cert%
+set inventorytrusted=false
+
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 :PANTemplateVsys
 
@@ -408,7 +490,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=add
 set overwrite=true
@@ -421,7 +503,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=remove
 set overwrite=false
@@ -434,7 +516,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=add
@@ -449,7 +531,7 @@ echo group name: %devicegroup%
 set /p cert=Please enter bound cert name:
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set mgt=remove
 set overwrite=false
@@ -462,7 +544,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 echo:
 echo:
@@ -482,7 +564,7 @@ echo store path: %storepath%
 echo group name: %devicegroup%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 :PAN
 
@@ -513,7 +595,7 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 echo:
 echo *************************************************************
@@ -523,7 +605,7 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set overwrite=true
 
@@ -535,7 +617,7 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=remove
@@ -548,7 +630,7 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 set storepath=/config/panorama
 set casename=Management
@@ -563,7 +645,7 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 
 set mgt=remove
@@ -575,6 +657,6 @@ echo overwrite: %overwrite%
 echo store path: %storepath%
 echo cert name: %cert%
 
-PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite%
+PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup= -managementtype=%mgt% -certalias=%cert% -tlsminversion= -tlsmaxversion= -bindingname= -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
 @pause

@@ -1,3 +1,8 @@
+2.3.0
+* Added support for Template Only Commits
+* Added support for Template Stack Commits
+* Added support for ingoring Trusted Default Certs on inventory to speed up the inventory job
+  
 2.2.1
 * Fixed URL Encoding on Palo Username and Pwd that caused invalid credentials error
 

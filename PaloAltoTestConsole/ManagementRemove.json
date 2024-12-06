@@ -4,7 +4,7 @@
     "ClientMachine": "ClientMachineGoesHere",
     "StorePath": "TemplateNameGoesHere",
     "StorePassword": null,
-    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"DeviceGroupGoesHere\"}",
+    "Properties": "{\"ServerUsername\":\"UserNameGoesHere\",\"ServerPassword\":\"PasswordGoesHere\",\"ServerUseSsl\":\"true\",\"DeviceGroup\":\"DeviceGroupGoesHere\",\"InventoryTrustedCerts\": false,\"TemplateStack\":\"TemplateStackGoesHere\"}",
     "Type": 105
   },
   "OperationType": 3,
