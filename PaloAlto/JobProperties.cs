@@ -23,6 +23,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         [DefaultValue("")]
         public string DeviceGroup { get; set; }
 
+        [JsonProperty("TemplateStack")]
+        [DefaultValue("")]
+        public string TemplateStack { get; set; }
 
+        [JsonProperty("InventoryTrustedCerts")]
+        [DefaultValue(false)]
+        public bool InventoryTrustedCerts { get; set; }
     }
 }

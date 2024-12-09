@@ -50,14 +50,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return templateName;
         }
 
-        static bool IsValidPanoramaFormat(string input)
+        public static bool IsValidPanoramaFormat(string input)
         {
             string pattern = @"^/config/devices/entry\[@name='[^\]]+'\]/template/entry\[@name='[^']+'\]/config/shared$";
             Regex regex = new Regex(pattern);
             return regex.IsMatch(input);
         }
 
-        static bool IsValidFirewallVsysFormat(string input)
+        public static bool IsValidFirewallVsysFormat(string input)
         {
             string pattern = @"^/config/devices/entry\[@name='localhost\.localdomain'\]/vsys/entry\[@name='[^']+'\]$";
             return Regex.IsMatch(input, pattern);
@@ -77,12 +77,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             }
 
             // If it is a firewall (store path of /) then you don't need the Group Name
-            if (!storePath.Contains("template",System.StringComparison.CurrentCultureIgnoreCase))
+            if (!storePath.Contains("template", System.StringComparison.CurrentCultureIgnoreCase))
+            {
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
                     errors +=
                         "You do not need a device group with a Palo Alto Firewall.  It is only required for Panorama.";
                 }
+                if (!string.IsNullOrEmpty(storeProperties?.TemplateStack))
+                {
+                    errors +=
+                        "You do not need a Template Stack with a Palo Alto Firewall.  It is only required for Panorama.";
+                }
+            }
+
 
             // Considered Panorama device if store path is not "/" and there is a valid value for store path
             if (storePath.Contains("template", System.StringComparison.CurrentCultureIgnoreCase))
@@ -91,10 +99,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                     new PaloAltoClient(clientMachine,
                         serverUserName, serverPassword); //Api base URL Plus Key
 
-                if (string.IsNullOrEmpty(storeProperties?.DeviceGroup))
-                {
-                    errors += "You need to specify a device group when working with Panorama.";
-                }
 
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
@@ -106,6 +110,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                             $"Could not find your Device Group In Panorama.  Valid Device Groups are {string.Join(",", deviceList.Result.Result.Entry.Select(d => d.Name))}";
                     }
                 }
+
+                if (!string.IsNullOrEmpty(storeProperties?.TemplateStack))
+                {
+                    var templateStackList = client.GetTemplateStackList();
+                    var templateStacks = templateStackList.Result.Result.Entry.Where(d => d.Name == storeProperties?.TemplateStack);
+                    if (!templateStacks.Any())
+                    {
+                        errors +=
+                            $"Could not find your Template Stacks In Panorama.  Valid Device Groups are {string.Join(",", templateStackList.Result.Result.Entry.Select(d => d.Name))}";
+                    }
+                }
+
 
                 //Validate Template Exists in Panorama, required for Panorama
                 var templateList = client.GetTemplateList();
