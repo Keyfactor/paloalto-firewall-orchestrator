@@ -271,13 +271,98 @@ __________________________________
 </details>
 
 <details>
-<summary>API User Setup Permissions in Panorama or Firewall Required</summary>
+<summary>API User Setup Permissions in Panorama Required</summary>
 
-Tab          |  Security Items	
---------------|--------------------------
-Xml Api       |Report,Log,Configuration,Operational Requests,Commit,Export,Import
-Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates,Panorama/Template Stacks,Panorama/Device Groups,System/Configuration,Plugins/Plugins
-*** 
+# API Access Configuration for KeyfactorAPI Profile
+
+| **Category**          | **Feature/Permission**                    | **Access Level** |
+|------------------------|-------------------------------------------|------------------|
+| **Web UI**            | Dashboard                                 | Disabled         |
+|                       | ACC                                       | Disabled         |
+|                       | Monitor                                   | Disabled         |
+|                       | Policies                                  | Disabled         |
+|                       | Objects                                   | Disabled         |
+|                       | Network                                   | Disabled         |
+|                       | Device                                    | Disabled         |
+|                       | Panorama                                  | Disabled         |
+|                       | Privacy                                   | Disabled         |
+|                       | Validate                                  | Disabled         |
+|                       | Save                                      | Disabled         |
+|                       | Push All Changes                          | Disabled         |
+|                       | Commit                                    | Disabled         |
+|                       | Tasks                                     | Disabled         |
+|                       | Global                                    | Disabled         |
+| **XML API**           | Report                                    | Disabled         |
+|                       | Log                                       | Disabled         |
+|                       | Configuration                             | read/write       |
+|                       | Operational Requests                      | Disabled         |
+|                       | Commit                                    | read/write       |
+|                       | User-ID Agent                             | Disabled         |
+|                       | IoT Agent                                 | Disabled         |
+|                       | Export                                    | read/write       |
+|                       | Import                                    | read/write       |
+| **REST API**          | Objects                                   | Disabled         |
+|                       | Policies                                  | Disabled         |
+|                       | Network                                   | Disabled         |
+|                       | Log Interface Setting                     | Disabled         |
+|                       | SNMP Trap Server Profiles                 | Disabled         |
+|                       | Syslog Server Profiles                    | Disabled         |
+|                       | Email Server Profiles                     | Disabled         |
+|                       | HTTP Server Profiles                      | Disabled         |
+|                       | LDAP Server Profiles                      | Disabled         |
+|                       | Virtual Systems                           | read/write       |
+|                       | Setup Log Setting                         | read/write       |
+|                       | Scheduled Config Push Profiles            | read/write       |
+|                       | Templates                                 | read/write       |
+|                       | Template Stacks                           | read/write       |
+|                       | Device Groups                             | read/write       |
+|                       | Device Registration Auth Keys             | Disabled         |
+|                       | Configuration                             | read/write       |
+| **Plugins**           | Plugins                                   | Disabled         |
+
+</details>
+
+<details>
+<summary>API User Setup Permissions in Firewall Required</summary>
+
+# API Access Configuration for KeyfactorAPI Profile
+
+# Firewall Permissions for APIUser
+
+| **Category**          | **Feature/Permission**                    | **Access Level** |
+|------------------------|-------------------------------------------|------------------|
+| **Web UI**            | Dashboard                                 | Disabled         |
+|                       | ACC                                       | Disabled         |
+|                       | Monitor                                   | Disabled         |
+|                       | Policies                                  | Disabled         |
+|                       | Objects                                   | Disabled         |
+|                       | Network                                   | Disabled         |
+|                       | Device                                    | Disabled         |
+|                       | Operations                                | Disabled         |
+|                       | Privacy                                   | Disabled         |
+|                       | Validate                                  | Disabled         |
+|                       | Save                                      | Disabled         |
+|                       | Commit                                    | Disabled         |
+|                       | Tasks                                     | Disabled         |
+|                       | Global                                    | Disabled         |
+| **XML API**           | Report                                    | Disabled         |
+|                       | Log                                       | Disabled         |
+|                       | Configuration                             | read/write          |
+|                       | Operational Requests                      | Disabled         |
+|                       | Commit                                    | read/write          |
+|                       | User-ID Agent                             | Disabled         |
+|                       | IoT Agent                                 | Disabled         |
+|                       | Export                                    | read/write          |
+|                       | Import                                    | read/write          |
+| **Command Line**      | None                                      | Disabled         |
+| **REST API**          | Objects                                   | Disabled         |
+|                       | Policies                                  | Disabled         |
+|                       | Network                                   | Disabled         |
+|                       | Log Interface Setting (Device)            | Disabled         |
+|                       | Virtual Systems (Device)                  | read/write          |
+|                       | Configuration (System)                    | read/write          |
+
+
 
 </details>
 
