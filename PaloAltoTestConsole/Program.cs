@@ -201,7 +201,7 @@ namespace PaloAltoTestConsole
 
             var fileContent = File.ReadAllText("FirewallInventory.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("ClientMachineGoesHere", ClientMachine)
-                .Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString);
+                .Replace("\"InventoryTrustedCerts\": false", intentoryTrustedReplaceString).Replace("TemplateStackGoesHere", TemplateStackName);
             var jsonObject = JObject.Parse(fileContent);
 
             // Navigate to the InventoryTrustedCerts property and set it to true
@@ -225,7 +225,7 @@ namespace PaloAltoTestConsole
             var fileContent = File.ReadAllText("PanoramaInventory.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("ClientMachineGoesHere", ClientMachine)
-                .Replace("DeviceGroupGoesHere", DeviceGroup);
+                .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("TemplateStackGoesHere", TemplateStackName);
 
 
             var jsonObject = JObject.Parse(fileContent);
@@ -278,7 +278,7 @@ namespace PaloAltoTestConsole
             var fileContent = File.ReadAllText("ManagementRemove.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
-                .Replace("ClientMachineGoesHere", ClientMachine);
+                .Replace("ClientMachineGoesHere", ClientMachine).Replace("TemplateStackGoesHere", TemplateStackName);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
             return result;

@@ -29,7 +29,7 @@ namespace PaloAltoTestConsole
             var request = new RestRequest("/KeyfactorAPI/Enrollment/PFX", Method.Post);
             request.AddHeader("X-Keyfactor-Requested-With", "APIClient");
             request.AddHeader("x-certificateformat", "PFX");
-            request.AddHeader("Authorization", "Basic Authtoken");
+            request.AddHeader("Authorization", "Basic Y29t");
             request.AddHeader("Content-Type", "application/json");
             var enrollRequest = new KeyfactorEnrollmentRequest
             {

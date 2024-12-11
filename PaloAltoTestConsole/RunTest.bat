@@ -1,12 +1,13 @@
 @echo off
 
 cd C:\Users\asdf\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
-set FWMachine=asfd
-set FWApiUser=asfd
-set FWApiPassword=asfdsdfa
-set PAMachine=afsd
-set PAApiUser=bhisadfll
-set PAApiPassword=adfssadf
+set FWMachine=21.22.23.24
+set FWApiUser=adf
+
+set FWApiPassword=asdfasd
+set PAMachine=20.172.0.1
+set PAApiUser=sdfa
+set PAApiPassword=ds!
 
 
 echo ***********************************
@@ -31,7 +32,7 @@ set overwrite=false
 set inventorytrusted=false
 set templatestackname=""
 
-REM goto :PANTemplates
+#REM goto :PANTemplates
 
 echo ************************************************************************************************************************
 echo TC1 %mgt%.  Should do the %mgt% and add anything in the chain
@@ -125,6 +126,7 @@ echo Starting Inventory Test Cases
 echo ***********************************
 set storepath=/config/shared
 set casename=Inventory
+set templatestackname=""
 
 echo:
 echo *************************************************************************************************
@@ -546,6 +548,8 @@ echo cert name: %cert%
 
 PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -user=%user% -password=%password% -storepath=%storepath% -devicegroup=%devicegroup% -managementtype=%mgt% -certalias=%cert% -overwrite=%overwrite% -inventorytrusted=%inventorytrusted% -templatestackname=%templatestackname%
 
+
+:paloinventory
 echo:
 echo:
 echo ***********************************
