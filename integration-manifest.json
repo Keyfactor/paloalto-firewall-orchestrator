@@ -6,14 +6,15 @@
   "update_catalog": true,
   "link_github": true,
   "support_level": "kf-supported",
-  "release_dir": "PaloAlto/bin/Release/netcoreapp3.1",
+  "release_dir": "PaloAlto/PaloAlto.csproj",
+  "release_dir": "PaloAlto/bin/Release",
   "description": "The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.  It supports adding certificates with or without private keys.  Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.",
   "about": {
     "orchestrator": {
-      "UOFramework": "10.1",
-      "keyfactor_platform_version": "9.10",
+      "UOFramework": "10.4",
+      "keyfactor_platform_version": "10.4",
       "pam_support": true,
-      "keyfactor_platform_version": "9.10",
+      "keyfactor_platform_version": "10.4",
       "win": {
         "supportsCreateStore": false,
         "supportsDiscovery": false,
@@ -52,7 +53,9 @@
               "Type": "Secret",
               "DependsOn": null,
               "DefaultValue": null,
-              "Required": false
+              "Required": false,
+			  "IsPAMEligible": true,
+              "Description": "Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
             },
             {
               "Name": "ServerPassword",
@@ -60,7 +63,9 @@
               "Type": "Secret",
               "DependsOn": null,
               "DefaultValue": null,
-              "Required": false
+              "Required": false,
+			  "IsPAMEligible": true,
+              "Description": "Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
             },
             {
               "Name": "ServerUseSsl",
@@ -68,7 +73,9 @@
               "Type": "Bool",
               "DependsOn": null,
               "DefaultValue": "true",
-              "Required": true
+              "Required": true,
+			  "IsPAMEligible": false,
+              "Description": "Should be true, http is not supported."
             },
             {
               "Name": "DeviceGroup",
@@ -76,7 +83,9 @@
               "Type": "String",
               "DependsOn": null,
               "DefaultValue": null,
-              "Required": false
+              "Required": false,
+			  "IsPAMEligible": false,
+              "Description": "Device Group on Panorama that changes will be pushed to."
             },
             {
               "Name": "InventoryTrustedCerts",
@@ -84,7 +93,9 @@
               "Type": "Bool",
               "DependsOn": null,
               "DefaultValue": "false",
-              "Required": true
+              "Required": true,
+			  "IsPAMEligible": false,
+              "Description": "If false, will not inventory default trusted certs, saves time."
             },
             {
               "Name": "TemplateStack",
@@ -92,12 +103,16 @@
               "Type": "String",
               "DependsOn": null,
               "DefaultValue": null,
-              "Required": false
+              "Required": false,
+			  "IsPAMEligible": false,
+              "Description": "Template stack used for device push of certificates via Template."
             }
           ],
           "EntryParameters": [
 
           ],
+          "ClientMachineDescription": "Either the Panorama or Palo Alto Firewall URI or IP address.",
+          "StorePathDescription": "The Store Path field should be reviewed in the store path explanation section.  It varies depending on configuration.",
           "PasswordOptions": {
             "EntrySupported": false,
             "StoreRequired": false,
