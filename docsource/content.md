@@ -5,7 +5,7 @@
 
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
-<summary>Store Path and API Security</summary>
+<summary>Store Path Permutations</summary>
 
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
