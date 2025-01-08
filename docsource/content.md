@@ -3,60 +3,9 @@
 
 **Important Note** Please review the new path considerations in the store section.  It explains how the paths work for Panorama and the Firewalls.  'locahost.localdomain' will always be that constant value.
 
-## CERT STORE SETUP AND GENERAL PERMISSIONS
-<details>
-	<summary>Cert Store Type Configuration</summary>
-	
-In Keyfactor Command create a new Certificate Store Type similar to the one below:
-
-#### STORE TYPE CONFIGURATION
-SETTING TAB  |  CONFIG ELEMENT	| DESCRIPTION
-------|-----------|------------------
-Basic |Name	|Descriptive name for the Store Type.  PaloAlto can be used.
-Basic |Short Name	|The short name that identifies the registered functionality of the orchestrator. Must be PaloAlto
-Basic |Custom Capability|You can leave this unchecked and use the default.
-Basic |Job Types	|Inventory, Add, and Remove are the supported job types. 
-Basic |Needs Server	|Must be checked
-Basic |Blueprint Allowed	|Unchecked
-Basic |Requires Store Password	|Determines if a store password is required when configuring an individual store.  This must be unchecked.
-Basic |Supports Entry Password	|Determined if an individual entry within a store can have a password.  This must be unchecked.
-Advanced |Store Path Type| Determines how the user will enter the store path when setting up the cert store.  Freeform
-Advanced |Supports Custom Alias	|Determines if an individual entry within a store can have a custom Alias.  This must be Required
-Advanced |Private Key Handling |Determines how the orchestrator deals with private keys.  Optional
-Advanced |PFX Password Style |Determines password style for the PFX Password. Default
-
-#### CUSTOM FIELDS FOR STORE TYPE
-NAME          |  DISPLAY NAME	| TYPE | DEFAULT VALUE | DEPENDS ON | REQUIRED |DESCRIPTION
---------------|-----------------|-------|--------------|-------------|---------|--------------
-ServerUsername|Server Username  |Secret |              |Unchecked    |No       |Palo Alto Api User Name
-ServerPassword|Server Password  |Secret |              |Unchecked    |No       |Palo Alto Api Password
-ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       |Requires SSL Connection
-DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
-InventoryTrustedCerts|Inventory Trusted Certs|Bool |False|Unchecked  |No        |If false, will not inventory default trusted certs, saves time.
-TemplateStack   |Template Stack     |String |          |Unchecked    |No        |Template stack used for device push of certificates via Template.
-
-#### ENTRY PARAMETERS FOR STORE TYPE
-The entry parameters for this version have been eliminated.  It will not longer support new bindings but will just update existing bindings when the certificate is replaced.
-
-</details>
-
+## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
 <summary>PaloAlto Certificate Store</summary>
-In Keyfactor Command, navigate to Certificate Stores from the Locations Menu.  Click the Add button to create a new Certificate Store using the settings defined below.
-
-#### STORE CONFIGURATION
-CONFIG ELEMENT	|DESCRIPTION
-----------------|---------------
-Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
-Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
-Client Machine	|The hostname of the Panorama or Firewall.  Sample is "palourl.cloudapp.azure.com".
-Store Path	| See Store Path Explanation Section Below
-Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
-Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
-Use SSL	|This should be checked.
-User	|ApiUser Setup for either Panorama or the Firewall Device
-Password |Api Password Setup for the user above
-
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
 
