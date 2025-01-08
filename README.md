@@ -229,6 +229,7 @@ _________________________________
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
+
 **Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
@@ -250,6 +251,7 @@ _________________________________
 #### PANORAMA SHARED TEMPLATE PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared
+
 **Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
