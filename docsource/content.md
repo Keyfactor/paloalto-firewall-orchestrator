@@ -44,7 +44,7 @@ The entry parameters for this version have been eliminated.  It will not longer 
 <summary>PaloAlto Certificate Store</summary>
 In Keyfactor Command, navigate to Certificate Stores from the Locations Menu.  Click the Add button to create a new Certificate Store using the settings defined below.
 
-#### STORE CONFIGURATION 
+#### STORE CONFIGURATION
 CONFIG ELEMENT	|DESCRIPTION
 ----------------|---------------
 Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
@@ -71,9 +71,6 @@ This indicates that the path is within the configuration section of the firewall
 This section specifies that the path is within the shared settings. Shared settings are common configurations that can be used across multiple virtual systems (vsys) or contexts within the firewall.
 _________________________________
 
-
-
-
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
@@ -93,9 +90,6 @@ This section specifies that the path is within the virtual systems (vsys) sectio
 **/entry[@name='vsys1']**:
 The entry tag with the attribute @name='vsys1' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys1."
 _________________________________
-
-
-
 
 #### PANORAMA SHARED TEMPLATE PATH
 _________________________________
@@ -119,9 +113,6 @@ The entry tag with the attribute @name='CertificatesTemplate' identifies a speci
 **/config/shared**:
 This part of the path indicates that the configuration settings within this template are shared settings. Shared settings are common configurations that can be used across multiple devices or contexts within the Panorama management system.
 _________________________________
-
-
-
 
 #### PANORAMA VIRTUAL SYSTEM PATH
 __________________________________
@@ -154,9 +145,6 @@ This section specifies that the path is within the virtual systems (vsys) sectio
 **/entry[@name='vsys2']**:
 The entry tag with the attribute @name='vsys2' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys2."
 __________________________________
-
-
-
 
 #### PANORAMA LEVEL
 __________________________________
@@ -225,3 +213,8 @@ TC29|Panorama Level Remove  unbound Cert|/config/panorama|N/A|Cert is removed be
 TC30|Panorama Level Replace bound Cert|/config/panorama|**Alias**:<br>PanoramaNoPK<br>**Overwrite**:<br>true|Cert is replaced, binding updated|True|![](images/TC30.gif)
 TC31|Firewall previous version cert store settings|/config/shared|**Alias**:<br>www.extraparams.com<br>**Overwrite**:<br>false|Cert is still installed because it ignores extra params|True|![](images/TC31.gif)
 </details>
+
+## Overview
+
+TODO Overview is a required section
+
