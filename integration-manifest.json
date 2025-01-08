@@ -54,7 +54,7 @@
               "DependsOn": null,
               "DefaultValue": null,
               "Required": false,
-			  "IsPAMEligible": true,
+              "IsPAMEligible": true,
               "Description": "Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
             },
             {
@@ -64,7 +64,7 @@
               "DependsOn": null,
               "DefaultValue": null,
               "Required": false,
-			  "IsPAMEligible": true,
+              "IsPAMEligible": true,
               "Description": "Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
             },
             {
@@ -74,7 +74,7 @@
               "DependsOn": null,
               "DefaultValue": "true",
               "Required": true,
-			  "IsPAMEligible": false,
+              "IsPAMEligible": false,
               "Description": "Should be true, http is not supported."
             },
             {
@@ -84,7 +84,7 @@
               "DependsOn": null,
               "DefaultValue": null,
               "Required": false,
-			  "IsPAMEligible": false,
+              "IsPAMEligible": false,
               "Description": "Device Group on Panorama that changes will be pushed to."
             },
             {
@@ -94,7 +94,7 @@
               "DependsOn": null,
               "DefaultValue": "false",
               "Required": true,
-			  "IsPAMEligible": false,
+              "IsPAMEligible": false,
               "Description": "If false, will not inventory default trusted certs, saves time."
             },
             {
@@ -104,7 +104,7 @@
               "DependsOn": null,
               "DefaultValue": null,
               "Required": false,
-			  "IsPAMEligible": false,
+              "IsPAMEligible": false,
               "Description": "Template stack used for device push of certificates via Template."
             }
           ],
