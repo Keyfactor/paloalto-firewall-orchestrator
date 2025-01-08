@@ -24,6 +24,7 @@ _________________________________
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
+**Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
 This indicates that the path is within the configuration section of the firewall device. It contains all the configuration settings and parameters for the device.
@@ -32,7 +33,7 @@ This indicates that the path is within the configuration section of the firewall
 This part specifies that the configuration relates to devices. In the context of a single firewall, this generally refers to the firewall itself.
 
 **/entry[@name='localhost.localdomain']**:
-The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the firewall device.
+Note `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.  The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the firewall device.
 
 **/vsys**:
 This section specifies that the path is within the virtual systems (vsys) section. Virtual systems allow multiple virtualized instances of firewall configurations within a single physical firewall.
@@ -44,6 +45,7 @@ _________________________________
 #### PANORAMA SHARED TEMPLATE PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared
+**Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
 This section indicates that the path is within the configuration section of the Panorama device. It contains all the configuration settings and parameters for the device.
@@ -52,7 +54,7 @@ This section indicates that the path is within the configuration section of the 
 This part specifies that the configuration relates to devices managed by Panorama. Panorama can manage multiple devices, such as firewalls.
 
 **/entry[@name='localhost.localdomain']**:
-The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the device.
+Note `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.  The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the device.
 
 **/template**:
 This section indicates that the path is within the templates section. Templates in Panorama are used to define configuration settings that can be applied to multiple devices.
