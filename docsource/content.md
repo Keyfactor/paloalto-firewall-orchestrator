@@ -1,3 +1,11 @@
+## Overview
+
+The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
+
+* PaloAlto - See Test Cases For Specific Use Cases that are supported.
+
+## Requirements
+
 ## Release 2.2 Update on Entry Params
 **Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
 
