@@ -31,7 +31,9 @@
 
 ## Overview
 
-TODO Overview is a required section
+The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
+
+* PaloAlto - See Test Cases For Specific Use Cases that are supported.
 
 
 
@@ -53,6 +55,8 @@ The Palo Alto Universal Orchestrator extension is supported by Keyfactor for Key
 ## Requirements & Prerequisites
 
 Before installing the Palo Alto Universal Orchestrator extension, we recommend that you install [kfutil](https://github.com/Keyfactor/kfutil). Kfutil is a command-line tool that simplifies the process of creating store types, installing extensions, and instantiating certificate stores in Keyfactor Command.
+
+
 
 
 ### PaloAlto Requirements
