@@ -18,8 +18,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
@@ -45,6 +43,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             ss.Length <= 64 ? ss : ss.Substring(0, 64) + "\n" + Pemify(ss.Substring(64));
 
         private readonly IPAMSecretResolver _resolver;
+
+        private PaloAltoClient _client;
 
         private ILogger _logger;
 
@@ -110,10 +110,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         "Invalid Management Operation"
                 };
 
+
+                _client = new PaloAltoClient(config.CertificateStoreDetails.ClientMachine, ServerUserName, ServerPassword); //Api base URL Plus Key
+
                 if (config.OperationType.ToString() == "Add")
                 {
                     _logger.LogTrace("Adding...");
-                    _logger.LogTrace($"Add Config Json {JsonConvert.SerializeObject(config)}");
+                    if(config!=null)
+                        _logger.LogTrace($"Add Config Json {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                     complete = PerformAddition(config);
                     _logger.LogTrace("Finished Perform Addition Function");
 
@@ -121,7 +125,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 else if (config.OperationType.ToString() == "Remove")
                 {
                     _logger.LogTrace("Removing...");
-                    _logger.LogTrace($"Remove Config Json {JsonConvert.SerializeObject(config)}");
+                    _logger.LogTrace($"Remove Config Json {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                     complete = PerformRemoval(config);
                     _logger.LogTrace("Finished Perform Removal Function");
 
@@ -146,13 +150,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.MethodEntry();
                 _logger.LogTrace(
-                    $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password: {config.ServerPassword}");
-                var client =
-                    new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerUserName, ServerPassword); //Api base URL Plus Key
+                    $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Password:");
+
                 _logger.LogTrace("Palo Alto Client Created");
 
-                if (!SetPanoramaTarget(config, client))
+                if (!SetPanoramaTarget(config, _client))
                 {
                     return new JobResult
                     {
@@ -165,9 +167,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace(
 
                 $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
-                if (!DeleteCertificate(config, client, warnings, out var deleteResult)) return deleteResult;
+                if (!DeleteCertificate(config, _client, warnings, out var deleteResult)) return deleteResult;
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                warnings = CommitChanges(config, client, warnings);
+                warnings = CommitChanges(config, _client, warnings);
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
@@ -519,10 +521,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("Finished Extracting Private Key...");
                 }
             }
-
-            //var pubCertPem =
-            //    Pemify(Convert.ToBase64String(p.GetCertificate(alias).Certificate.GetEncoded()));
-            //_logger.LogTrace($"Public cert Pem {pubCertPem}");
 
             var pubCertPem = OrderCertificatesAndConvertToPem(p.GetCertificateChain(alias));
 
