@@ -40,6 +40,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _resolver = resolver;
         }
 
+        private PaloAltoClient _client;
         private string ServerPassword { get; set; }
         private string ServerUserName { get; set; }
 
@@ -79,25 +80,26 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     config.JobHistoryId, ServerUserName, ServerPassword);
                 if (!valid) return result;
 
+                //Get the list of certificates and Trusted Roots
+                _client =
+                    new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
+                        ServerUserName, ServerPassword); //Api base URL Plus Key
+
                 _logger.LogTrace("Store Properties are Valid");
-                _logger.LogTrace($"Inventory Config {JsonConvert.SerializeObject(config)}");
+                _logger.LogTrace($"Inventory Config {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                 _logger.LogTrace(
                     $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
                 
-                //Get the list of certificates and Trusted Roots
-                var client =
-                    new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerUserName, ServerPassword); //Api base URL Plus Key
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
                 //Change the path if you are pointed to a Panorama Device
-                var rawCertificatesResult = client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
+                var rawCertificatesResult = _client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
                 LogResponse(certificatesResult); //Trace Write Certificate List Response from Palo Alto
 
-                var trustedRootPayload = client.GetTrustedRootList().Result;
+                var trustedRootPayload = _client.GetTrustedRootList().Result;
                 LogResponse(trustedRootPayload); //Trace Write Trusted Cert List Response from Palo Alto
 
                 var warningFlag = false;
@@ -133,7 +135,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         try
                         {
                             _logger.LogTrace($"Building Trusted Root Inventory Item Alias: {trustedRootCert.Name}");
-                            var certificatePem = client.GetCertificateByName(trustedRootCert.Name);
+                            var certificatePem = _client.GetCertificateByName(trustedRootCert.Name);
                             _logger.LogTrace($"Certificate String Back From Palo Pem: {certificatePem.Result}");
                             var bytes = Encoding.ASCII.GetBytes(certificatePem.Result);
                             var cert = new X509Certificate2(bytes);
