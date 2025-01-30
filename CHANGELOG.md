@@ -1,3 +1,7 @@
+2.3.1
+* Fixed issue where trace logs had extra info in them
+* Fixed issue with chain support when pushing certs to palo
+
 2.3.0
 * Added support for Template Only Commits
 * Added support for Template Stack Commits
