@@ -27,7 +27,7 @@
     <PackageReference Include="Keyfactor.Logging" Version="1.1.1" />
     <PackageReference Include="Keyfactor.Orchestrators.IOrchestratorJobExtensions" Version="0.7.0" />
     <PackageReference Include="Keyfactor.PKI" Version="3.4.8" />
-    <PackageReference Include="RestSharp" Version="107.2.1" />
+    <PackageReference Include="RestSharp" Version="112.1.0" />
     <PackageReference Include="System.Management.Automation" Version="7.0.5" />
   </ItemGroup>
 
