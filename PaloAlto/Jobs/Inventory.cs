@@ -87,8 +87,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace("Store Properties are Valid");
                 _logger.LogTrace($"Inventory Config {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
-                _logger.LogTrace(
-                    $"Client Machine: {config.CertificateStoreDetails.ClientMachine} ApiKey: {config.ServerPassword}");
                 
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
