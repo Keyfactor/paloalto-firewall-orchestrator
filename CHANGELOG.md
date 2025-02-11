@@ -3,7 +3,8 @@
 * Documentation Updates
 
 2.3.1
-* Cert Chain Modifications, push whole chain
+* Fixed issue where trace logs had extra info in them
+* Fixed issue with chain support when pushing certs to palo
 
 2.3.0
 * Added support for Template Only Commits
