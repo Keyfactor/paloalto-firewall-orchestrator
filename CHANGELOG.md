@@ -1,3 +1,10 @@
+2.4.0
+* .Net 6 and .Net 8 Build Support
+* Documentation Updates
+
+2.3.1
+* Cert Chain Modifications, push whole chain
+
 2.3.0
 * Added support for Template Only Commits
 * Added support for Template Stack Commits

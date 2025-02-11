@@ -224,6 +224,7 @@ namespace PaloAltoTestConsole
 
             var fileContent = File.ReadAllText("PanoramaInventory.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
+                .Replace("TemplateStackGoesHere", TemplateStackName)
                 .Replace("ClientMachineGoesHere", ClientMachine)
                 .Replace("DeviceGroupGoesHere", DeviceGroup);
 
@@ -278,6 +279,7 @@ namespace PaloAltoTestConsole
             var fileContent = File.ReadAllText("ManagementRemove.json").Replace("UserNameGoesHere", UserName)
                 .Replace("PasswordGoesHere", Password).Replace("TemplateNameGoesHere", StorePath)
                 .Replace("DeviceGroupGoesHere", DeviceGroup).Replace("AliasGoesHere", CertAlias)
+                .Replace("TemplateStackGoesHere", TemplateStackName)
                 .Replace("ClientMachineGoesHere", ClientMachine);
             var result =
                 JsonConvert.DeserializeObject<ManagementJobConfiguration>(fileContent);
