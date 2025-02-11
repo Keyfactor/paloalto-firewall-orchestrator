@@ -1,12 +1,12 @@
 @echo off
 
-cd C:\Users\asdf\source\repos\paloalto-firewall-orchestrator\PaloAltoTestConsole\bin\Debug\netcoreapp3.1
-set FWMachine=asfd
-set FWApiUser=asfd
-set FWApiPassword=asfdsdfa
-set PAMachine=afsd
-set PAApiUser=bhisadfll
-set PAApiPassword=adfssadf
+cd C:\bin\Debug\netcoreapp3.1
+set FWMachine=fwMachine
+set FWApiUser=bhill
+set FWApiPassword=asfda!
+set PAMachine=paMachine
+set PAApiUser=bhill
+set PAApiPassword=asdfas
 
 
 echo ***********************************
@@ -31,7 +31,7 @@ set overwrite=false
 set inventorytrusted=false
 set templatestackname=""
 
-REM goto :PANTemplates
+goto :PANInventory
 
 echo ************************************************************************************************************************
 echo TC1 %mgt%.  Should do the %mgt% and add anything in the chain
@@ -483,7 +483,7 @@ set overwrite=false
 
 echo:
 echo ************************************************************************************
-echo TC16 %mgt% certificate no overwrite, should %mgt% to Panorama and push to firewalls
+echo TC12 %mgt% certificate no overwrite, should %mgt% to Panorama and push to firewalls
 echo ************************************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -496,7 +496,7 @@ set mgt=add
 set overwrite=true
 echo:
 echo ***************************************************
-echo TC17 %mgt%, Overwrite should overwrite unbound cert
+echo TC23 %mgt%, Overwrite should overwrite unbound cert
 echo ****************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -509,7 +509,7 @@ set mgt=remove
 set overwrite=false
 echo:
 echo ***********************************************************************************************
-echo TC18 %mgt% no bindings, should allow this
+echo TC24 %mgt% no bindings, should allow this
 echo ***********************************************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -523,7 +523,7 @@ set mgt=add
 set overwrite=true
 echo:
 echo ***********************************************************************************************
-echo TC19 %mgt% add with overwrite bound cert
+echo TC25 %mgt% add with overwrite bound cert
 echo ***********************************************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -537,7 +537,7 @@ set mgt=remove
 set overwrite=false
 echo:
 echo ***********************************************************************************************
-echo TC20 %mgt% with Bindings not allow should error out, can't delete cert without deleting binding
+echo TC26 %mgt% with Bindings not allow should error out, can't delete cert without deleting binding
 echo ***********************************************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -556,7 +556,7 @@ echo ***********************************
 set casename=Inventory
 echo:
 echo *************************************************************************
-echo TC21 Inventory Panorama Certificates from Trusted Root and Cert Locations
+echo TC27 Inventory Panorama Certificates from Trusted Root and Cert Locations
 echo *************************************************************************
 echo overwrite: %overwrite%
 echo trusted: %trusted%
@@ -599,7 +599,7 @@ PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -use
 
 echo:
 echo *************************************************************
-echo TC23 Duplicate Certificate No overwrite flag should warn user
+echo TC28 Duplicate Certificate No overwrite flag should warn user
 echo *************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -611,7 +611,7 @@ set overwrite=true
 
 echo:
 echo *************************************************************
-echo TC24 Duplicate Certificate overwrite flag replaces certificate
+echo TC29 Duplicate Certificate overwrite flag replaces certificate
 echo *************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -624,7 +624,7 @@ set mgt=remove
 
 echo:
 echo *************************************************************
-echo TC25 Delete unbound certificate should delete this.
+echo TC30 Delete unbound certificate should delete this.
 echo *************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
@@ -638,7 +638,7 @@ set mgt=add
 set overwrite=true
 echo:
 echo ****************************************************
-echo TC26 Add Bound Certifcate with Overwrite
+echo TC31 Add Bound Certifcate with Overwrite
 echo ****************************************************
 set /p cert=Please enter bound cert name:
 echo overwrite: %overwrite%
@@ -651,7 +651,7 @@ PaloAltoTestConsole.exe -clientmachine=%clientmachine% -casename=%casename% -use
 set mgt=remove
 echo:
 echo *************************************************************
-echo TC27 Delete bound certificate should warn user can't do this
+echo TC32 Delete bound certificate should warn user can't do this
 echo *************************************************************
 echo overwrite: %overwrite%
 echo store path: %storepath%
