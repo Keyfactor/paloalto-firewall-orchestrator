@@ -1,160 +1,287 @@
+<h1 align="center" style="border-bottom: none">
+    Palo Alto Universal Orchestrator Extension
+</h1>
 
-# Palo Alto Orchestrator
-
-The Palo Alto Orchestrator remotely manages certificates on either the Palo Alto PA-VM Firewall Device or the Panorama.  If using Panorama, it will push changes to all the devices from Panorama.  It supports adding certificates with or without private keys.  Palo Alto does not support incremental certificate inventory. If you have large numbers of certificates in your environment it is recommended to limit the frequency of inventory jobs to 30 minutes or more.
-
-#### Integration status: Production - Ready for use in production environments.
-
-## About the Keyfactor Universal Orchestrator Extension
-
-This repository contains a Universal Orchestrator Extension which is a plugin to the Keyfactor Universal Orchestrator. Within the Keyfactor Platform, Orchestrators are used to manage “certificate stores” &mdash; collections of certificates and roots of trust that are found within and used by various applications.
-
-The Universal Orchestrator is part of the Keyfactor software distribution and is available via the Keyfactor customer portal. For general instructions on installing Extensions, see the “Keyfactor Command Orchestrator Installation and Configuration Guide” section of the Keyfactor documentation. For configuration details of this specific Extension see below in this readme.
-
-The Universal Orchestrator is the successor to the Windows Orchestrator. This Orchestrator Extension plugin only works with the Universal Orchestrator and does not work with the Windows Orchestrator.
-
-## Support for Palo Alto Orchestrator
-
-Palo Alto Orchestrator is supported by Keyfactor for Keyfactor customers. If you have a support issue, please open a support ticket via the Keyfactor Support Portal at https://support.keyfactor.com
-
-###### To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
-
----
-
-
----
-
-
-
-## Keyfactor Version Supported
-
-The minimum version of the Keyfactor Universal Orchestrator Framework needed to run this version of the extension is 10.1
-## Platform Specific Notes
-
-The Keyfactor Universal Orchestrator may be installed on either Windows or Linux based platforms. The certificate operations supported by a capability may vary based what platform the capability is installed on. The table below indicates what capabilities are supported based on which platform the encompassing Universal Orchestrator is running.
-| Operation | Win | Linux |
-|-----|-----|------|
-|Supports Management Add|&check; |  |
-|Supports Management Remove|&check; |  |
-|Supports Create Store|  |  |
-|Supports Discovery|  |  |
-|Supports Reenrollment|  |  |
-|Supports Inventory|&check; |  |
-
-
-## PAM Integration
-
-This orchestrator extension has the ability to connect to a variety of supported PAM providers to allow for the retrieval of various client hosted secrets right from the orchestrator server itself.  This eliminates the need to set up the PAM integration on Keyfactor Command which may be in an environment that the client does not want to have access to their PAM provider.
-
-The secrets that this orchestrator extension supports for use with a PAM Provider are:
-
-|Name|Description|
-|----|-----------|
-|ServerPassword|Key obtained from Palo Alto API to authenticate the server hosting the store|
-
-
-It is not necessary to use a PAM Provider for all of the secrets available above. If a PAM Provider should not be used, simply enter in the actual value to be used, as normal.
-
-If a PAM Provider will be used for one of the fields above, start by referencing the [Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam). The GitHub repo for the PAM Provider to be used contains important information such as the format of the `json` needed. What follows is an example but does not reflect the `json` values for all PAM Providers as they have different "instance" and "initialization" parameter names and values.
-
-<details><summary>General PAM Provider Configuration</summary>
-<p>
-
-
-
-### Example PAM Provider Setup
-
-To use a PAM Provider to resolve a field, in this example the __Server Password__ will be resolved by the `Hashicorp-Vault` provider, first install the PAM Provider extension from the [Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam) on the Universal Orchestrator.
-
-Next, complete configuration of the PAM Provider on the UO by editing the `manifest.json` of the __PAM Provider__ (e.g. located at extensions/Hashicorp-Vault/manifest.json). The "initialization" parameters need to be entered here:
-
-~~~ json
-  "Keyfactor:PAMProviders:Hashicorp-Vault:InitializationInfo": {
-    "Host": "http://127.0.0.1:8200",
-    "Path": "v1/secret/data",
-    "Token": "xxxxxx"
-  }
-~~~
-
-After these values are entered, the Orchestrator needs to be restarted to pick up the configuration. Now the PAM Provider can be used on other Orchestrator Extensions.
-
-### Use the PAM Provider
-With the PAM Provider configured as an extenion on the UO, a `json` object can be passed instead of an actual value to resolve the field with a PAM Provider. Consult the [Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam) for the specific format of the `json` object.
-
-To have the __Server Password__ field resolved by the `Hashicorp-Vault` provider, the corresponding `json` object from the `Hashicorp-Vault` extension needs to be copied and filed in with the correct information:
-
-~~~ json
-{"Secret":"my-kv-secret","Key":"myServerPassword"}
-~~~
-
-This text would be entered in as the value for the __Server Password__, instead of entering in the actual password. The Orchestrator will attempt to use the PAM Provider to retrieve the __Server Password__. If PAM should not be used, just directly enter in the value for the field.
+<p align="center">
+  <!-- Badges -->
+<img src="https://img.shields.io/badge/integration_status-production-3D1973?style=flat-square" alt="Integration Status: production" />
+<a href="https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases"><img src="https://img.shields.io/github/v/release/Keyfactor/paloalto-firewall-orchestrator?style=flat-square" alt="Release" /></a>
+<img src="https://img.shields.io/github/issues/Keyfactor/paloalto-firewall-orchestrator?style=flat-square" alt="Issues" />
+<img src="https://img.shields.io/github/downloads/Keyfactor/paloalto-firewall-orchestrator/total?style=flat-square&label=downloads&color=28B905" alt="GitHub Downloads (all assets, all releases)" />
 </p>
-</details> 
+
+<p align="center">
+  <!-- TOC -->
+  <a href="#support">
+    <b>Support</b>
+  </a>
+  ·
+  <a href="#installation">
+    <b>Installation</b>
+  </a>
+  ·
+  <a href="#license">
+    <b>License</b>
+  </a>
+  ·
+  <a href="https://github.com/orgs/Keyfactor/repositories?q=orchestrator">
+    <b>Related Integrations</b>
+  </a>
+</p>
+
+## Overview
+
+The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
+
+* PaloAlto - See Test Cases For Specific Use Cases that are supported.
+
+
+
+## Compatibility
+
+This integration is compatible with Keyfactor Universal Orchestrator version 10.4 and later.
+
+## Support
+The Palo Alto Universal Orchestrator extension If you have a support issue, please open a support ticket by either contacting your Keyfactor representative or via the Keyfactor Support Portal at https://support.keyfactor.com. 
+ 
+> To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
+
+## Requirements & Prerequisites
+
+Before installing the Palo Alto Universal Orchestrator extension, we recommend that you install [kfutil](https://github.com/Keyfactor/kfutil). Kfutil is a command-line tool that simplifies the process of creating store types, installing extensions, and instantiating certificate stores in Keyfactor Command.
 
 
 
 
----
+
+## Create the PaloAlto Certificate Store Type
+
+To use the Palo Alto Universal Orchestrator extension, you **must** create the PaloAlto Certificate Store Type. This only needs to happen _once_ per Keyfactor Command instance.
+
+
+
+* **Create PaloAlto using kfutil**:
+
+    ```shell
+    # PaloAlto
+    kfutil store-types create PaloAlto
+    ```
+
+* **Create PaloAlto manually in the Command UI**:
+    <details><summary>Create PaloAlto manually in the Command UI</summary>
+
+    Create a store type called `PaloAlto` with the attributes in the tables below:
+
+    #### Basic Tab
+    | Attribute | Value | Description |
+    | --------- | ----- | ----- |
+    | Name | PaloAlto | Display name for the store type (may be customized) |
+    | Short Name | PaloAlto | Short display name for the store type |
+    | Capability | PaloAlto | Store type name orchestrator will register with. Check the box to allow entry of value |
+    | Supports Add | ✅ Checked | Check the box. Indicates that the Store Type supports Management Add |
+    | Supports Remove | ✅ Checked | Check the box. Indicates that the Store Type supports Management Remove |
+    | Supports Discovery | 🔲 Unchecked |  Indicates that the Store Type supports Discovery |
+    | Supports Reenrollment | 🔲 Unchecked |  Indicates that the Store Type supports Reenrollment |
+    | Supports Create | 🔲 Unchecked |  Indicates that the Store Type supports store creation |
+    | Needs Server | ✅ Checked | Determines if a target server name is required when creating store |
+    | Blueprint Allowed | 🔲 Unchecked | Determines if store type may be included in an Orchestrator blueprint |
+    | Uses PowerShell | 🔲 Unchecked | Determines if underlying implementation is PowerShell |
+    | Requires Store Password | 🔲 Unchecked | Enables users to optionally specify a store password when defining a Certificate Store. |
+    | Supports Entry Password | 🔲 Unchecked | Determines if an individual entry within a store can have a password. |
+
+    The Basic tab should look like this:
+
+    ![PaloAlto Basic Tab](docsource/images/PaloAlto-basic-store-type-dialog.png)
+
+    #### Advanced Tab
+    | Attribute | Value | Description |
+    | --------- | ----- | ----- |
+    | Supports Custom Alias | Required | Determines if an individual entry within a store can have a custom Alias. |
+    | Private Key Handling | Optional | This determines if Keyfactor can send the private key associated with a certificate to the store. Required because IIS certificates without private keys would be invalid. |
+    | PFX Password Style | Default | 'Default' - PFX password is randomly generated, 'Custom' - PFX password may be specified when the enrollment job is created (Requires the Allow Custom Password application setting to be enabled.) |
+
+    The Advanced tab should look like this:
+
+    ![PaloAlto Advanced Tab](docsource/images/PaloAlto-advanced-store-type-dialog.png)
+
+    > For Keyfactor **Command versions 24.4 and later**, a Certificate Format dropdown is available with PFX and PEM options. Ensure that **PFX** is selected, as this determines the format of new and renewed certificates sent to the Orchestrator during a Management job. Currently, all Keyfactor-supported Orchestrator extensions support only PFX.
+
+    #### Custom Fields Tab
+    Custom fields operate at the certificate store level and are used to control how the orchestrator connects to the remote target server containing the certificate store to be managed. The following custom fields should be added to the store type:
+
+    | Name | Display Name | Description | Type | Default Value/Options | Required |
+    | ---- | ------------ | ---- | --------------------- | -------- | ----------- |
+    | ServerUsername | Server Username | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
+    | ServerPassword | Server Password | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
+    | ServerUseSsl | Use SSL | Should be true, http is not supported. | Bool | true | ✅ Checked |
+    | DeviceGroup | Device Group | Device Group on Panorama that changes will be pushed to. | String |  | 🔲 Unchecked |
+    | InventoryTrustedCerts | Inventory Trusted Certs | If false, will not inventory default trusted certs, saves time. | Bool | false | ✅ Checked |
+    | TemplateStack | Template Stack | Template stack used for device push of certificates via Template. | String |  | 🔲 Unchecked |
+
+    The Custom Fields tab should look like this:
+
+    ![PaloAlto Custom Fields Tab](docsource/images/PaloAlto-custom-fields-store-type-dialog.png)
+
+
+
+    </details>
+
+## Installation
+
+1. **Download the latest Palo Alto Universal Orchestrator extension from GitHub.** 
+
+    Navigate to the [Palo Alto Universal Orchestrator extension GitHub version page](https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases/latest). Refer to the compatibility matrix below to determine whether the `net6.0` or `net8.0` asset should be downloaded. Then, click the corresponding asset to download the zip archive.
+    | Universal Orchestrator Version | Latest .NET version installed on the Universal Orchestrator server | `rollForward` condition in `Orchestrator.runtimeconfig.json` | `paloalto-firewall-orchestrator` .NET version to download |
+    | --------- | ----------- | ----------- | ----------- |
+    | Older than `11.0.0` | | | `net6.0` |
+    | Between `11.0.0` and `11.5.1` (inclusive) | `net6.0` | | `net6.0` | 
+    | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `Disable` | `net6.0` | 
+    | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `LatestMajor` | `net8.0` | 
+    | `11.6` _and_ newer | `net8.0` | | `net8.0` |
+
+    Unzip the archive containing extension assemblies to a known location.
+
+    > **Note** If you don't see an asset with a corresponding .NET version, you should always assume that it was compiled for `net6.0`.
+
+2. **Locate the Universal Orchestrator extensions directory.**
+
+    * **Default on Windows** - `C:\Program Files\Keyfactor\Keyfactor Orchestrator\extensions`
+    * **Default on Linux** - `/opt/keyfactor/orchestrator/extensions`
+    
+3. **Create a new directory for the Palo Alto Universal Orchestrator extension inside the extensions directory.**
+        
+    Create a new directory called `paloalto-firewall-orchestrator`.
+    > The directory name does not need to match any names used elsewhere; it just has to be unique within the extensions directory.
+
+4. **Copy the contents of the downloaded and unzipped assemblies from __step 2__ to the `paloalto-firewall-orchestrator` directory.**
+
+5. **Restart the Universal Orchestrator service.**
+
+    Refer to [Starting/Restarting the Universal Orchestrator service](https://software.keyfactor.com/Core-OnPrem/Current/Content/InstallingAgents/NetCoreOrchestrator/StarttheService.htm).
+
+
+6. **(optional) PAM Integration** 
+
+    The Palo Alto Universal Orchestrator extension is compatible with all supported Keyfactor PAM extensions to resolve PAM-eligible secrets. PAM extensions running on Universal Orchestrators enable secure retrieval of secrets from a connected PAM provider.
+
+    To configure a PAM provider, [reference the Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam) to select an extension, and follow the associated instructions to install it on the Universal Orchestrator (remote).
+
+
+> The above installation steps can be supplimented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/InstallingAgents/NetCoreOrchestrator/CustomExtensions.htm?Highlight=extensions).
+
+
+
+## Defining Certificate Stores
+
+
+
+* **Manually with the Command UI**
+
+    <details><summary>Create Certificate Stores manually in the UI</summary>
+
+    1. **Navigate to the _Certificate Stores_ page in Keyfactor Command.**
+
+        Log into Keyfactor Command, toggle the _Locations_ dropdown, and click _Certificate Stores_.
+
+    2. **Add a Certificate Store.**
+
+        Click the Add button to add a new Certificate Store. Use the table below to populate the **Attributes** in the **Add** form.
+        | Attribute | Description |
+        | --------- | ----------- |
+        | Category | Select "PaloAlto" or the customized certificate store name from the previous step. |
+        | Container | Optional container to associate certificate store with. |
+        | Client Machine | Either the Panorama or Palo Alto Firewall URI or IP address. |
+        | Store Path | The Store Path field should be reviewed in the store path explanation section.  It varies depending on configuration. |
+        | Orchestrator | Select an approved orchestrator capable of managing `PaloAlto` certificates. Specifically, one with the `PaloAlto` capability. |
+        | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerUseSsl | Should be true, http is not supported. |
+        | DeviceGroup | Device Group on Panorama that changes will be pushed to. |
+        | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
+        | TemplateStack | Template stack used for device push of certificates via Template. |
+
+
+        
+
+        <details><summary>Attributes eligible for retrieval by a PAM Provider on the Universal Orchestrator</summary>
+
+        If a PAM provider was installed _on the Universal Orchestrator_ in the [Installation](#Installation) section, the following parameters can be configured for retrieval _on the Universal Orchestrator_.
+        | Attribute | Description |
+        | --------- | ----------- |
+        | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+
+
+        Please refer to the **Universal Orchestrator (remote)** usage section ([PAM providers on the Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam)) for your selected PAM provider for instructions on how to load attributes orchestrator-side.
+
+        > Any secret can be rendered by a PAM provider _installed on the Keyfactor Command server_. The above parameters are specific to attributes that can be fetched by an installed PAM provider running on the Universal Orchestrator server itself. 
+        </details>
+        
+
+    </details>
+
+* **Using kfutil**
+    
+    <details><summary>Create Certificate Stores with kfutil</summary>
+    
+    1. **Generate a CSV template for the PaloAlto certificate store**
+
+        ```shell
+        kfutil stores import generate-template --store-type-name PaloAlto --outpath PaloAlto.csv
+        ```
+    2. **Populate the generated CSV file**
+
+        Open the CSV file, and reference the table below to populate parameters for each **Attribute**.
+        | Attribute | Description |
+        | --------- | ----------- |
+        | Category | Select "PaloAlto" or the customized certificate store name from the previous step. |
+        | Container | Optional container to associate certificate store with. |
+        | Client Machine | Either the Panorama or Palo Alto Firewall URI or IP address. |
+        | Store Path | The Store Path field should be reviewed in the store path explanation section.  It varies depending on configuration. |
+        | Orchestrator | Select an approved orchestrator capable of managing `PaloAlto` certificates. Specifically, one with the `PaloAlto` capability. |
+        | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerUseSsl | Should be true, http is not supported. |
+        | DeviceGroup | Device Group on Panorama that changes will be pushed to. |
+        | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
+        | TemplateStack | Template stack used for device push of certificates via Template. |
+
+
+        
+
+        <details><summary>Attributes eligible for retrieval by a PAM Provider on the Universal Orchestrator</summary>
+
+        If a PAM provider was installed _on the Universal Orchestrator_ in the [Installation](#Installation) section, the following parameters can be configured for retrieval _on the Universal Orchestrator_.
+        | Attribute | Description |
+        | --------- | ----------- |
+        | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+        | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+
+
+        > Any secret can be rendered by a PAM provider _installed on the Keyfactor Command server_. The above parameters are specific to attributes that can be fetched by an installed PAM provider running on the Universal Orchestrator server itself. 
+        </details>
+        
+
+    3. **Import the CSV file to create the certificate stores** 
+
+        ```shell
+        kfutil stores import csv --store-type-name PaloAlto --file PaloAlto.csv
+        ```
+    </details>
+
+> The content in this section can be supplimented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
+
+
 
 
 ## Release 2.2 Update on Entry Params
 **Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
 
-**Important Note** Please review the new path considerations in the store section.  It explains how the paths work for Panorama and the Firewalls.  'locahost.localdomain' will always be that constant value.
+**Important Note** Please review the new path considerations in the section below.  It explains how the paths work for Panorama and the Firewalls.  `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
-## CERT STORE SETUP AND GENERAL PERMISSIONS
+## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
-	<summary>Cert Store Type Configuration</summary>
-	
-In Keyfactor Command create a new Certificate Store Type similar to the one below:
-
-#### STORE TYPE CONFIGURATION
-SETTING TAB  |  CONFIG ELEMENT	| DESCRIPTION
-------|-----------|------------------
-Basic |Name	|Descriptive name for the Store Type.  PaloAlto can be used.
-Basic |Short Name	|The short name that identifies the registered functionality of the orchestrator. Must be PaloAlto
-Basic |Custom Capability|You can leave this unchecked and use the default.
-Basic |Job Types	|Inventory, Add, and Remove are the supported job types. 
-Basic |Needs Server	|Must be checked
-Basic |Blueprint Allowed	|Unchecked
-Basic |Requires Store Password	|Determines if a store password is required when configuring an individual store.  This must be unchecked.
-Basic |Supports Entry Password	|Determined if an individual entry within a store can have a password.  This must be unchecked.
-Advanced |Store Path Type| Determines how the user will enter the store path when setting up the cert store.  Freeform
-Advanced |Supports Custom Alias	|Determines if an individual entry within a store can have a custom Alias.  This must be Required
-Advanced |Private Key Handling |Determines how the orchestrator deals with private keys.  Optional
-Advanced |PFX Password Style |Determines password style for the PFX Password. Default
-
-#### CUSTOM FIELDS FOR STORE TYPE
-NAME          |  DISPLAY NAME	| TYPE | DEFAULT VALUE | DEPENDS ON | REQUIRED |DESCRIPTION
---------------|-----------------|-------|--------------|-------------|---------|--------------
-ServerUsername|Server Username  |Secret |              |Unchecked    |No       |Palo Alto Api User Name
-ServerPassword|Server Password  |Secret |              |Unchecked    |No       |Palo Alto Api Password
-ServerUseSsl  |Use SSL          |Bool   |True          |Unchecked    |Yes       |Requires SSL Connection
-DeviceGroup   |Device Group     |String |              |Unchecked    |No        |Device Group on Panorama that changes will be pushed to.
-InventoryTrustedCerts|Inventory Trusted Certs|Bool |False|Unchecked  |No        |If false, will not inventory default trusted certs, saves time.
-TemplateStack   |Template Stack     |String |          |Unchecked    |No        |Template stack used for device push of certificates via Template.
-
-#### ENTRY PARAMETERS FOR STORE TYPE
-The entry parameters for this version have been eliminated.  It will not longer support new bindings but will just update existing bindings when the certificate is replaced.
-
-</details>
-
-<details>
-<summary>PaloAlto Certificate Store</summary>
-In Keyfactor Command, navigate to Certificate Stores from the Locations Menu.  Click the Add button to create a new Certificate Store using the settings defined below.
-
-#### STORE CONFIGURATION 
-CONFIG ELEMENT	|DESCRIPTION
-----------------|---------------
-Category	|The type of certificate store to be configured. Select category based on the display name configured above "PaloAlto".
-Container	|This is a logical grouping of like stores. This configuration is optional and does not impact the functionality of the store.
-Client Machine	|The hostname of the Panorama or Firewall.  Sample is "palourl.cloudapp.azure.com".
-Store Path	| See Store Path Explanation Section Below
-Orchestrator	|This is the orchestrator server registered with the appropriate capabilities to manage this certificate store type. 
-Inventory Schedule	|The interval that the system will use to report on what certificates are currently in the store. 
-Use SSL	|This should be checked.
-User	|ApiUser Setup for either Panorama or the Firewall Device
-Password |Api Password Setup for the user above
+<summary>Store Path Permutations</summary>
 
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
@@ -170,12 +297,11 @@ This indicates that the path is within the configuration section of the firewall
 This section specifies that the path is within the shared settings. Shared settings are common configurations that can be used across multiple virtual systems (vsys) or contexts within the firewall.
 _________________________________
 
-
-
-
 #### FIREWALL VIRTUAL SYSTEM PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']
+
+**Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
 This indicates that the path is within the configuration section of the firewall device. It contains all the configuration settings and parameters for the device.
@@ -184,7 +310,7 @@ This indicates that the path is within the configuration section of the firewall
 This part specifies that the configuration relates to devices. In the context of a single firewall, this generally refers to the firewall itself.
 
 **/entry[@name='localhost.localdomain']**:
-The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the firewall device.
+Note `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.  The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the firewall device.
 
 **/vsys**:
 This section specifies that the path is within the virtual systems (vsys) section. Virtual systems allow multiple virtualized instances of firewall configurations within a single physical firewall.
@@ -193,12 +319,11 @@ This section specifies that the path is within the virtual systems (vsys) sectio
 The entry tag with the attribute @name='vsys1' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys1."
 _________________________________
 
-
-
-
 #### PANORAMA SHARED TEMPLATE PATH
 _________________________________
 **Path Example**: /config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared
+
+**Note** `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
 **/config**:
 This section indicates that the path is within the configuration section of the Panorama device. It contains all the configuration settings and parameters for the device.
@@ -207,7 +332,7 @@ This section indicates that the path is within the configuration section of the 
 This part specifies that the configuration relates to devices managed by Panorama. Panorama can manage multiple devices, such as firewalls.
 
 **/entry[@name='localhost.localdomain']**:
-The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the device.
+Note `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.  The entry tag with the attribute @name='localhost.localdomain' identifies a specific device by its name. In this case, it refers to the device named "localhost.localdomain," which is a default or placeholder name for the device.
 
 **/template**:
 This section indicates that the path is within the templates section. Templates in Panorama are used to define configuration settings that can be applied to multiple devices.
@@ -218,9 +343,6 @@ The entry tag with the attribute @name='CertificatesTemplate' identifies a speci
 **/config/shared**:
 This part of the path indicates that the configuration settings within this template are shared settings. Shared settings are common configurations that can be used across multiple devices or contexts within the Panorama management system.
 _________________________________
-
-
-
 
 #### PANORAMA VIRTUAL SYSTEM PATH
 __________________________________
@@ -253,9 +375,6 @@ This section specifies that the path is within the virtual systems (vsys) sectio
 **/entry[@name='vsys2']**:
 The entry tag with the attribute @name='vsys2' identifies a specific virtual system by its name. In this case, it refers to a virtual system named "vsys2."
 __________________________________
-
-
-
 
 #### PANORAMA LEVEL
 __________________________________
@@ -325,6 +444,11 @@ TC30|Panorama Level Replace bound Cert|/config/panorama|**Alias**:<br>PanoramaNo
 TC31|Firewall previous version cert store settings|/config/shared|**Alias**:<br>www.extraparams.com<br>**Overwrite**:<br>false|Cert is still installed because it ignores extra params|True|![](images/TC31.gif)
 </details>
 
-When creating cert store type manually, that store property names and entry parameter names are case sensitive
 
+## License
 
+Apache License 2.0, see [LICENSE](LICENSE).
+
+## Related Integrations
+
+See all [Keyfactor Universal Orchestrator extensions](https://github.com/orgs/Keyfactor/repositories?q=orchestrator).
