@@ -1,3 +1,7 @@
+2.4.0
+* .Net 6 and .Net 8 Build Support
+* Documentation Updates
+
 2.3.1
 * Fixed issue where trace logs had extra info in them
 * Fixed issue with chain support when pushing certs to palo

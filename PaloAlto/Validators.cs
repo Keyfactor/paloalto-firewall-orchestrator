@@ -118,7 +118,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                     if (!templateStacks.Any())
                     {
                         errors +=
-                            $"Could not find your Template Stacks In Panorama.  Valid Device Groups are {string.Join(",", templateStackList.Result.Result.Entry.Select(d => d.Name))}";
+                            $"Could not find your Template Stacks In Panorama.  Valid Template Stacks are {string.Join(",", templateStackList.Result.Result.Entry.Select(d => d.Name))}";
                     }
                 }
 
