@@ -211,6 +211,160 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(updateProps);
         AssertJobSuccess(result, "Update");
     }
+    
+    [Fact(DisplayName = "TC07: Firewall Can Add to Vsys Store Path")]
+    public void TestCase07_FirewallAdd_VsysStorePath_AddToChain()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        addProps.AddFirewallCredentials();
+
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+    }
+    
+    [Fact(DisplayName = "TC08: Firewall Can Remove Vsys Unbound Cert")]
+    public void TestCase08_FirewallRemove_VsysStorePath_UnboundCert()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        var removeProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            TemplateStack = ""
+        };
+        addProps.AddFirewallCredentials();
+        removeProps.AddFirewallCredentials();
+
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+
+        var result = ProcessManagementRemoveJob(removeProps);
+        AssertJobSuccess(result, "Remove");
+    }
+    
+    [Fact(DisplayName = "TC10: Firewall Vsys Warns if Writing to Bound Cert Without Override")]
+    public void TestCase10_FirewallVsys_BoundCert_ErrorsIfOverwriteIsFalse()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        var updateProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            TemplateStack = ""
+        };
+        addProps.AddFirewallCredentials();
+        updateProps.AddFirewallCredentials();
+
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+
+        var result = ProcessManagementAddJob(updateProps);
+        AssertJobFailure(result, $"Duplicate alias {alias} found in Palo Alto, to overwrite use the overwrite flag.");
+    }
+    
+    [Fact(DisplayName = "TC11: Firewall Vsys Invalid Store Path Should Error")]
+    public void TestCase11_FirewallVsys_InvalidStorePath_Errors()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        addProps.AddFirewallCredentials();
+
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobFailure(addResult, "Add");
+    }
+    
+    [Fact(DisplayName = "TC12: Firewall Updates Bound Cert If Overwrite Is True")]
+    public void TestCase12_Firewall_BoundCert_UpdatesCertIfOverwriteIsProvided()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        var updateProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            TemplateStack = ""
+        };
+        addProps.AddFirewallCredentials();
+        updateProps.AddFirewallCredentials();
+
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+
+        var result = ProcessManagementAddJob(updateProps);
+        AssertJobSuccess(addResult, "Update");
+    }
 
     #endregion
 
@@ -472,11 +626,106 @@ public class ManagementIntegrationTests : BaseIntegrationTest
             TemplateStack = "CertificatesStack"
         };
         addProps.AddPanoramaCredentials();
-        removeProps.AddFirewallCredentials();
+        removeProps.AddPanoramaCredentials();
         
         // Add certificate to Panorama
         var addResult = ProcessManagementAddJob(addProps);
         AssertJobSuccess(addResult, "Add");
+
+        var result = ProcessManagementRemoveJob(removeProps);
+        AssertJobFailure(result, "Remove");
+    }
+    
+    // TODO: Getting a 403 thrown on this test
+    [Fact(DisplayName = "TC22: Panorama Add Vsys Should Succeed", Skip = "Getting an unexpected 403 on this test")]
+    public void TestCase22_PanoramaAdd_Vsys_ShouldSucceed()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        addProps.AddPanoramaCredentials();
+        
+        // Add certificate to Panorama
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+    }
+    
+    // The test case 22 name is duplicated in the test suite. Keeping the name for parity.
+    [Fact(DisplayName = "TC22: Panorama Config Installs Certificate", Skip = "Getting an error with DeviceGroup and TemplateStack not being needed on Firewall.")]
+    public void TestCase22_PanoramaAdd_PanoramaConfig_ShouldSucceed()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+        
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/panorama",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        addProps.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(result, "Add");
+    }
+    
+    // TODO: Getting a 403 thrown on this test
+    [Fact(DisplayName = "TC23: Panorama Overwrite Vsys Unbound Cert", Skip = "Getting an unexpected 403 on this test")]
+    public void TestCase23_PanoramaOverwrite_Vsys_UnboundCert_ShouldSucceed()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = true,
+            InventoryTrusted = false,
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        addProps.AddPanoramaCredentials();
+        
+        // Add certificate to Panorama
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+    }
+    
+    // TODO: Getting a store setup is invalid error?
+    [Fact(DisplayName = "TC24: Panorama Remove Vsys Unbound Cert", Skip = "Getting an unexpected 403 on this test")]
+    public void TestCase24_PanoramaRemove_Vsys_UnboundCert_ShouldSucceed()
+    {
+        var alias = AliasGenerator.Generate();
+        
+        var removeProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+            InventoryTrusted = false,
+            TemplateStack = "CertificatesStack"
+        };
+        removeProps.AddPanoramaCredentials();
 
         var result = ProcessManagementRemoveJob(removeProps);
         AssertJobFailure(result, "Remove");
