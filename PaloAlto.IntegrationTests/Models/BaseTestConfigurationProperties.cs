@@ -6,6 +6,10 @@ public abstract class BaseTestConfigurationProperties
     public string ServerPassword { get; set; }
     public string MachineName { get; set; }
     
+    public string StorePath { get; set; }
+    public string TemplateStack { get; set; }
+    public string DeviceGroup { get; set; }
+    
     public void AddFirewallCredentials()
     {
         ServerUsername = Environment.GetEnvironmentVariable("PALOALTO_FIREWALL_USER");
