@@ -30,7 +30,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 {
-    public class PaloAltoClient
+    public class PaloAltoClient : IPaloAltoClient
     {
         private readonly ILogger _logger;
 
@@ -172,7 +172,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
         }
 
 
-        private string GetTemplateName(string storePath)
+        public string GetTemplateName(string storePath)
         {
             string pattern = @"\/template\/entry\[@name='([^']+)'\]";
             Regex regex = new Regex(pattern);

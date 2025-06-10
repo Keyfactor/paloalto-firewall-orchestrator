@@ -65,7 +65,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         }
 
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
-            string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
+            string storePath, IPaloAltoClient client, long jobHistoryId)
         {
             var errors = string.Empty;
 
@@ -95,11 +95,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             // Considered Panorama device if store path is not "/" and there is a valid value for store path
             if (storePath.Contains("template", System.StringComparison.CurrentCultureIgnoreCase))
             {
-                var client =
-                    new PaloAltoClient(clientMachine,
-                        serverUserName, serverPassword); //Api base URL Plus Key
-
-
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
                     var deviceList = client.GetDeviceGroupList();
