@@ -462,7 +462,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(props);
 
         AssertJobFailure(result,
-            "The store setup is not valid. Could not find your Device Group In Panorama.  Valid Device Groups are Group1");
+            "The store setup is not valid. Could not find Device Group(s) Broup2 In Panorama.  Valid Device Groups are: Group1");
     }
 
     [Fact(DisplayName = "TC16: Panorama No Overwrite Adds to Panorama and Firewalls")]
@@ -611,6 +611,72 @@ public class ManagementIntegrationTests : BaseIntegrationTest
 
         AssertJobSuccess(result, "Remove");
     }
+    
+    [Fact(DisplayName = "TC18a: Panorama Remove Single Device Group No Bindings")]
+    public void TestCase18a_PanoramaRemove_WithDeviceGroup_NoBindings()
+    {
+        var alias = AliasGenerator.Generate();
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementRemoveJob(props);
+
+        AssertJobSuccess(result, "Remove");
+    }
+    
+    [Fact(DisplayName = "TC18b: Panorama Remove Multiple Device Groups No Bindings")]
+    public void TestCase18b_PanoramaRemove_MultipleDeviceGroups_NoBindings()
+    {
+        var alias = AliasGenerator.Generate();
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementRemoveJob(props);
+
+        AssertJobSuccess(result, "Remove");
+    }
+    
+    [Fact(DisplayName = "TC18c: Panorama Remove Device Group and TemplateStack No Bindings")]
+    public void TestCase18c_PanoramaRemove_WithDeviceGroup_AndTemplateStack_NoBindings()
+    {
+        var alias = AliasGenerator.Generate();
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1;Group1;Group1;Group1;Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            TemplateStack = "CertificatesStack"
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementRemoveJob(props);
+
+        AssertJobSuccess(result, "Remove");
+    }
 
     [Fact(DisplayName = "TC19: Panorama Add with Override Bound Cert")]
     public void TestCase19_PanoramaEnroll_WithOverwrite_BoundCert()
@@ -693,9 +759,8 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementRemoveJob(removeProps);
         AssertJobFailure(result, "Remove");
     }
-
-    // TODO: Getting a 403 thrown on this test
-    [Fact(DisplayName = "TC22: Panorama Add Vsys Should Succeed", Skip = "Getting an unexpected 403 on this test")]
+    
+    [Fact(DisplayName = "TC22: Panorama Add Vsys Should Succeed")]
     public void TestCase22_PanoramaAdd_Vsys_ShouldSucceed()
     {
         var alias = AliasGenerator.Generate();
@@ -743,9 +808,8 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(addProps);
         AssertJobSuccess(result, "Add");
     }
-
-    // TODO: Getting a 403 thrown on this test
-    [Fact(DisplayName = "TC23: Panorama Overwrite Vsys Unbound Cert", Skip = "Getting an unexpected 403 on this test")]
+    
+    [Fact(DisplayName = "TC23: Panorama Overwrite Vsys Unbound Cert")]
     public void TestCase23_PanoramaOverwrite_Vsys_UnboundCert_ShouldSucceed()
     {
         var alias = AliasGenerator.Generate();
@@ -770,8 +834,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         AssertJobSuccess(addResult, "Add");
     }
 
-    // TODO: Getting a store setup is invalid error?
-    [Fact(DisplayName = "TC24: Panorama Remove Vsys Unbound Cert", Skip = "Getting an unexpected 403 on this test")]
+    [Fact(DisplayName = "TC24: Panorama Remove Vsys Unbound Cert")]
     public void TestCase24_PanoramaRemove_Vsys_UnboundCert_ShouldSucceed()
     {
         var alias = AliasGenerator.Generate();
@@ -789,7 +852,49 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         removeProps.AddPanoramaCredentials();
 
         var result = ProcessManagementRemoveJob(removeProps);
-        AssertJobFailure(result, "Remove");
+        AssertJobSuccess(result, "Remove");
+    }
+    
+    [Fact(DisplayName = "TC25: Panorama Add Vsys Bound Cert with Overwrite")]
+    public void TestCase25_PanoramaAdd_Vsys_BoundCert_WithOverride_ShouldSucceed()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var addProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = true,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        var updateProps = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = true,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        addProps.AddPanoramaCredentials();
+        updateProps.AddPanoramaCredentials();
+        
+        // Add certificate to Panorama
+        var addResult = ProcessManagementAddJob(addProps);
+        AssertJobSuccess(addResult, "Add");
+
+        // Update certificate to Panorama
+        var updateResult = ProcessManagementAddJob(updateProps);
+        AssertJobSuccess(updateResult, "Update");
     }
 
     #endregion
