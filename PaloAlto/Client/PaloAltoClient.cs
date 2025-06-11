@@ -22,8 +22,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
+using Keyfactor.Orchestrators.Common.Enums;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -144,31 +146,89 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var uri = string.Empty;
-                if (!String.IsNullOrEmpty(deviceGroup))
+                CommitResponse response = new ();
+                var jobPoller = new PanoramaJobPoller(this);
+                if (!string.IsNullOrEmpty(deviceGroup))
                 {
-                     uri =
-                        $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                    foreach (var group in Validators.GetDeviceGroups(deviceGroup))
+                    {
+                        _logger.LogTrace($"Committing changes to device group {group}");
+                        uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                        response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+
+                        if (response.Status != "success")
+                        {
+                            throw new Exception(
+                                $"Job status for committing device group {group} did not indicate success. Response: {response.Status}");
+                        }
+
+                        _logger.LogTrace($"{response.Text}");
+                        _logger.LogTrace($"Waiting to make sure push to device group was successful...");
+                        var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                        if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                        {
+                            throw new Exception(result.FailureMessage);
+                        }
+                        _logger.LogTrace($"Changes pushed to device group {group} successfully.");
+                    }
                 }
                 else
                 {
-                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{GetTemplateName(storePath)}</name></template></commit-all>&key={ApiKey}";
+                    var template = GetTemplateName(storePath);
+                    _logger.LogTrace($"Committing changes to template {template}");
+                    
+                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
+                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+                    if (response.Status != "success")
+                    {
+                        throw new Exception(
+                            $"Job status for committing template {template} did not indicate success. Response: {response.Status}");
+                    }
+                    
+                    _logger.LogTrace($"Waiting to make sure push to template was successful...");
+                    var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                    if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                    {
+                        throw new Exception(result.FailureMessage);
+                    }
+                    _logger.LogTrace($"Changes pushed to template {template} successfully.");
                 }
 
-                var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-
-                if (!String.IsNullOrEmpty(templateStack))
+                if (!string.IsNullOrEmpty(templateStack))
                 {
+                    _logger.LogTrace($"Committing changes to template stack {templateStack}");
                     uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
-                    Thread.Sleep(60000); //Some delay built in so pushes to devices work
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+                    if (response.Status != "success")
+                    {
+                        throw new Exception(
+                            $"Job status for committing template stack {templateStack} did not indicate success. Response: {response.Status}");
+                    }
+                    
+                    _logger.LogTrace($"Waiting to make sure push to template stack was successful...");
+                    var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                    if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                    {
+                        throw new Exception(result.FailureMessage);
+                    }
+                    
+                    _logger.LogTrace($"Changes pushed to template stack {templateStack} successfully.");
                 }
                 return response;
             }
             catch (Exception e)
             {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
                 throw;
             }
+        }
+
+        public async Task<JobStatusResponse> GetJobStatus(string jobId)
+        {
+            var url = $"/api/?type=op&cmd=<show><jobs><id>{jobId}</id></jobs></show>&key={ApiKey}";
+            return await GetXmlResponseAsync<JobStatusResponse>(await HttpClient.GetAsync(url));
         }
 
 

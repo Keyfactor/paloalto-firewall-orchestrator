@@ -31,6 +31,7 @@ public interface IPaloAltoClient
     Task<ErrorSuccessResponse> SubmitDeleteTrustedRoot(string name, string storePath);
     Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string storePath);
     Task<ErrorSuccessResponse> SetPanoramaTarget(string storePath);
+    Task<JobStatusResponse> GetJobStatus(string jobId);
 
     Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
         string includeKey, string category, string storePath);

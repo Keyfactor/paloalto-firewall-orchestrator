@@ -17,9 +17,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -277,8 +277,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     {
                         _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
 
-                        _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
-
                         if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
                             _logger.LogTrace("No Alias Found");
 
@@ -303,8 +301,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         content = importResult.Result;
                         LogResponse(content);
                         _logger.LogTrace("Finished Logging Import Results...");
-
-                        var caDict = new Dictionary<string, string>();
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         if (errorMsg.Length == 0)
@@ -495,6 +491,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             if (commitResponse.Status == "success")
             {
                 _logger.LogTrace("Commit response shows success");
+                
+                
+                // Poll the Panorama API to determine whether the initial commit job finishes
+                // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
+                _logger.LogTrace("Waiting for job to finish");
+                var jobPoller = new PanoramaJobPoller(client);
+                var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter().GetResult();
+
+                if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
+                {
+                    return completionResult.FailureMessage;
+                }
+                
                 //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
                 var deviceGroup = StoreProperties?.DeviceGroup;
                 _logger.LogTrace($"Device Group {deviceGroup}");
@@ -505,9 +514,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //If there is a template and device group then push to all firewall devices because it is Panorama
                 if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) || Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
                 {
-                    _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
-                    Thread.Sleep(120000); //Some delay built in so pushes to devices work
-                    _logger.LogTrace("Done sleeping");
                     var commitAllResponse = client.GetCommitAllResponse(deviceGroup, config.CertificateStoreDetails.StorePath, templateStack).Result;
                     _logger.LogTrace("Logging commit response from panorama.");
                     LogResponse(commitAllResponse);

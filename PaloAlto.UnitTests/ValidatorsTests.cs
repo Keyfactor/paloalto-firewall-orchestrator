@@ -347,14 +347,14 @@ public class ValidatorsTests
         var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
         Assert.False(valid);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("The store setup is not valid. Could not find your Device Group In Panorama.  Valid Device Groups are Group2", result.FailureMessage);
+        Assert.Equal("The store setup is not valid. Could not find Device Group(s) Group1 In Panorama.  Valid Device Groups are: Group2", result.FailureMessage);
     }
     
     [Theory]
     [InlineData("/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificateStack']/config/shared")]
     [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
     public async Task
-        ValidateStoreProperties_WhenStorePathContainsTemplate_DeviceGroupIsFound_ReturnsValid(string storePath)
+        ValidateStoreProperties_WhenStorePathContainsTemplate_DeviceGroupIsFound_ReturnsTrue(string storePath)
     {
         var properties = new JobProperties()
         {
@@ -393,6 +393,115 @@ public class ValidatorsTests
         Assert.True(valid);
         Assert.Equal(OrchestratorJobStatusJobResult.Unknown, result.Result); // Instantiates new JobResult object
     }
+
+    #region Multiple Device Groups
+
+    [Theory]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificateStack']/config/shared")]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    public async Task
+        ValidateStoreProperties_WhenStorePathContainsTemplate_MultipleDeviceGroups_OneDeviceGroupNotFound_ReturnsError(string storePath)
+    {
+        var properties = new JobProperties()
+        {
+            DeviceGroup = "Group1;Group2;Group3;Group4"
+        };
+        var jobHistoryId = (long)1234;
+        
+        _paloAltoClientMock.Setup(p => p.GetDeviceGroupList()).ReturnsAsync(new NamedListResponse()
+        {
+            Result = new NamedListResult()
+            {
+                Entry = new List<NamedListEntry>()
+                {
+                    new NamedListEntry()
+                    {
+                        Name = "Group1"
+                    },
+                    new NamedListEntry()
+                    {
+                        Name = "Group2"
+                    }
+                }
+            }
+        });
+        _paloAltoClientMock.Setup(p => p.GetTemplateList()).ReturnsAsync(new NamedListResponse()
+        {
+            Result = new NamedListResult()
+            {
+                Entry = new List<NamedListEntry>()
+                {
+                    new NamedListEntry()
+                    {
+                        Name = "CertificateStack"
+                    }
+                }
+            }
+        });
+
+        var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
+        Assert.False(valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        Assert.Equal("The store setup is not valid. Could not find Device Group(s) Group3, Group4 In Panorama.  Valid Device Groups are: Group1, Group2", result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificateStack']/config/shared")]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    public async Task
+        ValidateStoreProperties_WhenStorePathContainsTemplate_MultipleDeviceGroups_AllDeviceGroupFound_ReturnsTrue(string storePath)
+    {
+        var properties = new JobProperties()
+        {
+            DeviceGroup = "Group1;Group2;Group3"
+        };
+        var jobHistoryId = (long)1234;
+        
+        _paloAltoClientMock.Setup(p => p.GetDeviceGroupList()).ReturnsAsync(new NamedListResponse()
+        {
+            Result = new NamedListResult()
+            {
+                Entry = new List<NamedListEntry>()
+                {
+                    new NamedListEntry()
+                    {
+                        Name = "Group1"
+                    },
+                    new NamedListEntry()
+                    {
+                        Name = "Group2"
+                    },
+                    new NamedListEntry()
+                    {
+                        Name = "Group3"
+                    },
+                    new NamedListEntry()
+                    {
+                        Name = "Group4"
+                    }
+                }
+            }
+        });
+        _paloAltoClientMock.Setup(p => p.GetTemplateList()).ReturnsAsync(new NamedListResponse()
+        {
+            Result = new NamedListResult()
+            {
+                Entry = new List<NamedListEntry>()
+                {
+                    new NamedListEntry()
+                    {
+                        Name = "CertificateStack"
+                    }
+                }
+            }
+        });
+
+        var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
+        Assert.True(valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Unknown, result.Result); // Instantiates new JobResult object
+    }
+
+    #endregion
     
     #endregion
     
@@ -562,5 +671,67 @@ public class ValidatorsTests
     
     #endregion
     
+    #endregion
+
+    #region GetDeviceGroups
+    
+    [Fact]
+    public async Task GetDeviceGroups_WhenDeviceGroupsInputIsNull_ReturnsEmptyList()
+    {
+        string deviceGroupsProperty = null;
+
+        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetDeviceGroups_WhenDeviceGroupsInputIsEmpty_ReturnsEmptyList()
+    {
+        string deviceGroupsProperty = "";
+
+        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        
+        Assert.Empty(result);
+    }
+    
+    [Fact]
+    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasSingleEntry_ReturnsListWithEntry()
+    {
+        string deviceGroupsProperty = "Group 1";
+
+        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+
+        Assert.Equal(1, result.Count);
+        Assert.Equal("Group 1", result.First());
+    }
+    
+    [Fact]
+    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasMultipleSemicolonDelimitedEntries_ReturnsListWithEntries()
+    {
+        string deviceGroupsProperty = "Group 1;Group 2;Group3;Random_Group-123.456";
+
+        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+
+        Assert.Equal(4, result.Count);
+        Assert.Equal("Group 1", result.ElementAt(0));
+        Assert.Equal("Group 2", result.ElementAt(1));
+        Assert.Equal("Group3", result.ElementAt(2));
+        Assert.Equal("Random_Group-123.456", result.ElementAt(3));
+    }
+    
+    [Fact]
+    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasMultipleSemicolonDelimitedEntries_WithSpaces_ReturnsListWithEntries()
+    {
+        string deviceGroupsProperty = "Group 1    ;Group 2;     Group 3";
+        
+        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+
+        Assert.Equal(3, result.Count);
+        Assert.Equal("Group 1", result.ElementAt(0));
+        Assert.Equal("Group 2", result.ElementAt(1));
+        Assert.Equal("Group 3", result.ElementAt(2));
+    }
+
     #endregion
 }

@@ -26,4 +26,10 @@
       <ProjectReference Include="..\PaloAlto\PaloAlto.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="Mocks\Responses\JobStatusResponse\finished_job_response.xml">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

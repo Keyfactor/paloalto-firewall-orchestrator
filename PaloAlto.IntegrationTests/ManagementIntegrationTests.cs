@@ -540,6 +540,31 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         AssertJobSuccess(result, "Add");
     }
 
+    [Fact(DisplayName = "TC16c: Panorama No Overwrite with Multiple Device Groups Adds to Panorama and Firewalls")]
+    public void TestCase16c_PanoramaEnroll_NoOverwrite_MultipleDeviceGroups_AddsToPanoramaAndFirewalls()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1;Group1", // This will be treated as separate device groups in the app code.
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+
     [Fact(DisplayName = "TC17: Panorama Overwrite Should Overwrite Unbound Cert")]
     public void TestCase17_PanoramaEnroll_OverwriteUnboundCert()
     {
