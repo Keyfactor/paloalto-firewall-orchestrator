@@ -2,7 +2,7 @@
 
 The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
 
-* PaloAlto - See Test Cases For Specific Use Cases that are supported.
+* PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
 
 ## Requirements
 
@@ -131,6 +131,15 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 *** 
 
 </details>
+
+## Integration Tests
+
+This project includes an [Integration Test](./PaloAlto.IntegrationTests) suite to help run the [test cases](#test-cases) below. Here are the steps to run the integration tests:
+
+- Make sure you have .NET 6 or above installed
+- Inside the Integration Tests directory, copy the `.env.test.example` to `.env.test` within the same directory.
+- If needed, update the Properties of the file to "Copy always" to the output directory. This ensures the `.env.test` file is visible to the test runner.
+- Inside your IDE of choice (Rider / Visual Studio), run the selected tests or run all tests.
 
 ## Test Cases
 <details>
