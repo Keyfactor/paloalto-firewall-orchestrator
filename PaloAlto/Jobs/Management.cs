@@ -491,17 +491,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             if (commitResponse.Status == "success")
             {
                 _logger.LogTrace("Commit response shows success");
-                
-                
-                // Poll the Panorama API to determine whether the initial commit job finishes
-                // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
-                _logger.LogTrace("Waiting for job to finish");
-                var jobPoller = new PanoramaJobPoller(client);
-                var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter().GetResult();
 
-                if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
+                // Not every commit action comes with a Job ID (which means it is being executed asynchronously).
+                if (commitResponse.Result?.HasJobId ?? false)
                 {
-                    return completionResult.FailureMessage;
+                    // Poll the Panorama API to determine whether the initial commit job finishes
+                    // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
+                    _logger.LogTrace("Waiting for job to finish");
+                    var jobPoller = new PanoramaJobPoller(client);
+                    var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter().GetResult();
+
+                    if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
+                    {
+                        return completionResult.FailureMessage;
+                    }
                 }
                 
                 //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices

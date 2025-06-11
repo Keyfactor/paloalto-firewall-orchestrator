@@ -156,20 +156,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                         uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                         response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-                        if (response.Status != "success")
-                        {
-                            throw new Exception(
-                                $"Job status for committing device group {group} did not indicate success. Response: {response.Status}");
-                        }
-
-                        _logger.LogTrace($"{response.Text}");
-                        _logger.LogTrace($"Waiting to make sure push to device group was successful...");
-                        var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
-                        if (result.Result == OrchestratorJobStatusJobResult.Failure)
-                        {
-                            throw new Exception(result.FailureMessage);
-                        }
-                        _logger.LogTrace($"Changes pushed to device group {group} successfully.");
+                        await HandleCommitResponse(response, jobPoller);
                     }
                 }
                 else
@@ -180,19 +167,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                     uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
-                    if (response.Status != "success")
-                    {
-                        throw new Exception(
-                            $"Job status for committing template {template} did not indicate success. Response: {response.Status}");
-                    }
-                    
-                    _logger.LogTrace($"Waiting to make sure push to template was successful...");
-                    var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
-                    if (result.Result == OrchestratorJobStatusJobResult.Failure)
-                    {
-                        throw new Exception(result.FailureMessage);
-                    }
-                    _logger.LogTrace($"Changes pushed to template {template} successfully.");
+                    await HandleCommitResponse(response, jobPoller);
                 }
 
                 if (!string.IsNullOrEmpty(templateStack))
@@ -201,20 +176,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                     uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
-                    if (response.Status != "success")
-                    {
-                        throw new Exception(
-                            $"Job status for committing template stack {templateStack} did not indicate success. Response: {response.Status}");
-                    }
-                    
-                    _logger.LogTrace($"Waiting to make sure push to template stack was successful...");
-                    var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
-                    if (result.Result == OrchestratorJobStatusJobResult.Failure)
-                    {
-                        throw new Exception(result.FailureMessage);
-                    }
-                    
-                    _logger.LogTrace($"Changes pushed to template stack {templateStack} successfully.");
+                    await HandleCommitResponse(response, jobPoller);
                 }
                 return response;
             }
@@ -223,6 +185,29 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
                 throw;
             }
+        }
+
+        private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)
+        {
+            if (response.Status != "success")
+            {
+                throw new Exception(
+                    $"Job status did not indicate success. Response: {response.Status}");
+            }
+
+            _logger.LogTrace($"Response text: {response.Text}");
+
+            if (response.Result?.HasJobId ?? false)
+            {
+                _logger.LogTrace($"Waiting to make sure commit was successful. Job ID: {response.Result?.JobId}...");
+                var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                {
+                    throw new Exception(result.FailureMessage);
+                }
+            }
+
+            _logger.LogTrace($"Changes pushed successfully.");
         }
 
         public async Task<JobStatusResponse> GetJobStatus(string jobId)
