@@ -148,7 +148,7 @@ the Keyfactor Command Portal
    | ServerUsername | Server Username | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
    | ServerPassword | Server Password | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
    | ServerUseSsl | Use SSL | Should be true, http is not supported. | Bool | true | ✅ Checked |
-   | DeviceGroup | Device Group | Device Group on Panorama that changes will be pushed to. | String |  | 🔲 Unchecked |
+   | DeviceGroup | Device Group | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). | String |  | 🔲 Unchecked |
    | InventoryTrustedCerts | Inventory Trusted Certs | If false, will not inventory default trusted certs, saves time. | Bool | false | ✅ Checked |
    | TemplateStack | Template Stack | Template stack used for device push of certificates via Template. | String |  | 🔲 Unchecked |
 
@@ -232,7 +232,7 @@ the Keyfactor Command Portal
    | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
    | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
    | ServerUseSsl | Should be true, http is not supported. |
-   | DeviceGroup | Device Group on Panorama that changes will be pushed to. |
+   | DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
    | TemplateStack | Template stack used for device push of certificates via Template. |
 
@@ -263,7 +263,7 @@ the Keyfactor Command Portal
    | Properties.ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
    | Properties.ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
    | Properties.ServerUseSsl | Should be true, http is not supported. |
-   | Properties.DeviceGroup | Device Group on Panorama that changes will be pushed to. |
+   | Properties.DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | Properties.InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
    | Properties.TemplateStack | Template stack used for device push of certificates via Template. |
 
