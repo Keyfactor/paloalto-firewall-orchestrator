@@ -85,7 +85,7 @@
               "DefaultValue": "",
               "Required": false,
               "IsPAMEligible": false,
-              "Description": "Device Group on Panorama that changes will be pushed to."
+              "Description": "A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.)."
             },
             {
               "Name": "InventoryTrustedCerts",

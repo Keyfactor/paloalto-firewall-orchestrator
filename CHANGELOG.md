@@ -1,3 +1,8 @@
+2.5.0
+Features:
+- Add support for multiple Device Groups. You can now specify a comma-delimited list of Device Groups for your Certificate Store. i.e. `Group 1;Group 2;Group 3`.
+- Improved support for validating commit changes are successfully pushed from Panorama to Firewall.
+
 2.4.0
 * .Net 6 and .Net 8 Build Support
 * Documentation Updates

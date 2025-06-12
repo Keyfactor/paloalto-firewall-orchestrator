@@ -1,4 +1,4 @@
-// Copyright 2023 Keyfactor
+// Copyright 2025 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,15 +75,24 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
                 _logger.LogTrace("Got Server User Name and Password");
 
-                var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
-                    config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
-                    config.JobHistoryId, ServerUserName, ServerPassword);
-                if (!valid) return result;
-
-                //Get the list of certificates and Trusted Roots
+                _logger.LogTrace("Creating PaloAlto Client for Inventory job");
+                
                 _client =
                     new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
                         ServerUserName, ServerPassword); //Api base URL Plus Key
+                
+                _logger.LogTrace("Validating Store Properties for Inventory Job");
+
+                var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
+                    config.CertificateStoreDetails.StorePath, _client,
+                    config.JobHistoryId);
+                
+                _logger.LogTrace($"Validated Store Properties and valid={valid}");
+                
+                if (!valid) return result;
+                _logger.LogTrace("Validated Store Properties for Inventory Job");
+
+                //Get the list of certificates and Trusted Roots
 
                 _logger.LogTrace("Store Properties are Valid");
                 _logger.LogTrace($"Inventory Config {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");

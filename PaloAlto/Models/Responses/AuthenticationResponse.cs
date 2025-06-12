@@ -19,9 +19,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses
     [XmlRoot(ElementName = "result")]
 	public class Result
 	{
+		[XmlElement(ElementName = "msg")]
+		public Msg Msg { get; set; }
+
+		/// <summary>
+		/// The Job ID for an asynchronous operation in Palo Alto (commits, software installs, etc.).
+		/// Can be used to poll whether a job has completed.
+		/// </summary>
+		[XmlElement(ElementName = "job")]
+		public string JobId { get; set; }
 
 		[XmlElement(ElementName = "key")]
 		public string Key { get; set; }
+		
+		public bool HasJobId => !string.IsNullOrEmpty(JobId);
 	}
 
 	[XmlRoot(ElementName = "response")]

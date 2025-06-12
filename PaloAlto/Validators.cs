@@ -1,4 +1,4 @@
-﻿// Copyright 2023 Keyfactor
+﻿// Copyright 2025 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
@@ -65,7 +66,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         }
 
         public static (bool valid, JobResult result) ValidateStoreProperties(JobProperties storeProperties,
-            string storePath,string clientMachine,long jobHistoryId, string serverUserName, string serverPassword)
+            string storePath, IPaloAltoClient client, long jobHistoryId)
         {
             var errors = string.Empty;
 
@@ -95,19 +96,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             // Considered Panorama device if store path is not "/" and there is a valid value for store path
             if (storePath.Contains("template", System.StringComparison.CurrentCultureIgnoreCase))
             {
-                var client =
-                    new PaloAltoClient(clientMachine,
-                        serverUserName, serverPassword); //Api base URL Plus Key
-
-
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
-                    var deviceList = client.GetDeviceGroupList();
-                    var devices = deviceList.Result.Result.Entry.Where(d => d.Name == storeProperties.DeviceGroup);
-                    if (!devices.Any())
+                    var deviceGroups = GetDeviceGroups(storeProperties.DeviceGroup);
+                    var deviceList = client.GetDeviceGroupList().GetAwaiter().GetResult();
+                    var deviceListNames = deviceList.Result.Entry.Select(p => p.Name).ToList();
+                    var missingDevices = deviceGroups.Where(p => !deviceListNames.Contains(p)).ToList();
+                    if (missingDevices.Any())
                     {
+                        var missingString = string.Join(", ", missingDevices);
+                        var validDevices = string.Join(", ", deviceListNames);
                         errors +=
-                            $"Could not find your Device Group In Panorama.  Valid Device Groups are {string.Join(",", deviceList.Result.Result.Entry.Select(d => d.Name))}";
+                            $"Could not find Device Group(s) {missingString} In Panorama.  Valid Device Groups are: {validDevices}";
                     }
                 }
 
@@ -154,6 +154,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         {
             string pattern = @"^/config/devices/entry/template/entry\[@name='[^']+'\]/config/devices/entry/vsys/entry\[@name='[^']+'\]$";
             return Regex.IsMatch(storePath, pattern);
+        }
+
+        public static IReadOnlyCollection<string> GetDeviceGroups(string deviceGroupProperty)
+        {
+            var result = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(deviceGroupProperty))
+            {
+                result.AddRange(deviceGroupProperty.Split(";").Select(s => s.Trim()));
+            }
+            
+            return result;
         }
     }
 }
