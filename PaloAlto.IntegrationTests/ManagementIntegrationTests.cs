@@ -643,7 +643,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         {
             StorePath =
                 "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
-            DeviceGroup = "Group1",
+            DeviceGroup = "Group1;Group1;Group1",
             Alias = alias,
             Overwrite = false,
 

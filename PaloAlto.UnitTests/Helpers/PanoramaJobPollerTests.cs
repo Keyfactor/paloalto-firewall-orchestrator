@@ -102,8 +102,8 @@ public class PanoramaJobPollerTests
         
         var task = _jobPoller.WaitForJobCompletion(jobId);
         
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromSeconds(2)); // First delay
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromSeconds(3)); // Second delay (2 * 1.5)
+        await AdvanceTimeAndWaitForDelays(_jobPoller.InitialDelay);
+        await AdvanceTimeAndWaitForDelays(_jobPoller.InitialDelay * _jobPoller.BackoffMultiplier);
 
         var result = await task;
         
@@ -175,8 +175,8 @@ public class PanoramaJobPollerTests
         
         var task = _jobPoller.WaitForJobCompletion(jobId);
         
-        // Advance timer way beyond the timeout limit
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromMinutes(30));
+        // Advance timer to the timeout limit
+        await AdvanceTimeAndWaitForDelays(_jobPoller.Timeout);
 
         var result = await task;
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
@@ -207,9 +207,9 @@ public class PanoramaJobPollerTests
         
         var task = _jobPoller.WaitForJobCompletion(jobId);
         
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromSeconds(2)); // First retry delay
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromSeconds(3)); // Second retry delay
-        await AdvanceTimeAndWaitForDelays(TimeSpan.FromSeconds(5)); // Third retry delay
+        await AdvanceTimeAndWaitForDelays(_jobPoller.InitialDelay); // First retry delay
+        await AdvanceTimeAndWaitForDelays(_jobPoller.InitialDelay * _jobPoller.BackoffMultiplier); // Second retry delay
+        await AdvanceTimeAndWaitForDelays(_jobPoller.InitialDelay * _jobPoller.BackoffMultiplier * 2); // Third retry delay
 
         var result = await task;
         Assert.Equal(OrchestratorJobStatusJobResult.Unknown, result.Result); // Instantiates new instance of JobResult

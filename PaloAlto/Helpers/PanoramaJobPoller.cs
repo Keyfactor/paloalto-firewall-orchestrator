@@ -31,11 +31,11 @@ public class PanoramaJobPoller
     private readonly IPaloAltoClient _client;
     private readonly ITimeProvider _timeProvider;
     
-    private readonly TimeSpan _initialDelay = TimeSpan.FromSeconds(2);
-    private readonly TimeSpan _maxDelay = TimeSpan.FromSeconds(30);
-    private readonly TimeSpan _timeout = TimeSpan.FromMinutes(10);
-    private readonly double _backoffMultiplier = 1.5;
-    
+    public readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(10);
+    public readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(60);
+    public readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
+    public double BackoffMultiplier => 1.5;
+
     public PanoramaJobPoller(IPaloAltoClient client, ITimeProvider provider = null)
     {
         _client = client;
@@ -46,11 +46,11 @@ public class PanoramaJobPoller
     public async Task<JobResult> WaitForJobCompletion(string jobId, CancellationToken cancellationToken = default)
     {
         var startTime = _timeProvider.UtcNow;
-        var currentDelay = _initialDelay;
+        var currentDelay = InitialDelay;
         
         _logger.LogTrace($"Polling job ID {jobId} for completion");
 
-        while (_timeProvider.UtcNow - startTime < _timeout)
+        while (_timeProvider.UtcNow - startTime < Timeout)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -85,7 +85,7 @@ public class PanoramaJobPoller
                         await _timeProvider.Delay(currentDelay, cancellationToken);
 
                         currentDelay = TimeSpan.FromMilliseconds(
-                            Math.Min(currentDelay.TotalMilliseconds * _backoffMultiplier, _maxDelay.TotalMilliseconds));
+                            Math.Min(currentDelay.TotalMilliseconds * BackoffMultiplier, MaxDelay.TotalMilliseconds));
                         break;
 
                     default:
@@ -97,7 +97,7 @@ public class PanoramaJobPoller
             {
                 await _timeProvider.Delay(currentDelay, cancellationToken);
                 currentDelay = TimeSpan.FromMilliseconds(
-                    Math.Min(currentDelay.TotalMilliseconds * _backoffMultiplier, _maxDelay.TotalMilliseconds));
+                    Math.Min(currentDelay.TotalMilliseconds * BackoffMultiplier, MaxDelay.TotalMilliseconds));
             }
             catch (Exception ex)
             {
@@ -112,7 +112,7 @@ public class PanoramaJobPoller
         return new JobResult()
         {
             Result = OrchestratorJobStatusJobResult.Failure,
-            FailureMessage = $"Timeout exceeded waiting for job to complete. Job {jobId} did not complete within {_timeout.TotalMinutes} minutes"
+            FailureMessage = $"Timeout exceeded waiting for job to complete. Job {jobId} did not complete within {Timeout.TotalMinutes} minutes"
         };
     }
 
