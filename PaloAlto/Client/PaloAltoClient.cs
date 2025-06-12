@@ -22,15 +22,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
+using Keyfactor.Orchestrators.Common.Enums;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 {
-    public class PaloAltoClient
+    public class PaloAltoClient : IPaloAltoClient
     {
         private readonly ILogger _logger;
 
@@ -144,35 +146,78 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var uri = string.Empty;
-                if (!String.IsNullOrEmpty(deviceGroup))
+                CommitResponse response = new ();
+                var jobPoller = new PanoramaJobPoller(this);
+                if (!string.IsNullOrEmpty(deviceGroup))
                 {
-                     uri =
-                        $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                    foreach (var group in Validators.GetDeviceGroups(deviceGroup))
+                    {
+                        _logger.LogTrace($"Committing changes to device group {group}");
+                        uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+                        response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+
+                        await HandleCommitResponse(response, jobPoller);
+                    }
                 }
                 else
                 {
-                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{GetTemplateName(storePath)}</name></template></commit-all>&key={ApiKey}";
+                    var template = GetTemplateName(storePath);
+                    _logger.LogTrace($"Committing changes to template {template}");
+                    
+                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
+                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+                    await HandleCommitResponse(response, jobPoller);
                 }
 
-                var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-
-                if (!String.IsNullOrEmpty(templateStack))
+                if (!string.IsNullOrEmpty(templateStack))
                 {
+                    _logger.LogTrace($"Committing changes to template stack {templateStack}");
                     uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
-                    Thread.Sleep(60000); //Some delay built in so pushes to devices work
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+                    await HandleCommitResponse(response, jobPoller);
                 }
                 return response;
             }
             catch (Exception e)
             {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
                 throw;
             }
         }
 
+        private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)
+        {
+            if (response.Status != "success")
+            {
+                throw new Exception(
+                    $"Job status did not indicate success. Response: {response.Status}");
+            }
 
-        private string GetTemplateName(string storePath)
+            _logger.LogTrace($"Response text: {response.Text}");
+
+            if (response.Result?.HasJobId ?? false)
+            {
+                _logger.LogTrace($"Waiting to make sure commit was successful. Job ID: {response.Result?.JobId}...");
+                var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                {
+                    throw new Exception(result.FailureMessage);
+                }
+            }
+
+            _logger.LogTrace($"Changes pushed successfully.");
+        }
+
+        public async Task<JobStatusResponse> GetJobStatus(string jobId)
+        {
+            var url = $"/api/?type=op&cmd=<show><jobs><id>{jobId}</id></jobs></show>&key={ApiKey}";
+            return await GetXmlResponseAsync<JobStatusResponse>(await HttpClient.GetAsync(url));
+        }
+
+
+        public string GetTemplateName(string storePath)
         {
             string pattern = @"\/template\/entry\[@name='([^']+)'\]";
             Regex regex = new Regex(pattern);
