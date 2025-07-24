@@ -2,7 +2,7 @@
 
 The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
 
-* PaloAlto - See Test Cases For Specific Use Cases that are supported.
+* PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
 
 ## Requirements
 
@@ -132,6 +132,15 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 
 </details>
 
+## Integration Tests
+
+This project includes an [Integration Test](./PaloAlto.IntegrationTests) suite to help run the [test cases](#test-cases) below. Here are the steps to run the integration tests:
+
+- Make sure you have .NET 6 or above installed
+- Inside the Integration Tests directory, copy the `.env.test.example` to `.env.test` within the same directory.
+- If needed, update the Properties of the file to "Copy always" to the output directory. This ensures the `.env.test` file is visible to the test runner.
+- Inside your IDE of choice (Rider / Visual Studio), run the selected tests or run all tests.
+
 ## Test Cases
 <details>
 <summary>Firewall, Panorama Template and Panorama Level</summary>
@@ -158,8 +167,10 @@ TC14a|Panorama Invalid Template Stack|/config/devices/entry[@name='localhost.loc
 TC15|Panorama Template Replace Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.pantemptc1.com<br>**Overwrite**:<br>true|Certificate is replaced in shared location for template|True|![](images/TC15.gif)
 TC16|Panorama Template Remove unbound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.pantemptc1.com|Certificate is removed from shared location for template|True|![](images/TC16.gif)
 TC16a|Panorama Template Stack Push|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>www.tc16a.com|Certificate pushed to Template and Template Stack|True|![](images/TC16a.gif)
+TC16c|Panorama Multiple Device Group Push|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>com.example.devicegroup|Certificate pushed to Template and Device Groups|True|![](images/TC16c.gif)
 TC17|Panorama Template Replace bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>LongNameTest<br>**Overwrite**:<br>true|Certificate is replaced, binding updated in shared location for template|True|![](images/TC17.gif)
 TC18|Panorama Template Remove bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>LongNameTest|Certificate is not removed because it is bound|True|![](images/TC18.gif)
+TC18b|Panorama Template Remove multiple device groups bound Certificate|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|**Alias**:<br>com.example.devicegroup|Certificate is removed|True|![](images/TC18b.gif)
 TC19|Panorama Template Shared Inventory|/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared|N/A|Certificates are inventoried from this location|True|![](images/TC19.gif)
 TC20|Panorama Template Virtual System Inventory|/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']|N/A|Certificates are inventoried from this template vsys location|True|![](images/TC20.gif)
 TC21|Panorama Template Virtual System Enroll Certificate|/config/devices/entry/template/entry[@name='CertificatesTemplate']/config/devices/entry/vsys/entry[@name='vsys2']|**Alias**:<br>www.vsys2enroll.com|Certificate is enrolled to vsys2 location for template|True|![](images/TC21.gif)
