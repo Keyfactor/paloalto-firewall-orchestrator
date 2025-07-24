@@ -1,4 +1,4 @@
-﻿// Copyright 2023 Keyfactor
+﻿// Copyright 2025 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -36,12 +35,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
     public class Management : IManagementJobExtension
     {
-        private static readonly string certStart = "-----BEGIN CERTIFICATE-----\n";
-        private static readonly string certEnd = "\n-----END CERTIFICATE-----";
-
-        private static readonly Func<string, string> Pemify = ss =>
-            ss.Length <= 64 ? ss : ss.Substring(0, 64) + "\n" + Pemify(ss.Substring(64));
-
         private readonly IPAMSecretResolver _resolver;
 
         private PaloAltoClient _client;
@@ -90,12 +83,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.MethodEntry();
                 ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
                 ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
-
+                
+                _logger.LogTrace("Creating PaloAlto Client for Management job");
+                
+                _client = new PaloAltoClient(config.CertificateStoreDetails.ClientMachine, ServerUserName, ServerPassword); //Api base URL Plus Key
+                
                 _logger.LogTrace("Validating Store Properties for Management Job");
 
                 var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
-                    config.CertificateStoreDetails.StorePath, config.CertificateStoreDetails.ClientMachine,
-                    config.JobHistoryId, ServerUserName, ServerPassword);
+                    config.CertificateStoreDetails.StorePath, _client,
+                    config.JobHistoryId);
 
                 _logger.LogTrace($"Validated Store Properties and valid={valid}");
 
@@ -109,9 +106,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage =
                         "Invalid Management Operation"
                 };
-
-
-                _client = new PaloAltoClient(config.CertificateStoreDetails.ClientMachine, ServerUserName, ServerPassword); //Api base URL Plus Key
 
                 if (config.OperationType.ToString() == "Add")
                 {
@@ -143,7 +137,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private JobResult PerformRemoval(ManagementJobConfiguration config)
         {
-            //Temporarily only performing additions
             try
             {
                 var warnings = string.Empty;
@@ -216,13 +209,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return true;
         }
 
-        private bool IsPanoramaDevice(ManagementJobConfiguration config)
-        {
-            _logger.MethodEntry();
-
-            return config.CertificateStoreDetails.StorePath.Length > 1;
-        }
-
         private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client, string certificateName)
         {
             _logger.MethodEntry();
@@ -254,7 +240,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private JobResult PerformAddition(ManagementJobConfiguration config)
         {
-            //Temporarily only performing additions
             try
             {
                 _logger.MethodEntry();
@@ -285,14 +270,12 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         "Finished SetPanoramaTarget Function.");
 
                     var duplicate = CheckForDuplicate(config, client, config.JobCertificate.Alias);
-                    _logger.LogTrace($"Duplicate? = {duplicate}");
+                    _logger.LogTrace($"Duplicate? = {duplicate.ToString()}. Config.Overwrite = {config.Overwrite.ToString()}");
 
                     //Check for Duplicate already in Palo Alto, if there, make sure the Overwrite flag is checked before replacing
                     if (duplicate && config.Overwrite || !duplicate)
                     {
                         _logger.LogTrace("Either not a duplicate or overwrite was chosen....");
-
-                        _logger.LogTrace($"Found Private Key {config.JobCertificate.PrivateKeyPassword}");
 
                         if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
                             _logger.LogTrace("No Alias Found");
@@ -318,8 +301,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         content = importResult.Result;
                         LogResponse(content);
                         _logger.LogTrace("Finished Logging Import Results...");
-
-                        var caDict = new Dictionary<string, string>();
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         if (errorMsg.Length == 0)
@@ -358,33 +339,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage =
                         $"Management/Add {e.Message}"
                 };
-            }
-        }
-
-        private string GenerateCaCertName((X509Certificate2 certificate, string type) cert)
-        {
-            DateTime currentDateTime = DateTime.UtcNow;
-            int unixTimestamp = (int)(currentDateTime.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
-            var isCa = PKI.Extensions.X509Extentions.IsCaCertificate(cert.certificate);
-            _logger.LogTrace($"Ca Certificate? {isCa}");
-            var cn = GetCommonName(cert.certificate?.SubjectName.Name);
-            var certName = RightTrimAfter(unixTimestamp + "_" + cn.Replace(' ', '_'), 31);
-            return certName;
-        }
-
-        public static string RightTrimAfter(string input, int maxLength)
-        {
-            if (input.Length > maxLength)
-            {
-                // If the input string is longer than the specified length,
-                // trim it to the specified length
-                return input.Substring(0, maxLength);
-            }
-            else
-            {
-                // If the input string is shorter than or equal to the specified length,
-                // return the input string unchanged
-                return input;
             }
         }
 
@@ -537,6 +491,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             if (commitResponse.Status == "success")
             {
                 _logger.LogTrace("Commit response shows success");
+
+                // Not every commit action comes with a Job ID (which means it is being executed asynchronously).
+                if (commitResponse.Result?.HasJobId ?? false)
+                {
+                    // Poll the Panorama API to determine whether the initial commit job finishes
+                    // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
+                    _logger.LogTrace("Waiting for job to finish");
+                    var jobPoller = new PanoramaJobPoller(client);
+                    var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter().GetResult();
+
+                    if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
+                    {
+                        return completionResult.FailureMessage;
+                    }
+                }
+                
                 //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
                 var deviceGroup = StoreProperties?.DeviceGroup;
                 _logger.LogTrace($"Device Group {deviceGroup}");
@@ -547,9 +517,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //If there is a template and device group then push to all firewall devices because it is Panorama
                 if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) || Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
                 {
-                    _logger.LogTrace("It is a panorama device, build some delay in there so it works, pan issue.");
-                    Thread.Sleep(120000); //Some delay built in so pushes to devices work
-                    _logger.LogTrace("Done sleeping");
                     var commitAllResponse = client.GetCommitAllResponse(deviceGroup, config.CertificateStoreDetails.StorePath, templateStack).Result;
                     _logger.LogTrace("Logging commit response from panorama.");
                     LogResponse(commitAllResponse);
@@ -563,27 +530,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
 
             return warnings;
-        }
-
-
-        private string GetCommonName(string subject)
-        {
-            _logger.MethodEntry();
-            _logger.LogTrace($"Subject {subject}");
-            // Split the subject into parts
-            var parts = subject.Split(',');
-
-            // Iterate over the parts to find the CN
-            foreach (var part in parts)
-            {
-                if (part.Trim().StartsWith("CN=", StringComparison.OrdinalIgnoreCase))
-                {
-                    return part.Trim().Substring(3).Trim();
-                }
-            }
-            _logger.MethodExit();
-            return null; // Return null if CN is not found
-
         }
 
         public static string OrderCertificatesAndConvertToPem(X509CertificateEntry[] certificateEntries)
