@@ -15,11 +15,16 @@
 using PaloAlto.IntegrationTests.Generators;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
 public class ManagementIntegrationTests : BaseIntegrationTest
 {
+    public ManagementIntegrationTests(ITestOutputHelper output) : base(output)
+    {
+    }
+    
     #region Firewall Tests
 
     [Fact(DisplayName = "TC01: Firewall Enroll No Bindings")]
@@ -550,7 +555,57 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         {
             StorePath =
                 "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
-            DeviceGroup = "Group1;Group1", // This will be treated as separate device groups in the app code.
+            DeviceGroup = "Group1;Group1;Group1", // This will be treated as separate device groups in the app code.
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
+    [Fact(DisplayName = "TC16d: Panorama No Overwrite with No Device Group But TemplateStack Defined Adds to Panorama and Firewalls")]
+    public void TestCase16d_PanoramaEnroll_NoOverwrite_NoDeviceGroups_WithTemplateStack_AddsToPanoramaAndFirewalls()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
+    [Fact(DisplayName = "TC16e: Panorama No Overwrite with No Device Group And No TemplateStack Defined Adds to Panorama and Firewalls")]
+    public void TestCase16e_PanoramaEnroll_NoOverwrite_NoDeviceGroups_NoTemplateStack_AddsToPanoramaAndFirewalls()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "",
             Alias = alias,
             Overwrite = false,
 

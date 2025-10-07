@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 
@@ -24,7 +25,7 @@ public interface IPaloAltoClient
     Task<NamedListResponse> GetDeviceGroupList();
     Task<NamedListResponse> GetTemplateStackList();
     Task<CommitResponse> GetCommitResponse();
-    Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack);
+    Task<CommitResponse> GetCommitAllResponse(IReadOnlyCollection<string> deviceGroups,string storePath,string templateStack);
     Task<TrustedRootListResponse> GetTrustedRootList();
     Task<string> GetCertificateByName(string name);
     Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath);
@@ -32,6 +33,8 @@ public interface IPaloAltoClient
     Task<ErrorSuccessResponse> SubmitSetTrustedRoot(string name, string storePath);
     Task<ErrorSuccessResponse> SetPanoramaTarget(string storePath);
     Task<JobStatusResponse> GetJobStatus(string jobId);
+    Task<DeviceGroupsResponse> GetDeviceGroups();
+    Task<TemplateStacksResponse> GetTemplateStacks();
 
     Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
         string includeKey, string category, string storePath);

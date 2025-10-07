@@ -1,3 +1,7 @@
+2.6.0
+Features:
+- Improve management job performance by converting device group commits to template stack commits.
+
 2.5.0
 Features:
 - Add support for multiple Device Groups. You can now specify a comma-delimited list of Device Groups for your Certificate Store. i.e. `Group 1;Group 2;Group 3`.

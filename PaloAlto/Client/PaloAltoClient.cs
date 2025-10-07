@@ -13,12 +13,13 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
@@ -128,7 +129,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 var uri =
                     $"/api/?&type=commit&action=partial&cmd=<commit><partial><admin><member>{ServerUserName}</member></admin></partial></commit>&key={ApiKey}";
-
                 var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                 return response;
             }
@@ -139,7 +139,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack)
+        public async Task<CommitResponse> GetCommitAllResponse(IReadOnlyCollection<string> deviceGroups, string storePath,string templateStack)
         {
             try
             {
@@ -147,21 +147,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var uri = string.Empty;
                 CommitResponse response = new ();
+                
                 var jobPoller = new PanoramaJobPoller(this);
-                if (!string.IsNullOrEmpty(deviceGroup))
-                {
-                    foreach (var group in Validators.GetDeviceGroups(deviceGroup))
-                    {
-                        _logger.LogTrace($"Committing changes to device group {group}");
-                        uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                        response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                var templateStackFinder = new PanoramaTemplateStackFinder(this, _logger);
+                
+                var template = GetTemplateName(storePath);
+                
+                // Committing to device groups directly is *very* slow. Instead, we need to find the template stacks associated with the device groups.
+                var templateStacks = await templateStackFinder.GetTemplateStacks(deviceGroups, template, templateStack);
 
-                        await HandleCommitResponse(response, jobPoller);
-                    }
-                }
-                else
+                // If there are no device groups present, we need to commit to the template directly
+                if (!deviceGroups.Any())
                 {
-                    var template = GetTemplateName(storePath);
                     _logger.LogTrace($"Committing changes to template {template}");
                     
                     uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
@@ -170,14 +167,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                     await HandleCommitResponse(response, jobPoller);
                 }
 
-                if (!string.IsNullOrEmpty(templateStack))
+                // Loop through all template stacks (even those associated with device groups) and commit to those stacks
+                foreach (var stack in templateStacks)
                 {
-                    _logger.LogTrace($"Committing changes to template stack {templateStack}");
-                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
+                    _logger.LogTrace($"Committing changes to template stack {stack}");
+                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{stack}</name></template-stack></commit-all>&key={ApiKey}";
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
                     await HandleCommitResponse(response, jobPoller);
                 }
+                
                 return response;
             }
             catch (Exception e)
@@ -185,6 +184,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
                 throw;
             }
+        }
+
+        public async Task<DeviceGroupsResponse> GetDeviceGroups()
+        {
+            _logger.MethodEntry();
+            
+            var url =
+                $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/device-group&key={ApiKey}";
+            var deviceGroups = await GetXmlResponseAsync<DeviceGroupsResponse>(await HttpClient.GetAsync(url));
+
+            if (deviceGroups.Result.Count != deviceGroups.Result.TotalCount)
+            {
+                _logger.LogWarning($"Panorama API returned a different number of device groups than expected total. Retrieved {deviceGroups.Result.Count} but expected {deviceGroups.Result.TotalCount}. Results may be truncated.");
+            }
+
+            _logger.MethodExit();
+            return deviceGroups;
+        }
+
+        public async Task<TemplateStacksResponse> GetTemplateStacks()
+        {
+            _logger.MethodEntry();
+            
+            var url =
+                $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/template-stack&key={ApiKey}";
+            var stacks = await GetXmlResponseAsync<TemplateStacksResponse>(await HttpClient.GetAsync(url));
+            
+            _logger.MethodExit();
+            return stacks;
         }
 
         private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)
@@ -200,7 +228,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             if (response.Result?.HasJobId ?? false)
             {
                 _logger.LogTrace($"Waiting to make sure commit was successful. Job ID: {response.Result?.JobId}...");
-                var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                var result = await jobPoller.WaitForJobCompletion(response.Result!.JobId);
                 if (result.Result == OrchestratorJobStatusJobResult.Failure)
                 {
                     throw new Exception(result.FailureMessage);
@@ -215,7 +243,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             var url = $"/api/?type=op&cmd=<show><jobs><id>{jobId}</id></jobs></show>&key={ApiKey}";
             return await GetXmlResponseAsync<JobStatusResponse>(await HttpClient.GetAsync(url));
         }
-
 
         public string GetTemplateName(string storePath)
         {
