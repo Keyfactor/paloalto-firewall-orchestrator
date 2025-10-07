@@ -23,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\PaloAlto.Tests.Common\PaloAlto.Tests.Common.csproj" />
       <ProjectReference Include="..\PaloAlto\PaloAlto.csproj" />
     </ItemGroup>
 

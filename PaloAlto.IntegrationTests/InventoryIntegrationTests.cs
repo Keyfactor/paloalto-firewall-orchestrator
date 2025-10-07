@@ -14,11 +14,17 @@
 
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
 public class InventoryIntegrationTests : BaseIntegrationTest
 {
+    public InventoryIntegrationTests(ITestOutputHelper output): base(output)
+    {
+        
+    }
+    
     #region Firewall Tests
 
     // Test Case 6 repeats across Management + Inventory. Keeping number in place for parity.

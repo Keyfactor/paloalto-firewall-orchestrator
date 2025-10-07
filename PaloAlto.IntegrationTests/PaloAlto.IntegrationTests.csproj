@@ -23,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\PaloAlto.Tests.Common\PaloAlto.Tests.Common.csproj" />
       <ProjectReference Include="..\PaloAlto\PaloAlto.csproj" />
     </ItemGroup>
 
@@ -30,6 +31,10 @@
       <None Update=".env.test">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="TestUtilities\" />
     </ItemGroup>
 
 </Project>

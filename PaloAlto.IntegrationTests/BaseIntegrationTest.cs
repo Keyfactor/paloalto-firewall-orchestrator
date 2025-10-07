@@ -16,16 +16,32 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
 using PaloAlto.IntegrationTests.Models;
+using PaloAlto.Tests.Common.TestUtilities;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
 public abstract class BaseIntegrationTest
 {
     protected readonly string MockCertificatePassword = "sldfklsdfsldjfk";
+    protected readonly ILogger Logger;
+
+    public BaseIntegrationTest(ITestOutputHelper output)
+    {
+      var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder
+          .SetMinimumLevel(LogLevel.Trace)
+          .AddProvider(new XunitLoggerProvider(output));
+      });
+        
+      Logger = loggerFactory.CreateLogger<BaseIntegrationTest>();
+    }
     
     protected void AssertJobSuccess(JobResult result, string context)
     {
@@ -75,7 +91,7 @@ public abstract class BaseIntegrationTest
         mgmtSecretResolver
             .Setup(m => m.Resolve(It.Is<string>(s => s == config.ServerPassword)))
             .Returns(() => config.ServerPassword);
-        var mgmt = new Management(mgmtSecretResolver.Object);
+        var mgmt = new Management(mgmtSecretResolver.Object, Logger);
         return mgmt.ProcessJob(config);
     }
     
