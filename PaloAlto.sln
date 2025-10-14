@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaloAlto.IntegrationTests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaloAlto.UnitTests", "PaloAlto.UnitTests\PaloAlto.UnitTests.csproj", "{30B1C65A-AFBF-42AC-BB6B-4C755D0B08F3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaloAlto.Tests.Common", "PaloAlto.Tests.Common\PaloAlto.Tests.Common.csproj", "{86AA8249-1299-415D-BC42-A829EE4B8E4F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{30B1C65A-AFBF-42AC-BB6B-4C755D0B08F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30B1C65A-AFBF-42AC-BB6B-4C755D0B08F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30B1C65A-AFBF-42AC-BB6B-4C755D0B08F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86AA8249-1299-415D-BC42-A829EE4B8E4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86AA8249-1299-415D-BC42-A829EE4B8E4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86AA8249-1299-415D-BC42-A829EE4B8E4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86AA8249-1299-415D-BC42-A829EE4B8E4F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -54,6 +60,7 @@ Global
 		{6302034E-DF8C-4B65-AC36-CED24C068999} = {1A6C93E7-24FD-47FD-883D-EDABF5CEE4C6}
 		{94D8FD54-A92A-4453-991F-3EFFF1493E07} = {F618499B-AFF5-489D-AE01-6B7AA75CDBCD}
 		{30B1C65A-AFBF-42AC-BB6B-4C755D0B08F3} = {F618499B-AFF5-489D-AE01-6B7AA75CDBCD}
+		{86AA8249-1299-415D-BC42-A829EE4B8E4F} = {F618499B-AFF5-489D-AE01-6B7AA75CDBCD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E0FA12DA-6B82-4E64-928A-BB9965E636C1}

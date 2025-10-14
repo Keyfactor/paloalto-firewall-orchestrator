@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
@@ -47,6 +48,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger = LogHandler.GetClassLogger<Management>();
             _logger.LogTrace("Initialized Management with IPAMSecretResolver.");
         }
+        
+        public Management(IPAMSecretResolver resolver, ILogger logger)
+        {
+            _resolver = resolver;
+            _logger = logger;
+            _logger.LogTrace("Initialized Management with IPAMSecretResolver.");
+        }
 
         private string ServerPassword { get; set; }
 
@@ -60,7 +68,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
-            _logger = LogHandler.GetClassLogger<Management>();
             _logger.LogTrace($"Processing job with configuration: {JsonConvert.SerializeObject(jobConfiguration)}");
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
@@ -98,6 +105,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 if (!valid) return result;
                 _logger.LogTrace("Validated Store Properties for Management Job");
+
+                var (aliasValid, aliasResult) =
+                    Validators.ValidateCertificateAlias(config.CertificateStoreDetails.StorePath,
+                        config.JobCertificate?.Alias);
+                
+                _logger.LogTrace($"Validated certificate alias. valid={aliasValid}");
+
+                if (!aliasValid) return aliasResult;
+                _logger.LogTrace("Validated alias for Management Job");
 
                 var complete = new JobResult
                 {
@@ -162,7 +178,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 if (!DeleteCertificate(config, _client, warnings, out var deleteResult)) return deleteResult;
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                warnings = CommitChanges(config, _client, warnings);
+                warnings = CommitChanges(config, _client, warnings)
+                    .GetAwaiter()
+                    .GetResult();
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
@@ -306,7 +324,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         if (errorMsg.Length == 0)
                         {
                             _logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                            warnings = CommitChanges(config, client, warnings);
+                            warnings = CommitChanges(config, client, warnings)
+                                .GetAwaiter()
+                                .GetResult();
                         }
 
                         return ReturnJobResult(config, warnings, true, errorMsg);
@@ -482,12 +502,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return certPem;
         }
 
-        private string CommitChanges(ManagementJobConfiguration config, PaloAltoClient client, string warnings)
+        private async Task<string> CommitChanges(ManagementJobConfiguration config, PaloAltoClient client, string warnings)
         {
             _logger.MethodEntry();
-            var commitResponse = client.GetCommitResponse().Result;
+            
+            var commitResponse = await client.GetCommitResponse();
             _logger.LogTrace("Got client commit response, attempting to log it");
             LogResponse(commitResponse);
+            
             if (commitResponse.Status == "success")
             {
                 _logger.LogTrace("Commit response shows success");
@@ -499,7 +521,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
                     _logger.LogTrace("Waiting for job to finish");
                     var jobPoller = new PanoramaJobPoller(client);
-                    var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter().GetResult();
+                    var completionResult = await jobPoller.WaitForJobCompletion(commitResponse.Result.JobId);
 
                     if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
                     {
@@ -517,7 +539,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //If there is a template and device group then push to all firewall devices because it is Panorama
                 if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) || Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
                 {
-                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup, config.CertificateStoreDetails.StorePath, templateStack).Result;
+                    // Split the device groups from the store properties
+                    var deviceGroups = Validators.GetDeviceGroups(deviceGroup);
+                    
+                    var commitAllResponse = await client.GetCommitAllResponse(deviceGroups, config.CertificateStoreDetails.StorePath, templateStack);
                     _logger.LogTrace("Logging commit response from panorama.");
                     LogResponse(commitAllResponse);
                     if (commitAllResponse.Status != "success")

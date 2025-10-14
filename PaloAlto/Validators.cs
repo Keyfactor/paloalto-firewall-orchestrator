@@ -150,6 +150,51 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return (true, new JobResult());
         }
 
+        /// <summary>
+        /// Panorama and Firewall have different constraints around certificate name. Panorama will not allow
+        /// certificate names longer than 31 characters, while Firewall has this limit at 63 characters.
+        /// Even if certificate is pushed to Firewall via Panorama, Panorama will reject certificate names longer than 31 characters.
+        ///
+        /// See: https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os
+        /// </summary>
+        /// <param name="storePath">The store path the certificate will be pushed to</param>
+        /// <param name="alias">The alias (logical name) of the certificate in Panorama / Firewall</param>
+        /// <returns>A bool indicating if validation succeeds. If false, the JobResult contains the failure object.</returns>
+        public static (bool valid, JobResult result) ValidateCertificateAlias(string storePath, string alias)
+        {
+            if (string.IsNullOrWhiteSpace(alias))
+            {
+                var result = new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = "Certificate alias must not be empty"
+                };
+                
+                return (false, result);
+            }
+
+            int maxLength = 63;
+
+            if (storePath == "/config/panorama" || IsValidPanoramaFormat(storePath)  ||
+                IsValidPanoramaVsysFormat(storePath))
+            {
+                maxLength = 31;
+            }
+
+            if (alias.Length > maxLength)
+            {
+                var result = new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = $"Alias name is too long, it must not be more than {maxLength} characters. Current length: {alias.Length}"
+                };
+
+                return (false, result);
+            }
+            
+            return (true, null);
+        }
+
         public static bool IsValidPanoramaVsysFormat(string storePath)
         {
             string pattern = @"^/config/devices/entry/template/entry\[@name='[^']+'\]/config/devices/entry/vsys/entry\[@name='[^']+'\]$";

@@ -15,11 +15,16 @@
 using PaloAlto.IntegrationTests.Generators;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
 public class ManagementIntegrationTests : BaseIntegrationTest
 {
+    public ManagementIntegrationTests(ITestOutputHelper output) : base(output)
+    {
+    }
+    
     #region Firewall Tests
 
     [Fact(DisplayName = "TC01: Firewall Enroll No Bindings")]
@@ -550,7 +555,57 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         {
             StorePath =
                 "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
-            DeviceGroup = "Group1;Group1", // This will be treated as separate device groups in the app code.
+            DeviceGroup = "Group1;Group1;Group1", // This will be treated as separate device groups in the app code.
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
+    [Fact(DisplayName = "TC16d: Panorama No Overwrite with No Device Group But TemplateStack Defined Adds to Panorama and Firewalls")]
+    public void TestCase16d_PanoramaEnroll_NoOverwrite_NoDeviceGroups_WithTemplateStack_AddsToPanoramaAndFirewalls()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = "CertificatesStack"
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
+    [Fact(DisplayName = "TC16e: Panorama No Overwrite with No Device Group And No TemplateStack Defined Adds to Panorama and Firewalls")]
+    public void TestCase16e_PanoramaEnroll_NoOverwrite_NoDeviceGroups_NoTemplateStack_AddsToPanoramaAndFirewalls()
+    {
+        var alias = AliasGenerator.Generate();
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "",
             Alias = alias,
             Overwrite = false,
 
@@ -896,6 +951,56 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var updateResult = ProcessManagementAddJob(updateProps);
         AssertJobSuccess(updateResult, "Update");
     }
-
+    
     #endregion
+    
+    [Fact(DisplayName = "TC26a: Panorama Enroll when alias name is too long, returns error")]
+    public void TestCase26a_PanoramaEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 32);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, "Alias name is too long, it must not be more than 31 characters. Current length: 32");
+    }
+    
+    [Fact(DisplayName = "TC26b: Firewall Enroll when alias name is too long, returns error")]
+    public void TestCase26b_FirewallEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 64);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, "Alias name is too long, it must not be more than 63 characters. Current length: 64");
+    }
 }

@@ -1,3 +1,8 @@
+2.6.0
+Features:
+- Improve management job performance by converting device group commits to template stack commits.
+- Add validation to the certificate alias length, ensuring that alias length does not exceed 31 characters for Panorama and does not exceed 63 characters for Firewall.
+
 2.5.0
 Features:
 - Add support for multiple Device Groups. You can now specify a comma-delimited list of Device Groups for your Certificate Store. i.e. `Group 1;Group 2;Group 3`.
