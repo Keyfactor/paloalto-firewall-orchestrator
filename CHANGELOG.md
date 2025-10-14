@@ -1,6 +1,7 @@
 2.6.0
 Features:
 - Improve management job performance by converting device group commits to template stack commits.
+- Add validation to the certificate alias length, ensuring that alias length does not exceed 31 characters for Panorama and does not exceed 63 characters for Firewall.
 
 2.5.0
 Features:

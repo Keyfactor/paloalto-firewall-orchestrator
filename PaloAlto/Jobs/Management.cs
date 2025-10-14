@@ -106,6 +106,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 if (!valid) return result;
                 _logger.LogTrace("Validated Store Properties for Management Job");
 
+                var (aliasValid, aliasResult) =
+                    Validators.ValidateCertificateAlias(config.CertificateStoreDetails.StorePath,
+                        config.JobCertificate?.Alias);
+                
+                _logger.LogTrace($"Validated certificate alias. valid={aliasValid}");
+
+                if (!aliasValid) return aliasResult;
+                _logger.LogTrace("Validated alias for Management Job");
+
                 var complete = new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,

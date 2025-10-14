@@ -951,6 +951,56 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var updateResult = ProcessManagementAddJob(updateProps);
         AssertJobSuccess(updateResult, "Update");
     }
-
+    
     #endregion
+    
+    [Fact(DisplayName = "TC26a: Panorama Enroll when alias name is too long, returns error")]
+    public void TestCase26a_PanoramaEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 32);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, "Alias name is too long, it must not be more than 31 characters. Current length: 32");
+    }
+    
+    [Fact(DisplayName = "TC26b: Firewall Enroll when alias name is too long, returns error")]
+    public void TestCase26b_FirewallEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 64);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, "Alias name is too long, it must not be more than 63 characters. Current length: 64");
+    }
 }
