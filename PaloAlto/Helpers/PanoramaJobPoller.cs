@@ -72,7 +72,7 @@ public class PanoramaJobPoller
                         }
 
                         throw new InvalidOperationException(
-                            $"Job {jobId} completed but failed. Result {jobStatus.Result}");
+                            $"Job {jobId} completed but failed. Result {jobStatus.Result}. Details: {string.Join(", ", jobStatus.Details?.Line.Select(p => p) ?? new List<string>())}");
 
                     case JobStatus.Failed:
                         throw new InvalidOperationException(
