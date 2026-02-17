@@ -23,6 +23,7 @@ using Xunit;
 
 namespace PaloAlto.IntegrationTests;
 
+[Trait("Category", "Integration")]
 public abstract class BaseIntegrationTest
 {
     protected readonly string MockCertificatePassword = "sldfklsdfsldjfk";
