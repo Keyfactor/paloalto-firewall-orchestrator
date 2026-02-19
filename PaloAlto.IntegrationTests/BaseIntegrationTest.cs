@@ -1,4 +1,4 @@
-// Copyright 2025 Keyfactor
+// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
+using Microsoft.Extensions.Logging;
+using MartinCostello.Logging.XUnit;
 using Moq;
 using Newtonsoft.Json;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
@@ -27,6 +30,17 @@ namespace PaloAlto.IntegrationTests;
 public abstract class BaseIntegrationTest
 {
     protected readonly string MockCertificatePassword = "sldfklsdfsldjfk";
+    private readonly ILogger _logger;
+
+    protected BaseIntegrationTest(ITestOutputHelper output)
+    {
+      var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()));
+        builder.SetMinimumLevel(LogLevel.Debug);
+      });
+      _logger = loggerFactory.CreateLogger<BaseIntegrationTest>();
+    }
     
     protected void AssertJobSuccess(JobResult result, string context)
     {
@@ -63,7 +77,7 @@ public abstract class BaseIntegrationTest
         mgmtSecretResolver
             .Setup(m => m.Resolve(It.Is<string>(s => s == config.ServerPassword)))
             .Returns(() => config.ServerPassword);
-        var inventory = new Inventory(mgmtSecretResolver.Object);
+        var inventory = new Inventory(mgmtSecretResolver.Object, _logger);
         return inventory.ProcessJob(config, _ => true);
     }
     
@@ -76,7 +90,7 @@ public abstract class BaseIntegrationTest
         mgmtSecretResolver
             .Setup(m => m.Resolve(It.Is<string>(s => s == config.ServerPassword)))
             .Returns(() => config.ServerPassword);
-        var mgmt = new Management(mgmtSecretResolver.Object);
+        var mgmt = new Management(mgmtSecretResolver.Object, _logger);
         return mgmt.ProcessJob(config);
     }
     

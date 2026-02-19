@@ -38,6 +38,16 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public Inventory(IPAMSecretResolver resolver)
         {
             _resolver = resolver;
+            _logger = LogHandler.GetClassLogger<Inventory>();
+            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and default logger.");
+        }
+        
+        // Constructor used by unit / integration tests
+        public Inventory(IPAMSecretResolver resolver, ILogger logger)
+        {
+            _resolver = resolver;
+            _logger = logger;
+            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and custom logger.");
         }
 
         private PaloAltoClient _client;
@@ -51,7 +61,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration,
             SubmitInventoryUpdate submitInventoryUpdate)
         {
-            _logger = LogHandler.GetClassLogger<Inventory>();
             _logger.MethodEntry(LogLevel.Debug);
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,

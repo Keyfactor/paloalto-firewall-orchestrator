@@ -35,7 +35,7 @@ public class PanoramaJobPoller
     
     public readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(10);
     public readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(90);
-    public readonly TimeSpan Timeout = TimeSpan.FromMinutes(30);
+    public readonly TimeSpan Timeout = TimeSpan.FromMinutes(60);
     public double BackoffMultiplier => 1.5;
 
     public PanoramaJobPoller(IPaloAltoClient client, ITimeProvider provider = null, ILogger logger = null)
@@ -49,15 +49,17 @@ public class PanoramaJobPoller
     {
         var startTime = _timeProvider.UtcNow;
         var currentDelay = InitialDelay;
+        var timeoutTime = startTime.Add(Timeout);
         
-        _logger.LogDebug($"Polling job ID {jobId} for completion");
+        _logger.LogDebug($"Polling job ID {jobId} for completion. Start Time: {startTime}, Timeout: {timeoutTime} ({Timeout.TotalMinutes} minutes)");
 
         while (_timeProvider.UtcNow - startTime < Timeout)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                _logger.LogTrace("Checking job status for job ID {JobId}...", jobId);
                 var jobStatusResponse = await _client.GetJobStatus(jobId);
                 var jobStatus = jobStatusResponse.Result.Job;
 
@@ -84,21 +86,34 @@ public class PanoramaJobPoller
                     case JobStatus.Pending:
                         _logger.LogTrace(
                             $"Job ID {jobId} still needs to be awaited in the {jobStatus.Status} state. Waiting {currentDelay.TotalSeconds} seconds for the next request.");
-                        
+
                         currentDelay = await WaitAndGetNewDelay(currentDelay, cancellationToken);
-                        
+
                         break;
 
                     default:
-                        throw new PanoramaJobException($"Job ID {jobId} encountered an unknown job status: {jobStatus.Status}");
+                        throw new PanoramaJobException(
+                            $"Job ID {jobId} encountered an unknown job status: {jobStatus.Status}");
 
                 }
             }
             catch (Exception ex) when (ex is HttpRequestException)
             {
-                _logger.LogInformation("An HTTP error occurred while checking job status for job ID {JobId}: {Message}. This may be a transient error - will retry until timeout is reached.", jobId, ex.Message);
-                
+                _logger.LogInformation(
+                    "An HTTP error occurred while checking job status for job ID {JobId}: {Message}. This may be a transient error - will retry until timeout is reached.",
+                    jobId, ex.Message);
+
                 currentDelay = await WaitAndGetNewDelay(currentDelay, cancellationToken);
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogCritical("Job polling was cancelled while waiting for job ID {JobId} to complete: {Message}", jobId, ex.Message);
+                
+                return new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = $"Job polling was cancelled while waiting for job ID {jobId} to complete"
+                };
             }
             catch (Exception ex)
             {

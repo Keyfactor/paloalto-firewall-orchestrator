@@ -195,7 +195,7 @@ public class PanoramaJobPollerTests
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
         Assert.Equal("An error occurred while checking job status: Job ID 12345 encountered an unknown job status: SomethingRandom", result.FailureMessage);
     }
-
+    
     [Fact]
     public async Task WaitForJobCompletion_WhenTimeoutIsMet_ReturnsFailedJob()
     {
@@ -221,6 +221,35 @@ public class PanoramaJobPollerTests
         var result = await task;
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
         Assert.Equal($"Timeout exceeded waiting for job to complete. Job 12345 did not complete within {_jobPoller.Timeout.TotalMinutes} minutes", result.FailureMessage);
+    }
+
+    [Fact]
+    public async Task WaitForJobCompletion_WhenCancellationTokenIsCancelled_ReturnsFailedJob()
+    {
+        var jobId = "12345";
+        var job = new JobStatusResponse()
+        {
+            Result = new JobStatusResult()
+            {
+                Job = new Job()
+                {
+                    Status = "PEND"
+                }
+            }
+        };
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        
+        _mockApiClient.Setup(p => p.GetJobStatus(It.IsAny<string>())).ReturnsAsync(job);
+        
+        var task = _jobPoller.WaitForJobCompletion(jobId, cts.Token);
+        
+        // Advance timer to the timeout limit
+        await AdvanceTimeAndWaitForDelays(_jobPoller.Timeout);
+
+        var result = await task;
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        Assert.Equal($"Job polling was cancelled while waiting for job ID {jobId} to complete", result.FailureMessage);
     }
     
     [Fact]
