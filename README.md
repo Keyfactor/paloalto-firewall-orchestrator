@@ -42,9 +42,9 @@ The Palo Alto Orchestrator Extension is an integration that can replace and inve
 This integration is compatible with Keyfactor Universal Orchestrator version 10.4 and later.
 
 ## Support
-The Palo Alto Universal Orchestrator extension If you have a support issue, please open a support ticket by either contacting your Keyfactor representative or via the Keyfactor Support Portal at https://support.keyfactor.com.
+The Palo Alto Universal Orchestrator extension is supported by Keyfactor. If you require support for any issues or have feature request, please open a support ticket by either contacting your Keyfactor representative or via the Keyfactor Support Portal at https://support.keyfactor.com.
 
-> To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
+> If you want to contribute bug fixes or additional enhancements, use the **[Pull requests](../../pulls)** tab.
 
 ## Requirements & Prerequisites
 
@@ -156,21 +156,75 @@ the Keyfactor Command Portal
 
    ![PaloAlto Custom Fields Tab](docsource/images/PaloAlto-custom-fields-store-type-dialog.png)
 
+
+   ###### Server Username
+   Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+
+
+   ###### Server Password
+   Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+
+
+   ###### Use SSL
+   Should be true, http is not supported.
+
+   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-dialog.png)
+   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-validation-options-dialog.png)
+
+
+
+   ###### Device Group
+   A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.).
+
+   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-dialog.png)
+   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-validation-options-dialog.png)
+
+
+
+   ###### Inventory Trusted Certs
+   If false, will not inventory default trusted certs, saves time.
+
+   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-dialog.png)
+   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-validation-options-dialog.png)
+
+
+
+   ###### Template Stack
+   Template stack used for device push of certificates via Template.
+
+   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.png)
+   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.png)
+
+
+
+
+
    </details>
 
 ## Installation
 
 1. **Download the latest Palo Alto Universal Orchestrator extension from GitHub.**
 
-    Navigate to the [Palo Alto Universal Orchestrator extension GitHub version page](https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases/latest). Refer to the compatibility matrix below to determine whether the `net6.0` or `net8.0` asset should be downloaded. Then, click the corresponding asset to download the zip archive.
+    Navigate to the [Palo Alto Universal Orchestrator extension GitHub version page](https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases/latest). Refer to the compatibility matrix below to determine the asset should be downloaded. Then, click the corresponding asset to download the zip archive.
 
    | Universal Orchestrator Version | Latest .NET version installed on the Universal Orchestrator server | `rollForward` condition in `Orchestrator.runtimeconfig.json` | `paloalto-firewall-orchestrator` .NET version to download |
    | --------- | ----------- | ----------- | ----------- |
    | Older than `11.0.0` | | | `net6.0` |
    | Between `11.0.0` and `11.5.1` (inclusive) | `net6.0` | | `net6.0` |
-   | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `Disable` | `net6.0` |
-   | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `LatestMajor` | `net8.0` |
-   | `11.6` _and_ newer | `net8.0` | | `net8.0` |
+   | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `Disable` | `net6.0` || Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `LatestMajor` | `net8.0` |
+   | `11.6` _and_ newer | `net8.0` | | `net8.0` | 
 
     Unzip the archive containing extension assemblies to a known location.
 

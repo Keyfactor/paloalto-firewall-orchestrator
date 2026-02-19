@@ -15,9 +15,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Exceptions;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -32,30 +34,32 @@ public class PanoramaJobPoller
     private readonly ITimeProvider _timeProvider;
     
     public readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(10);
-    public readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(60);
-    public readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
+    public readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(90);
+    public readonly TimeSpan Timeout = TimeSpan.FromMinutes(60);
     public double BackoffMultiplier => 1.5;
 
-    public PanoramaJobPoller(IPaloAltoClient client, ITimeProvider provider = null)
+    public PanoramaJobPoller(IPaloAltoClient client, ITimeProvider provider = null, ILogger logger = null)
     {
         _client = client;
         _timeProvider = provider ?? new SystemTimeProvider();
-        _logger = LogHandler.GetClassLogger<PanoramaJobPoller>();
+        _logger = logger ?? LogHandler.GetClassLogger<PanoramaJobPoller>();
     }
 
     public async Task<JobResult> WaitForJobCompletion(string jobId, CancellationToken cancellationToken = default)
     {
         var startTime = _timeProvider.UtcNow;
         var currentDelay = InitialDelay;
+        var timeoutTime = startTime.Add(Timeout);
         
-        _logger.LogTrace($"Polling job ID {jobId} for completion");
+        _logger.LogDebug($"Polling job ID {jobId} for completion. Start Time: {startTime}, Timeout: {timeoutTime} ({Timeout.TotalMinutes} minutes)");
 
         while (_timeProvider.UtcNow - startTime < Timeout)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                _logger.LogTrace("Checking job status for job ID {JobId}...", jobId);
                 var jobStatusResponse = await _client.GetJobStatus(jobId);
                 var jobStatus = jobStatusResponse.Result.Job;
 
@@ -67,37 +71,49 @@ public class PanoramaJobPoller
                     case JobStatus.Finished:
                         if (jobStatus.Result == "OK")
                         {
-                            _logger.LogTrace($"Job ID {jobId} completed successfully.");
+                            _logger.LogDebug($"Job ID {jobId} completed successfully.");
                             return new JobResult();
                         }
 
-                        throw new InvalidOperationException(
-                            $"Job {jobId} completed but failed. Result {jobStatus.Result}");
+                        throw new PanoramaJobException(
+                            $"Job {jobId} completed but failed. Result {jobStatus.Result}. Details: {string.Join(", ", jobStatus.Details?.Line.Select(p => p) ?? new List<string>())}");
 
                     case JobStatus.Failed:
-                        throw new InvalidOperationException(
+                        throw new PanoramaJobException(
                             $"Job {jobId} failed to complete. Result {jobStatus.Result}. Details: {string.Join(", ", jobStatus.Details?.Line.Select(p => p) ?? new List<string>())}");
 
                     case JobStatus.Active:
                     case JobStatus.Pending:
                         _logger.LogTrace(
                             $"Job ID {jobId} still needs to be awaited in the {jobStatus.Status} state. Waiting {currentDelay.TotalSeconds} seconds for the next request.");
-                        await _timeProvider.Delay(currentDelay, cancellationToken);
 
-                        currentDelay = TimeSpan.FromMilliseconds(
-                            Math.Min(currentDelay.TotalMilliseconds * BackoffMultiplier, MaxDelay.TotalMilliseconds));
+                        currentDelay = await WaitAndGetNewDelay(currentDelay, cancellationToken);
+
                         break;
 
                     default:
-                        throw new InvalidOperationException($"Unknown job status: {jobStatus.Status}");
+                        throw new PanoramaJobException(
+                            $"Job ID {jobId} encountered an unknown job status: {jobStatus.Status}");
 
                 }
             }
-            catch (Exception ex) when (!(ex is InvalidOperationException || ex is TimeoutException || ex is ArgumentException))
+            catch (Exception ex) when (ex is HttpRequestException)
             {
-                await _timeProvider.Delay(currentDelay, cancellationToken);
-                currentDelay = TimeSpan.FromMilliseconds(
-                    Math.Min(currentDelay.TotalMilliseconds * BackoffMultiplier, MaxDelay.TotalMilliseconds));
+                _logger.LogInformation(
+                    "An HTTP error occurred while checking job status for job ID {JobId}: {Message}. This may be a transient error - will retry until timeout is reached.",
+                    jobId, ex.Message);
+
+                currentDelay = await WaitAndGetNewDelay(currentDelay, cancellationToken);
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogCritical("Job polling was cancelled while waiting for job ID {JobId} to complete: {Message}", jobId, ex.Message);
+                
+                return new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = $"Job polling was cancelled while waiting for job ID {jobId} to complete"
+                };
             }
             catch (Exception ex)
             {
@@ -124,15 +140,36 @@ public class PanoramaJobPoller
             "PEND" => JobStatus.Pending,
             "FIN" => JobStatus.Finished,
             "FAIL" => JobStatus.Failed,
-            _ => throw new ArgumentException($"Unknown job status: {status}")
+            _ => JobStatus.Unknown,
         };
     }
 
-    public enum JobStatus
+    private enum JobStatus
     {
+        Unknown,
         Active,
         Pending,
         Finished,
         Failed
+    }
+
+    /// <summary>
+    /// This function will wait for the specified delay and then calculate the next delay using an exponential backoff strategy, ensuring that it does not exceed the maximum delay. The cancellation token is used to allow for cancellation of the wait if needed.
+    /// </summary>
+    /// <param name="currentDelay"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task<TimeSpan> WaitAndGetNewDelay(TimeSpan currentDelay, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug($"Waiting {currentDelay.TotalSeconds} seconds before checking job status again...");
+        
+        await _timeProvider.Delay(currentDelay, cancellationToken);
+
+        TimeSpan newDelay = TimeSpan.FromMilliseconds(
+            Math.Min(currentDelay.TotalMilliseconds * BackoffMultiplier, MaxDelay.TotalMilliseconds));
+        
+        _logger.LogTrace($"Calculated new delay: {newDelay.TotalSeconds} seconds");
+
+        return newDelay;
     }
 }
