@@ -1,3 +1,9 @@
+2.5.1
+Features:
+- Add validation logic for certificate alias length. If targeting Firewall directly, alias length must be less than 64 characters. If targeting Panorama, alias length must be less than 32 characters. This is to prevent errors when pushing certificates to Palo Alto.
+- Increased timeout for checking on job status from 10 minutes to 60 minutes.
+- Improved error handling and logging for commit operations, including more detailed error messages when commits fail.
+
 2.5.0
 Features:
 - Add support for multiple Device Groups. You can now specify a comma-delimited list of Device Groups for your Certificate Store. i.e. `Group 1;Group 2;Group 3`.
