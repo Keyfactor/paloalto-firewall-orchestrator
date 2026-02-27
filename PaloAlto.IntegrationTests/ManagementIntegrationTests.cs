@@ -1,4 +1,4 @@
-// Copyright 2025 Keyfactor
+// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,16 @@
 using PaloAlto.IntegrationTests.Generators;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
 public class ManagementIntegrationTests : BaseIntegrationTest
 {
+    public ManagementIntegrationTests(ITestOutputHelper output) : base(output)
+    {
+    }
+    
     #region Firewall Tests
 
     [Fact(DisplayName = "TC01: Firewall Enroll No Bindings")]
@@ -897,5 +902,108 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         AssertJobSuccess(updateResult, "Update");
     }
 
+    #endregion
+    
+    #region Alias Length Validation
+    
+    [Fact(DisplayName = "TC26a: Panorama Enroll when alias name is too long, returns error")]
+    public void TestCase26a_PanoramaEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 32);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "Group1",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, $"Certificate alias '{alias}' is too long, it must not be more than 31 characters. Current length: 32");
+    }
+    
+    [Fact(DisplayName = "TC26b: Firewall Enroll when alias name is too long, returns error")]
+    public void TestCase26b_FirewallEnroll_WhenAliasNameIsTooLong_ReturnsFailure()
+    {
+        var alias = new string('a', 64);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = false,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobFailure(result, $"Certificate alias '{alias}' is too long, it must not be more than 63 characters. Current length: 64");
+    }
+    
+    [Fact(DisplayName = "TC26c: Panorama Enroll Enroll Alias Length Valid")]
+    public void TestCase26c_PanoramaEnroll_WhenAliasNameValid_NoFailure()
+    {
+        var alias = new string('a', 31);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath =
+                "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='CertificatesTemplate']/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddPanoramaCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
+    [Fact(DisplayName = "TC26d: Firewall Enroll Alias Length Valid")]
+    public void TestCase26d_FirewallEnroll_WhenAliasNameValid_NoFailure()
+    {
+        var alias = new string('a', 63);
+        var certificateContent = PfxGenerator.GetBlobWithChain(alias, MockCertificatePassword);
+
+        var props = new TestManagementJobConfigurationProperties()
+        {
+            StorePath = "/config/shared",
+            DeviceGroup = "",
+            Alias = alias,
+            Overwrite = true,
+
+            CertificateContents = certificateContent,
+            CertificatePassword = MockCertificatePassword,
+            TemplateStack = ""
+        };
+        props.AddFirewallCredentials();
+
+        var result = ProcessManagementAddJob(props);
+
+        AssertJobSuccess(result, "Add");
+    }
+    
     #endregion
 }

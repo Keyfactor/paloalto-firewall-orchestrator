@@ -672,6 +672,75 @@ public class ValidatorsTests
     #endregion
     
     #endregion
+    
+    #region ValidateCertificateAlias
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ValidateCertificateAlias_WhenAliasIsNull_ReturnsFailure(string alias)
+    {
+        string storePath = ""; // store path does not matter at this point
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal("Certificate alias must not be empty", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    [InlineData("/config/devices/entry[@name='somethingrandom']/template/entry[@name='CertificatesTemplate']/config/shared")]
+    [InlineData("/config/panorama")]
+    public void ValidateCertificateAlias_WhenPanorama_AliasTooLong_ReturnsFailure(string storePath)
+    {
+        string alias = new string('a', 32);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal($"Certificate alias '{alias}' is too long, it must not be more than 31 characters. Current length: 32", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/shared")]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']")]
+    public void ValidateCertificateAlias_WhenFirewall_AliasTooLong_ReturnsFailure(string storePath)
+    {
+        string alias = new string('a', 64);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal($"Certificate alias '{alias}' is too long, it must not be more than 63 characters. Current length: 64", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    [InlineData("/config/devices/entry[@name='somethingrandom']/template/entry[@name='CertificatesTemplate']/config/shared")]
+    [InlineData("/config/panorama")]
+    public void ValidateCertificateAlias_WhenPanorama_AliasCorrectLength_ReturnsSuccess(string storePath)
+    {
+        string alias = new string('a', 31);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.True(result.valid);
+        Assert.Null(result.result);
+    }
+    
+    [Theory]
+    [InlineData("/config/shared")]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']")]
+    public void ValidateCertificateAlias_WhenFirewall_AliasCorrectLength_ReturnsSuccess(string storePath)
+    {
+        string alias = new string('a', 63);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.True(result.valid);
+        Assert.Null(result.result);
+    }
+
+    #endregion
 
     #region GetDeviceGroups
     
