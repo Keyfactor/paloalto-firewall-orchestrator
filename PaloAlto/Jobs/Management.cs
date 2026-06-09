@@ -132,7 +132,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("Adding...");
                     if (config != null)
                         _logger.LogTrace(
-                            $"Add Config Json {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
+                            $"Add Config Json {SensitiveDataMasker.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                     complete = PerformAddition(config);
                     _logger.LogTrace("Finished Perform Addition Function");
                 }
@@ -140,7 +140,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     _logger.LogTrace("Removing...");
                     _logger.LogTrace(
-                        $"Remove Config Json {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
+                        $"Remove Config Json {SensitiveDataMasker.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                     complete = PerformRemoval(config);
                     _logger.LogTrace("Finished Perform Removal Function");
                 }

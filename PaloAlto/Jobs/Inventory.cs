@@ -20,6 +20,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -34,11 +36,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private ILogger _logger;
 
         private readonly IPAMSecretResolver _resolver;
+        private readonly IPaloAltoClientFactory _clientFactory;
 
         public Inventory(IPAMSecretResolver resolver)
         {
             _resolver = resolver;
-            _logger = LogHandler.GetClassLogger<Inventory>();
+            var loggerFactory = new ClientLoggerFactory();
+            _logger = loggerFactory.CreateLogger<Inventory>();
+            _clientFactory = new PaloAltoClientFactory(loggerFactory);
             _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and default logger.");
         }
         
@@ -46,11 +51,21 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public Inventory(IPAMSecretResolver resolver, ILogger logger)
         {
             _resolver = resolver;
+            var loggerFactory = new ClientLoggerFactory();
             _logger = logger;
+            _clientFactory = new PaloAltoClientFactory(loggerFactory);
             _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and custom logger.");
         }
+        
+        public Inventory(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory, IClientLoggerFactory loggerFactory)
+        {
+            _resolver = resolver;
+            _logger = loggerFactory.CreateLogger<Inventory>();
+            _clientFactory = clientFactory;
+            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver, custom PaloAlto client factory and logger.");
+        }
 
-        private PaloAltoClient _client;
+        private IPaloAltoClient _client;
         private string ServerPassword { get; set; }
         private string ServerUserName { get; set; }
 
@@ -85,10 +100,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Got Server User Name and Password");
 
                 _logger.LogTrace("Creating PaloAlto Client for Inventory job");
-                
-                _client =
-                    new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                        ServerUserName, ServerPassword); //Api base URL Plus Key
+
+                _client = _clientFactory.Create(config.CertificateStoreDetails.ClientMachine, ServerUserName,
+                    ServerPassword);
                 
                 _logger.LogTrace("Validating Store Properties for Inventory Job");
 
@@ -104,7 +118,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 //Get the list of certificates and Trusted Roots
 
                 _logger.LogTrace("Store Properties are Valid");
-                _logger.LogTrace($"Inventory Config {_client.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
+                _logger.LogTrace($"Inventory Config {SensitiveDataMasker.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
                 
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
@@ -143,7 +157,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             warningFlag = true;
                             return new CurrentInventoryItem();
                         }
-                    }).Where(acsii => acsii?.Certificates != null).ToList());
+                    })
+                    .Where(acsii => acsii?.Certificates != null)
+                    .ToList());
 
                 if (StoreProperties.InventoryTrustedCerts)
                 {
