@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Keyfactor
+﻿// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
@@ -36,24 +37,39 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
     public class Management : IManagementJobExtension
     {
         private readonly IPAMSecretResolver _resolver;
+        private readonly IPaloAltoClientFactory _clientFactory;
 
-        private PaloAltoClient _client;
+        private IPaloAltoClient _client;
+        
 
         private ILogger _logger;
 
         public Management(IPAMSecretResolver resolver)
         {
             _resolver = resolver;
-            _logger = LogHandler.GetClassLogger<Management>();
+            var loggerFactory = new ClientLoggerFactory();
+            _logger = loggerFactory.CreateLogger<Inventory>();
+            _clientFactory = new PaloAltoClientFactory(loggerFactory);
             _logger.LogTrace("Initialized Management with IPAMSecretResolver and default logger.");
         }
 
         // Constructor used by unit / integration tests
+        // TODO: Remove this deprecated fixture
         public Management(IPAMSecretResolver resolver, ILogger logger)
         {
             _resolver = resolver;
+            var loggerFactory = new ClientLoggerFactory();
             _logger = logger;
+            _clientFactory = new PaloAltoClientFactory(loggerFactory);
             _logger.LogTrace("Initialized Management with IPAMSecretResolver and custom logger.");
+        }
+
+        public Management(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory, IClientLoggerFactory loggerFactory)
+        {
+            _resolver = resolver;
+            _logger = loggerFactory.CreateLogger<Inventory>();
+            _clientFactory = clientFactory;
+            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver, custom PaloAlto client factory and logger.");
         }
 
         private string ServerPassword { get; set; }
@@ -93,8 +109,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace("Creating PaloAlto Client for Management job");
 
-                _client = new PaloAltoClient(config.CertificateStoreDetails.ClientMachine, ServerUserName,
-                    ServerPassword); //Api base URL Plus Key
+                _client = _clientFactory.Create(config.CertificateStoreDetails.ClientMachine, ServerUserName,
+                    ServerPassword);
 
                 _logger.LogTrace("Validating Store Properties for Management Job");
 
@@ -206,7 +222,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool SetPanoramaTarget(ManagementJobConfiguration config, PaloAltoClient client)
+        private bool SetPanoramaTarget(ManagementJobConfiguration config, IPaloAltoClient client)
         {
             _logger.MethodEntry();
             if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath))
@@ -231,7 +247,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return true;
         }
 
-        private bool CheckForDuplicate(ManagementJobConfiguration config, PaloAltoClient client, string certificateName)
+        private bool CheckForDuplicate(ManagementJobConfiguration config, IPaloAltoClient client, string certificateName)
         {
             _logger.MethodEntry();
             try
@@ -269,14 +285,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     _logger.LogTrace(
                         $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Server UserName: {config.ServerUsername}");
-
-                    var client =
-                        new PaloAltoClient(config.CertificateStoreDetails.ClientMachine,
-                            ServerUserName, ServerPassword); //Api base URL Plus Key
+                    
                     _logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    if (!SetPanoramaTarget(config, client))
+                    if (!SetPanoramaTarget(config, _client))
                     {
                         return new JobResult
                         {
@@ -289,7 +302,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Finished SetPanoramaTarget Function.");
 
-                    var duplicate = CheckForDuplicate(config, client, config.JobCertificate.Alias);
+                    var duplicate = CheckForDuplicate(config, _client, config.JobCertificate.Alias);
                     _logger.LogTrace(
                         $"Duplicate? = {duplicate.ToString()}. Config.Overwrite = {config.Overwrite.ToString()}");
 
@@ -316,7 +329,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             ? "certificate"
                             : "keypair";
                         _logger.LogTrace($"Certificate Type of {type}");
-                        var importResult = client.ImportCertificate(alias,
+                        var importResult = _client.ImportCertificate(alias,
                             config.JobCertificate.PrivateKeyPassword,
                             Encoding.UTF8.GetBytes(certPem), "yes", type,
                             config.CertificateStoreDetails.StorePath);
@@ -337,7 +350,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         _logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                        warnings = CommitChanges(config, client, warnings);
+                        warnings = CommitChanges(config, _client, warnings);
 
                         return ReturnJobResult(config, warnings, true, errorMsg);
                     }
@@ -372,7 +385,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool DeleteCertificate(ManagementJobConfiguration config, PaloAltoClient client, string warnings,
+        private bool DeleteCertificate(ManagementJobConfiguration config, IPaloAltoClient client, string warnings,
             out JobResult deleteResult)
         {
             if (!SetPanoramaTarget(config, client))
@@ -513,7 +526,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return certPem;
         }
 
-        private string CommitChanges(ManagementJobConfiguration config, PaloAltoClient client, string warnings)
+        private string CommitChanges(ManagementJobConfiguration config, IPaloAltoClient client, string warnings)
         {
             _logger.MethodEntry();
             var commitResponse = client.GetCommitResponse().Result;

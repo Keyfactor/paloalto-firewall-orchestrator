@@ -1,4 +1,4 @@
-// Copyright 2025 Keyfactor
+// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
         
         // Constructor used by unit / integration tests
+        // TODO: Remove this deprecated fixture
         public Inventory(IPAMSecretResolver resolver, ILogger logger)
         {
             _resolver = resolver;
@@ -57,6 +58,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and custom logger.");
         }
         
+        // Constructor used by unit / integration tests
         public Inventory(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory, IClientLoggerFactory loggerFactory)
         {
             _resolver = resolver;

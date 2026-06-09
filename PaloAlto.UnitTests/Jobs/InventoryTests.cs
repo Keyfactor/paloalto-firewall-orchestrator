@@ -33,11 +33,12 @@ namespace PaloAlto.UnitTests.Jobs;
 
 public class InventoryTests
 {
-    private readonly FakePaloAltoClient FakeClient = new();
+    private readonly FakePaloAltoClient _fakeClient = new();
     private readonly Mock<IPAMSecretResolver> _pamResolverMock = new();
-    private readonly Mock<SubmitInventoryUpdate> _submitMock = new();
     private readonly Mock<IPaloAltoClientFactory> _clientFactoryMock = new();
+    
     private readonly Inventory _sut;
+    private readonly Mock<SubmitInventoryUpdate> _submitMock = new();
 
     private static readonly string TestPem = GenerateTestCertificatePem();
 
@@ -61,7 +62,7 @@ public class InventoryTests
 
         _clientFactoryMock
             .Setup(f => f.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(FakeClient.ClientMock.Object);
+            .Returns(_fakeClient.ClientMock.Object);
 
         _pamResolverMock
             .Setup(r => r.Resolve(It.IsAny<string>()))
@@ -82,13 +83,13 @@ public class InventoryTests
         AssertFailure(result);
         Assert.Contains("Path is invalid", result.FailureMessage);
         _submitMock.Verify(s => s.Invoke(It.IsAny<IEnumerable<CurrentInventoryItem>>()), Times.Never);
-        FakeClient.ClientMock.Verify(c => c.GetCertificateList(It.IsAny<string>()), Times.Never);
+        _fakeClient.ClientMock.Verify(c => c.GetCertificateList(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public void ProcessJob_PanoramaPath_TemplateNotFound_ReturnsFailure()
     {
-        FakeClient.PanoramaHasTemplate("OtherTemplate");
+        _fakeClient.PanoramaHasTemplate("OtherTemplate");
         var job = new InventoryJobBuilder().WithStorePath(PanoramaStorePath).Build();
 
         var result = _sut.ProcessJob(job, _submitMock.Object);
@@ -100,8 +101,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_PanoramaPath_DeviceGroupNotFound_ReturnsFailure()
     {
-        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        FakeClient.PanoramaHasDeviceGroups("ExistingGroup");
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasDeviceGroups("ExistingGroup");
         var job = new InventoryJobBuilder()
             .WithStorePath(PanoramaStorePath)
             .WithDeviceGroup("MissingGroup")
@@ -117,8 +118,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_PanoramaPath_TemplateStackNotFound_ReturnsFailure()
     {
-        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        FakeClient.PanoramaHasTemplateStacks("ExistingStack");
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasTemplateStacks("ExistingStack");
         var job = new InventoryJobBuilder()
             .WithStorePath(PanoramaStorePath)
             .WithTemplateStack("MissingStack")
@@ -163,8 +164,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_EmptyCertificateList_SubmitsEmptyListAndReturnsSuccess()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().Build();
 
@@ -178,8 +179,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_CertificateWithoutPublicKey_IsFilteredFromInventory()
     {
-        FakeClient.WithCertificates(ACertificateWithoutPublicKey());
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateWithoutPublicKey());
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().Build();
 
@@ -192,8 +193,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_CertificateWithPublicKey_IsInventoriedWithCorrectAlias()
     {
-        FakeClient.WithCertificates(ACertificateEntry("my-cert"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateEntry("my-cert"));
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().Build();
 
@@ -211,8 +212,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_CertificateWithNonNullPrivateKeyField_SetsPrivateKeyEntryTrue()
     {
-        FakeClient.WithCertificates(ACertificateWithPrivateKey("cert"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateWithPrivateKey("cert"));
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
 
         _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
@@ -223,8 +224,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_CertificateWithNullPrivateKeyField_SetsPrivateKeyEntryFalse()
     {
-        FakeClient.WithCertificates(ACertificateEntry("cert"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateEntry("cert"));
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
 
         _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
@@ -235,8 +236,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_MultipleCertificates_OnlyThoseWithPublicKeyAreInventoried()
     {
-        FakeClient.WithCertificates(ACertificateEntry("has-key"), ACertificateWithoutPublicKey("no-key"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateEntry("has-key"), ACertificateWithoutPublicKey("no-key"));
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().Build();
 
@@ -250,8 +251,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_BuildInventoryItemThrows_SetsWarningSkipsFailedCertAndContinues()
     {
-        FakeClient.WithCertificates(ACertificateEntry("good-cert"), ACertificateEntry("bad-cert"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithCertificates(ACertificateEntry("good-cert"), ACertificateEntry("bad-cert"));
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var inventory = new ThrowOnAliasInventory(
             _pamResolverMock.Object, _clientFactoryMock.Object, GetLoggerFactory(), throwForAlias: "bad-cert");
@@ -269,20 +270,20 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_InventoryTrustedCertsFalse_NeverCallsGetCertificateByName()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithTrustedRoots(ATrustedRootEntry("SomeCA"));
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithTrustedRoots(ATrustedRootEntry("SomeCA"));
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(false).Build();
 
         _sut.ProcessJob(job, _submitMock.Object);
 
-        FakeClient.ClientMock.Verify(c => c.GetCertificateByName(It.IsAny<string>()), Times.Never);
+        _fakeClient.ClientMock.Verify(c => c.GetCertificateByName(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public void ProcessJob_InventoryTrustedCertsTrue_EmptyList_ReturnsSuccessWithNoTrustedItems()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(true).Build();
 
@@ -290,15 +291,15 @@ public class InventoryTests
 
         AssertSuccess(result);
         Assert.Empty(submitted);
-        FakeClient.ClientMock.Verify(c => c.GetCertificateByName(It.IsAny<string>()), Times.Never);
+        _fakeClient.ClientMock.Verify(c => c.GetCertificateByName(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public void ProcessJob_InventoryTrustedCertsTrue_TrustedRootIsInventoried()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithTrustedRoots(ATrustedRootEntry("DigiCertRoot"));
-        FakeClient.WithTrustedRootPemAvailable("DigiCertRoot", TestPem);
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithTrustedRoots(ATrustedRootEntry("DigiCertRoot"));
+        _fakeClient.WithTrustedRootPemAvailable("DigiCertRoot", TestPem);
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(true).Build();
 
@@ -313,9 +314,9 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_InventoryTrustedCertsTrue_GetCertificateByNameThrows_SetsWarning()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithTrustedRoots(ATrustedRootEntry("BrokenCA"));
-        FakeClient.WithTrustedRootPemUnavailable("BrokenCA");
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithTrustedRoots(ATrustedRootEntry("BrokenCA"));
+        _fakeClient.WithTrustedRootPemUnavailable("BrokenCA");
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(true).Build();
 
         var result = _sut.ProcessJob(job, _submitMock.Object);
@@ -327,10 +328,10 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_InventoryTrustedCertsTrue_PartialFailure_SuccessfulCertsStillInventoried()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithTrustedRoots(ATrustedRootEntry("GoodCA"), ATrustedRootEntry("BadCA"));
-        FakeClient.WithTrustedRootPemAvailable("GoodCA", TestPem);
-        FakeClient.WithTrustedRootPemUnavailable("BadCA");
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithTrustedRoots(ATrustedRootEntry("GoodCA"), ATrustedRootEntry("BadCA"));
+        _fakeClient.WithTrustedRootPemAvailable("GoodCA", TestPem);
+        _fakeClient.WithTrustedRootPemUnavailable("BadCA");
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(true).Build();
 
@@ -345,9 +346,9 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_InventoryTrustedCertsTrue_BothRegularAndTrustedRootsInventoried()
     {
-        FakeClient.WithCertificates(ACertificateEntry("leaf-cert"));
-        FakeClient.WithTrustedRoots(ATrustedRootEntry("RootCA"));
-        FakeClient.WithTrustedRootPemAvailable("RootCA", TestPem);
+        _fakeClient.WithCertificates(ACertificateEntry("leaf-cert"));
+        _fakeClient.WithTrustedRoots(ATrustedRootEntry("RootCA"));
+        _fakeClient.WithTrustedRootPemAvailable("RootCA", TestPem);
         var submitted = CaptureSubmittedItems();
         var job = new InventoryJobBuilder().WithInventoryTrustedCerts(true).Build();
 
@@ -364,8 +365,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_PamResolverCalledForServerPasswordAndUsername()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
         var job = new InventoryJobBuilder()
             .WithCredentials(username: "raw-username", password: "raw-password")
             .Build();
@@ -381,8 +382,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_ClientCreatedWithResolvedCredentialsAndClientMachine()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
         var job = new InventoryJobBuilder()
             .WithClientMachine("panorama.internal")
             .WithCredentials(username: "admin", password: "secret")
@@ -398,12 +399,12 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_GetCertificateListCalledWithStorePathPlusEntrySegment()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
 
         _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(FirewallStorePath).Build(), _submitMock.Object);
 
-        FakeClient.ClientMock.Verify(c => c.GetCertificateList($"{FirewallStorePath}/certificate/entry"), Times.Once);
+        _fakeClient.ClientMock.Verify(c => c.GetCertificateList($"{FirewallStorePath}/certificate/entry"), Times.Once);
     }
 
     // ── Exception propagation ────────────────────────────────────────────────
@@ -411,9 +412,9 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_GetCertificateListThrows_ExceptionPropagates()
     {
-        FakeClient.ClientMock.Setup(c => c.GetCertificateList(It.IsAny<string>()))
+        _fakeClient.ClientMock.Setup(c => c.GetCertificateList(It.IsAny<string>()))
             .ThrowsAsync(new Exception("API unavailable"));
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoTrustedRoots();
 
         Assert.ThrowsAny<Exception>(() =>
             _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object));
@@ -422,8 +423,8 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_GetTrustedRootListThrows_ExceptionPropagates()
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.ClientMock.Setup(c => c.GetTrustedRootList())
+        _fakeClient.WithNoCertificates();
+        _fakeClient.ClientMock.Setup(c => c.GetTrustedRootList())
             .ThrowsAsync(new Exception("Trusted root fetch failed"));
 
         Assert.ThrowsAny<Exception>(() =>
@@ -438,8 +439,8 @@ public class InventoryTests
     [InlineData("/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']")]
     public void ProcessJob_ValidFirewallStorePaths_ReturnsSuccess(string storePath)
     {
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
 
         var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
 
@@ -449,9 +450,9 @@ public class InventoryTests
     [Fact]
     public void ProcessJob_ValidPanoramaSharedPath_ReturnsSuccess()
     {
-        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        FakeClient.WithNoCertificates();
-        FakeClient.WithNoTrustedRoots();
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.WithNoCertificates();
+        _fakeClient.WithNoTrustedRoots();
 
         var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(PanoramaStorePath).Build(), _submitMock.Object);
 
