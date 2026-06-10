@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
 using Xunit.Abstractions;

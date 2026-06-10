@@ -63,7 +63,7 @@ public class PanoramaJobPoller
                 var jobStatusResponse = await _client.GetJobStatus(jobId);
                 var jobStatus = jobStatusResponse.Result.Job;
 
-                _logger.LogTrace(
+                _logger.LogDebug(
                     $"Retrieved job status for job ID {jobId}. Status: {jobStatus.Status}, Result: {jobStatus.Result}");
 
                 switch (GetJobStatus(jobStatus.Status))
@@ -71,7 +71,7 @@ public class PanoramaJobPoller
                     case JobStatus.Finished:
                         if (jobStatus.Result == "OK")
                         {
-                            _logger.LogDebug($"Job ID {jobId} completed successfully.");
+                            _logger.LogInformation($"Job ID {jobId} completed successfully.");
                             return new JobResult();
                         }
 
@@ -84,7 +84,7 @@ public class PanoramaJobPoller
 
                     case JobStatus.Active:
                     case JobStatus.Pending:
-                        _logger.LogTrace(
+                        _logger.LogDebug(
                             $"Job ID {jobId} still needs to be awaited in the {jobStatus.Status} state. Waiting {currentDelay.TotalSeconds} seconds for the next request.");
 
                         currentDelay = await WaitAndGetNewDelay(currentDelay, cancellationToken);
@@ -92,6 +92,7 @@ public class PanoramaJobPoller
                         break;
 
                     default:
+                        _logger.LogError($"Job ID {jobId} encounted an unknown job status: {jobStatus.Status}");
                         throw new PanoramaJobException(
                             $"Job ID {jobId} encountered an unknown job status: {jobStatus.Status}");
 
