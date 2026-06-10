@@ -161,6 +161,30 @@ public sealed class FakePaloAltoClient
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(new CommitResponse { Status = "error", Text = text });
 
+    public void CommitDeviceGroupSucceeds() => ClientMock
+        .Setup(c => c.CommitDeviceGroup(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = true, Message = "success" });
+    
+    public void CommitDeviceGroupFails(string text = "push to device group failed") => ClientMock
+        .Setup(c => c.CommitDeviceGroup(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = false, Message = text });
+    
+    public void CommitTemplateSucceeds() => ClientMock
+        .Setup(c => c.CommitTemplate(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = true, Message = "success" });
+    
+    public void CommitTemplateFails(string text = "push to template failed") => ClientMock
+        .Setup(c => c.CommitTemplate(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = false, Message = text });
+    
+    public void CommitTemplateStackSucceeds() => ClientMock
+        .Setup(c => c.CommitTemplateStack(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = true, Message = "success" });
+    
+    public void CommitTemplateStackFails(string text = "push to template stack failed") => ClientMock
+        .Setup(c => c.CommitTemplateStack(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
+            { IsSuccess = false, Message = text });
+
     // ── Management: Job polling ──────────────────────────────────────────────
 
     public void JobCompletesSuccessfully(string jobId) =>

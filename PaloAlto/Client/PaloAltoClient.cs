@@ -18,7 +18,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
@@ -27,20 +26,20 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 {
     public class PaloAltoClient : IPaloAltoClient
     {
         private readonly ILogger _logger;
+        private readonly PanoramaJobPoller _jobPoller;
 
         public PaloAltoClient(string url, string userName, string password)
         {
             _logger = LogHandler.GetClassLogger<PaloAltoClient>();
             ServerUserName = Uri.EscapeDataString(userName);
             ServerPassword = Uri.EscapeDataString(password);
+            _jobPoller = new PanoramaJobPoller(this);
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
@@ -139,6 +138,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        [Obsolete("Use updated commit all handlers instead")]
         public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack)
         {
             try
@@ -147,7 +147,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                 var uri = string.Empty;
                 CommitResponse response = new ();
-                var jobPoller = new PanoramaJobPoller(this);
                 if (!string.IsNullOrEmpty(deviceGroup))
                 {
                     foreach (var group in Validators.GetDeviceGroups(deviceGroup))
@@ -156,7 +155,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                         uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
                         response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-                        await HandleCommitResponse(response, jobPoller);
+                        await HandleCommitResponse(response, _jobPoller);
                     }
                 }
                 else
@@ -167,7 +166,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                     uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
-                    await HandleCommitResponse(response, jobPoller);
+                    await HandleCommitResponse(response, _jobPoller);
                 }
 
                 if (!string.IsNullOrEmpty(templateStack))
@@ -176,7 +175,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                     uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
                     response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
-                    await HandleCommitResponse(response, jobPoller);
+                    await HandleCommitResponse(response, _jobPoller);
                 }
                 return response;
             }
@@ -185,6 +184,77 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
                 throw;
             }
+        }
+
+        public async Task<CommitResponseResult> CommitDeviceGroup(string deviceGroup)
+        {
+            var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+
+            return await HandleCommitResponseV2(response, $"device group {deviceGroup}");
+        }
+        
+        public async Task<CommitResponseResult> CommitTemplateStack(string templateStack)
+        {
+            var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+
+            return await HandleCommitResponseV2(response, $"template stack {templateStack}");
+        }
+
+        public async Task<CommitResponseResult> CommitTemplate(string storePath)
+        {
+            var template = GetTemplateName(storePath);
+            _logger.LogTrace($"Committing changes to template {template}");
+                    
+            var uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+            return await HandleCommitResponseV2(response, $"template {template}");
+        }
+
+        private async Task<CommitResponseResult> HandleCommitResponseV2(CommitResponse response, string description)
+        {
+            _logger.LogTrace($"Handling commit response for {description}");
+            
+            if (response.Status != "success")
+            {
+                _logger.LogWarning($"Failed to commit to {description}. Response: {response.Status}");
+                
+                return new CommitResponseResult()
+                {
+                    IsSuccess = false,
+                    Message = $"Commit to {description} failed: Job status did not indicate success. Response: {response.Status}",
+                };
+            }
+            
+            _logger.LogDebug($"{description} commit response text: {response.Text}");
+            
+            if (response.Result?.HasJobId ?? false)
+            {
+                var jobId = response.Result?.JobId;
+                _logger.LogTrace($"Waiting to make sure {description} commit was successful. Job ID: {jobId}...");
+                var result = await _jobPoller.WaitForJobCompletion(jobId);
+                
+                if (result.Result == OrchestratorJobStatusJobResult.Failure)
+                {
+                    _logger.LogWarning($"Failed to commit to {description}. Job ID: {jobId}. Failure: {result.FailureMessage}");
+
+                    return new CommitResponseResult()
+                    {
+                        IsSuccess = false,
+                        Message =
+                            $"Commit job for {description} experienced a failure during processing. Job status did not indicate success. Response: {response.Status}.",
+                    };
+                }
+            }
+            
+            _logger.LogInformation($"Successfully committed {description}.");
+
+            return new CommitResponseResult()
+            {
+                IsSuccess = true,
+            };
         }
 
         private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)

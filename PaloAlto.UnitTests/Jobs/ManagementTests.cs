@@ -336,7 +336,7 @@ public class ManagementTests
         _fakeClient.NoDuplicateExists();
         _fakeClient.ImportSucceeds();
         _fakeClient.CommitSucceeds();
-        _fakeClient.CommitAllSucceeds();
+        _fakeClient.CommitTemplateSucceeds();
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaStorePath)
@@ -348,8 +348,66 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.GetCommitAllResponse(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        _fakeClient.ClientMock.Verify(c => c.CommitTemplate(
+            It.IsAny<string>()), Times.Once);
+        _fakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
+            It.IsAny<string>()), Times.Never);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_ImportSucceeds_DeviceGroupDefined_CommitsToDeviceGroup()
+    {
+        var deviceGroup = "Group1";
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasDeviceGroups(deviceGroup);
+        _fakeClient.NoDuplicateExists();
+        _fakeClient.ImportSucceeds();
+        _fakeClient.CommitSucceeds();
+        _fakeClient.CommitDeviceGroupSucceeds();
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithDeviceGroup(deviceGroup)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertSuccess(result);
+        _fakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
+            deviceGroup), Times.Once);
+        _fakeClient.ClientMock.Verify(c => c.CommitTemplate(
+            It.IsAny<string>()), Times.Never);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_ImportSucceeds_TemplateStackDefined_CommitsToTemplateStack()
+    {
+        var templateStack = "TemplateStack";
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasTemplateStacks(templateStack);
+        _fakeClient.NoDuplicateExists();
+        _fakeClient.ImportSucceeds();
+        _fakeClient.CommitSucceeds();
+        _fakeClient.CommitTemplateSucceeds();
+        _fakeClient.CommitTemplateStackSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack(templateStack)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertSuccess(result);
+        _fakeClient.ClientMock.Verify(c => c.CommitTemplateStack(
+            templateStack), Times.Once);
     }
 
     // ── Add: ImportCertificate type selection ────────────────────────────────
@@ -442,13 +500,14 @@ public class ManagementTests
     }
 
     [Fact]
-    public void ProcessJob_Add_CommitAllFails_ReturnsWarning()
+    public void ProcessJob_Add_CommitTemplateFails_ReturnsWarning()
     {
         _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
         _fakeClient.NoDuplicateExists();
         _fakeClient.ImportSucceeds();
         _fakeClient.CommitSucceeds();
-        _fakeClient.CommitAllFails("push to firewall devices failed");
+        _fakeClient.CommitTemplateFails();
+        
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaStorePath)
@@ -460,7 +519,60 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertWarning(result);
-        Assert.Contains("push to firewall devices failed", result.FailureMessage);
+        Assert.Contains("push to template failed", result.FailureMessage);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_CommitTemplateStackFails_ReturnsWarning()
+    {
+        var templateStack = "TemplateStack";
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasTemplateStacks(templateStack);
+        _fakeClient.NoDuplicateExists();
+        _fakeClient.ImportSucceeds();
+        _fakeClient.CommitSucceeds();
+        _fakeClient.CommitTemplateSucceeds();
+        _fakeClient.CommitTemplateStackFails();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack(templateStack)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertWarning(result);
+        Assert.Contains("push to template stack failed", result.FailureMessage);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_CommitDeviceGroupFails_ReturnsWarning()
+    {
+        var devicegroup = "Group1";
+        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        _fakeClient.PanoramaHasDeviceGroups(devicegroup);
+        _fakeClient.NoDuplicateExists();
+        _fakeClient.ImportSucceeds();
+        _fakeClient.CommitSucceeds();
+        _fakeClient.CommitDeviceGroupFails();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithDeviceGroup(devicegroup)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertWarning(result);
+        Assert.Contains("push to device group failed", result.FailureMessage);
     }
 
     // ── Remove: Basic delete ─────────────────────────────────────────────────

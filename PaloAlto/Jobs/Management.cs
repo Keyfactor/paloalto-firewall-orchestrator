@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
@@ -40,7 +41,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         private readonly IPaloAltoClientFactory _clientFactory;
 
         private IPaloAltoClient _client;
-        
+
 
         private ILogger _logger;
 
@@ -64,12 +65,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace("Initialized Management with IPAMSecretResolver and custom logger.");
         }
 
-        public Management(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory, IClientLoggerFactory loggerFactory)
+        public Management(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory,
+            IClientLoggerFactory loggerFactory)
         {
             _resolver = resolver;
             _logger = loggerFactory.CreateLogger<Inventory>();
             _clientFactory = clientFactory;
-            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver, custom PaloAlto client factory and logger.");
+            _logger.LogTrace(
+                "Initialized Inventory with IPAMSecretResolver, custom PaloAlto client factory and logger.");
         }
 
         private string ServerPassword { get; set; }
@@ -89,6 +92,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
 
+            // TODO: We should use propagate async through all the sub-methods and use the synchronous 'GetAwaiter().GetResult()' at this level
             return PerformManagement(jobConfiguration);
         }
 
@@ -183,7 +187,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace("Palo Alto Client Created");
 
-                if (!SetPanoramaTarget(config, _client))
+                if (!SetPanoramaTarget(config))
                 {
                     return new JobResult
                     {
@@ -195,9 +199,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
-                if (!DeleteCertificate(config, _client, warnings, out var deleteResult)) return deleteResult;
+                if (!DeleteCertificate(config, warnings, out var deleteResult)) return deleteResult;
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                warnings = CommitChanges(config, _client, warnings);
+                warnings = CommitChanges(config, warnings);
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
@@ -222,13 +226,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool SetPanoramaTarget(ManagementJobConfiguration config, IPaloAltoClient client)
+        private bool SetPanoramaTarget(ManagementJobConfiguration config)
         {
             _logger.MethodEntry();
             if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath))
             {
                 _logger.LogTrace("Trying to Set Panorama Target for Template Vsys Configuration");
-                var targetResult = client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath).Result;
+                var targetResult = _client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath).Result;
                 _logger.LogTrace("Completed Set Panorama Target for Template Vsys Configuration");
                 if (targetResult != null &&
                     targetResult.Status.Equals("error", StringComparison.CurrentCultureIgnoreCase))
@@ -247,14 +251,15 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return true;
         }
 
-        private bool CheckForDuplicate(ManagementJobConfiguration config, IPaloAltoClient client, string certificateName)
+        private bool CheckForDuplicate(ManagementJobConfiguration config,
+            string certificateName)
         {
             _logger.MethodEntry();
             try
             {
                 _logger.MethodEntry();
                 _logger.LogTrace("Getting list to check for duplicates");
-                var rawCertificatesResult = client.GetCertificateList(
+                var rawCertificatesResult = _client.GetCertificateList(
                         $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
                     .Result;
                 _logger.LogTrace("Got list to check for duplicates");
@@ -285,11 +290,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     _logger.LogTrace(
                         $"Credentials JSON: Url: {config.CertificateStoreDetails.ClientMachine} Server UserName: {config.ServerUsername}");
-                    
+
                     _logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    if (!SetPanoramaTarget(config, _client))
+                    if (!SetPanoramaTarget(config))
                     {
                         return new JobResult
                         {
@@ -302,7 +307,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Finished SetPanoramaTarget Function.");
 
-                    var duplicate = CheckForDuplicate(config, _client, config.JobCertificate.Alias);
+                    var duplicate = CheckForDuplicate(config, config.JobCertificate.Alias);
                     _logger.LogTrace(
                         $"Duplicate? = {duplicate.ToString()}. Config.Overwrite = {config.Overwrite.ToString()}");
 
@@ -350,7 +355,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         _logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                        warnings = CommitChanges(config, _client, warnings);
+                        warnings = CommitChanges(config, warnings);
 
                         return ReturnJobResult(config, warnings, true, errorMsg);
                     }
@@ -385,23 +390,23 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool DeleteCertificate(ManagementJobConfiguration config, IPaloAltoClient client, string warnings,
+        private bool DeleteCertificate(ManagementJobConfiguration config, string warnings,
             out JobResult deleteResult)
         {
-            if (!SetPanoramaTarget(config, client))
+            if (!SetPanoramaTarget(config))
             {
                 deleteResult = ReturnJobResult(config, warnings, false, "Could Not Set Panorama Target");
                 return false;
             }
 
-            var delResponse = client.SubmitDeleteCertificate(config.JobCertificate.Alias,
+            var delResponse = _client.SubmitDeleteCertificate(config.JobCertificate.Alias,
                 config.CertificateStoreDetails.StorePath).Result;
             if (delResponse.Status.ToUpper() == "ERROR")
             {
                 var msg = Validators.BuildPaloError(delResponse);
                 if (msg.Contains("trusted-root-CA")) //Can't delete because Trusted Root
                 {
-                    var delTrustedResponse = client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
+                    var delTrustedResponse = _client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
                         config.CertificateStoreDetails.StorePath).Result;
                     if (delTrustedResponse.Status.ToUpper() == "ERROR")
                     {
@@ -412,7 +417,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         }
                     }
 
-                    var delRespTryTwo = client
+                    var delRespTryTwo = _client
                         .SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath)
                         .Result;
                     if (delRespTryTwo.Status.ToUpper() == "ERROR")
@@ -526,60 +531,107 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return certPem;
         }
 
-        private string CommitChanges(ManagementJobConfiguration config, IPaloAltoClient client, string warnings)
+        private string CommitChanges(ManagementJobConfiguration config, string warnings)
         {
             _logger.MethodEntry();
-            var commitResponse = client.GetCommitResponse().Result;
+            var commitResponse = _client.GetCommitResponse().GetAwaiter().GetResult();
             _logger.LogTrace("Got client commit response, attempting to log it");
             LogResponse(commitResponse);
-            if (commitResponse.Status == "success")
-            {
-                _logger.LogTrace("Commit response shows success");
 
-                // Not every commit action comes with a Job ID (which means it is being executed asynchronously).
-                if (commitResponse.Result?.HasJobId ?? false)
-                {
-                    // Poll the Panorama API to determine whether the initial commit job finishes
-                    // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
-                    _logger.LogTrace("Waiting for job to finish");
-                    var jobPoller = new PanoramaJobPoller(client);
-                    var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter()
-                        .GetResult();
-
-                    if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
-                    {
-                        return completionResult.FailureMessage;
-                    }
-                }
-
-                //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
-                var deviceGroup = StoreProperties?.DeviceGroup;
-                _logger.LogTrace($"Device Group {deviceGroup}");
-
-                var templateStack = StoreProperties?.TemplateStack;
-                _logger.LogTrace($"Template Stack {templateStack}");
-
-                //If there is a template and device group then push to all firewall devices because it is Panorama
-                if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) ||
-                    Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
-                {
-                    var commitAllResponse = client.GetCommitAllResponse(deviceGroup,
-                        config.CertificateStoreDetails.StorePath, templateStack).Result;
-                    _logger.LogTrace("Logging commit response from panorama.");
-                    LogResponse(commitAllResponse);
-                    if (commitAllResponse.Status != "success")
-                        warnings += $"The push to firewall devices failed. {commitAllResponse.Text}";
-                }
-            }
-            else
+            if (commitResponse.Status != "success")
             {
                 warnings += $"The commit to the device failed. {commitResponse.Text}";
+                return warnings;
+            }
+
+            _logger.LogTrace("Commit response shows success");
+
+            // Not every commit action comes with a Job ID (having a Job ID means Palo Alto is processing it asynchronously).
+            if (commitResponse.Result?.HasJobId ?? false)
+            {
+                // Poll the Panorama API to determine whether the initial commit job finishes
+                // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
+                _logger.LogTrace($"Waiting for job ID {commitResponse.Result.JobId} to finish");
+                var jobPoller = new PanoramaJobPoller(_client);
+                var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter()
+                    .GetResult();
+
+                if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
+                {
+                    return completionResult.FailureMessage;
+                }
+            }
+
+            //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
+            var deviceGroup = StoreProperties?.DeviceGroup;
+            _logger.LogTrace($"Device Group {deviceGroup}");
+
+            var templateStack = StoreProperties?.TemplateStack;
+            _logger.LogTrace($"Template Stack {templateStack}");
+
+            //If there is a template and device group then push to all firewall devices because it is Panorama
+            if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) ||
+                Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
+            {
+                warnings += CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack)
+                    .GetAwaiter().GetResult();
             }
 
             return warnings;
         }
 
-        public static string OrderCertificatesAndConvertToPem(X509CertificateEntry[] certificateEntries)
+        private async Task<string> CommitToPanorama(string storePath, string deviceGroup, string templateStack)
+        {
+            _logger.MethodEntry();
+            
+            var warnings = new List<string>();
+
+            var deviceGroups = Validators.GetDeviceGroups(deviceGroup);
+            if (deviceGroups.Any())
+            {
+                foreach (var group in deviceGroups)
+                {
+                    var warning = await TryCommit($"device group '{group}'", () => _client.CommitDeviceGroup(group));
+                    if (warning != null) warnings.Add(warning);
+                }
+            }
+            else
+            {
+                var warning = await TryCommit($"template at '{storePath}'", () => _client.CommitTemplate(storePath));
+                if (warning != null) warnings.Add(warning);
+            }
+
+            if (!string.IsNullOrEmpty(templateStack))
+            {
+                var warning = await TryCommit($"template stack '{templateStack}'", () => _client.CommitTemplateStack(templateStack));
+                if (warning != null) warnings.Add(warning);
+            }
+
+            _logger.MethodExit();
+
+            return string.Join("; ", warnings);
+        }
+        
+        private async Task<string?> TryCommit(string description, Func<Task<CommitResponseResult>> commit)
+        {
+            _logger.MethodEntry();
+            
+            _logger.LogDebug("Committing changes to {Description}", description);
+            var result = await commit();
+
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Successfully committed changes to {Description}", description);
+                return null;
+            }
+
+            _logger.LogWarning("Failed to commit to {Description}: {Message}", description, result.Message);
+            _logger.MethodExit();
+            
+            return result.Message;
+        }
+
+        private static string OrderCertificatesAndConvertToPem(X509CertificateEntry[] certificateEntries)
         {
             // Convert to X509Certificate objects for easier processing
             var certificates = certificateEntries
