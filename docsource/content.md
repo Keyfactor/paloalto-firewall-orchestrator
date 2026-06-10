@@ -19,6 +19,11 @@ Certificate alias 'alias' is too long, it must not be more than 31 characters. C
 
 **Important Note** Please review the new path considerations in the section below.  It explains how the paths work for Panorama and the Firewalls.  `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
+## Release 2.5.2 Update on Panorama Commits
+> [!IMPORTANT]
+>
+> The 2.5.2 release updates commit behavior to update commits (device group / template / template stack) to return a Warning instead of an Error. Commits that were unsuccessful will be logged and noted in the job status message. Please ensure any failed commits are manually handled to prevent an unintended outage.
+
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
 <summary>Store Path Permutations</summary>
@@ -195,7 +200,4 @@ TC30|Panorama Level Replace bound Cert|/config/panorama|**Alias**:<br>PanoramaNo
 TC31|Firewall previous version cert store settings|/config/shared|**Alias**:<br>www.extraparams.com<br>**Overwrite**:<br>false|Cert is still installed because it ignores extra params|True|![](images/TC31.gif)
 </details>
 
-## Overview
-
-TODO Overview is a required section
 
