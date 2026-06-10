@@ -46,7 +46,6 @@ public abstract class BaseIntegrationTest
       var loggerFactory = services.GetRequiredService<ILoggerFactory>();
       var loggerFactoryMock = new Mock<IClientLoggerFactory>();
 
-      // Management.cs calls CreateLogger<Inventory>() due to a known copy/paste issue in the constructor.
       loggerFactoryMock
         .Setup(f => f.CreateLogger<It.IsAnyType>())
         .Returns(loggerFactory.CreateLogger<It.IsAnyType>());

@@ -143,7 +143,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
             var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-            return await HandleCommitResponseV2(response, $"device group {deviceGroup}");
+            return await HandleCommitResponse(response, $"device group {deviceGroup}");
         }
         
         public async Task<CommitResponseResult> CommitTemplateStack(string templateStack)
@@ -151,7 +151,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
             var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-            return await HandleCommitResponseV2(response, $"template stack {templateStack}");
+            return await HandleCommitResponse(response, $"template stack {templateStack}");
         }
 
         public async Task<CommitResponseResult> CommitTemplate(string storePath)
@@ -162,10 +162,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             var uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
             var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
                     
-            return await HandleCommitResponseV2(response, $"template {template}");
+            return await HandleCommitResponse(response, $"template {template}");
         }
 
-        private async Task<CommitResponseResult> HandleCommitResponseV2(CommitResponse response, string description)
+        private async Task<CommitResponseResult> HandleCommitResponse(CommitResponse response, string description)
         {
             _logger.LogTrace($"Handling commit response for {description}");
             
@@ -207,29 +207,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 IsSuccess = true,
             };
-        }
-
-        private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)
-        {
-            if (response.Status != "success")
-            {
-                throw new Exception(
-                    $"Job status did not indicate success. Response: {response.Status}");
-            }
-
-            _logger.LogTrace($"Response text: {response.Text}");
-
-            if (response.Result?.HasJobId ?? false)
-            {
-                _logger.LogTrace($"Waiting to make sure commit was successful. Job ID: {response.Result?.JobId}...");
-                var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
-                if (result.Result == OrchestratorJobStatusJobResult.Failure)
-                {
-                    throw new Exception(result.FailureMessage);
-                }
-            }
-
-            _logger.LogTrace($"Changes pushed successfully.");
         }
 
         public async Task<JobStatusResponse> GetJobStatus(string jobId)

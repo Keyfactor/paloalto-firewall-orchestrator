@@ -161,13 +161,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         try
                         {
                             _logger.LogTrace($"Building Trusted Root Inventory Item Alias: {trustedRootCert.Name}");
-                            var certificatePem = _client.GetCertificateByName(trustedRootCert.Name);
-                            _logger.LogTrace($"Certificate String Back From Palo Pem: {certificatePem.Result}");
-                            var bytes = Encoding.ASCII.GetBytes(certificatePem.Result);
+                            var certificatePem = await _client.GetCertificateByName(trustedRootCert.Name);
+                            _logger.LogTrace($"Certificate String Back From Palo Pem: {certificatePem}");
+                            var bytes = Encoding.ASCII.GetBytes(certificatePem);
                             var cert = new X509Certificate2(bytes);
                             _logger.LogTrace(
-                                $"Building Trusted Root Inventory Item Pem: {certificatePem.Result} Has Private Key: {cert.HasPrivateKey}");
-                            inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem.Result, cert.HasPrivateKey, true));
+                                $"Building Trusted Root Inventory Item Pem: {certificatePem} Has Private Key: {cert.HasPrivateKey}");
+                            inventoryItems.Add(BuildInventoryItem(trustedRootCert.Name, certificatePem, cert.HasPrivateKey, true));
                         }
                         catch (Exception e)
                         {

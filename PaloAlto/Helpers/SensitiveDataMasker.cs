@@ -1,5 +1,5 @@
 using System;
-using System.Text.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
@@ -16,8 +16,9 @@ public static class SensitiveDataMasker
             MaskKey(jsonObject, "StorePassword");
             MaskKey(jsonObject, "ServerPassword");
             MaskKey(jsonObject, "PrivateKeyPassword");
+            MaskKey(jsonObject, "Contents");
 
-            return jsonObject.ToString(Newtonsoft.Json.Formatting.Indented);
+            return jsonObject.ToString(Formatting.Indented);
         }
         catch (JsonException ex)
         {

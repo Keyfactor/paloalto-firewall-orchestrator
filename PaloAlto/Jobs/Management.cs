@@ -39,6 +39,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
     {
         private readonly IPAMSecretResolver _resolver;
         private readonly IPaloAltoClientFactory _clientFactory;
+        private readonly PemParser _pemParser;
 
         private IPaloAltoClient _client;
 
@@ -49,8 +50,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         {
             _resolver = resolver;
             var loggerFactory = new ClientLoggerFactory();
-            _logger = loggerFactory.CreateLogger<Inventory>();
+            _logger = loggerFactory.CreateLogger<Management>();
             _clientFactory = new PaloAltoClientFactory(loggerFactory);
+            _pemParser = new PemParser(loggerFactory);
             _logger.LogTrace("Initialized Management with IPAMSecretResolver and default logger.");
         }
 
@@ -58,10 +60,11 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             IClientLoggerFactory loggerFactory)
         {
             _resolver = resolver;
-            _logger = loggerFactory.CreateLogger<Inventory>();
+            _logger = loggerFactory.CreateLogger<Management>();
             _clientFactory = clientFactory;
+            _pemParser = new PemParser(loggerFactory);
             _logger.LogTrace(
-                "Initialized Inventory with IPAMSecretResolver, custom PaloAlto client factory and logger.");
+                "Initialized Management with IPAMSecretResolver, custom PaloAlto client factory and logger.");
         }
 
         private string ServerPassword { get; set; }
@@ -159,7 +162,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
             catch (Exception e)
             {
-                _logger.LogError($"Error Occurred in Management.PerformManagement: {e.Message}");
+                _logger.LogError($"Error Occurred in Management.PerformManagement: {e.Message}. {e.StackTrace}");
                 throw;
             }
         }
@@ -245,7 +248,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return true;
         }
 
-        private bool CheckForDuplicate(ManagementJobConfiguration config,
+        private async Task<bool> CheckForDuplicate(ManagementJobConfiguration config,
             string certificateName)
         {
             _logger.MethodEntry();
@@ -253,9 +256,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             {
                 _logger.MethodEntry();
                 _logger.LogTrace("Getting list to check for duplicates");
-                var rawCertificatesResult = _client.GetCertificateList(
-                        $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']")
-                    .Result;
+                var rawCertificatesResult = await _client.GetCertificateList(
+                    $"{config.CertificateStoreDetails.StorePath}/certificate/entry[@name='{certificateName}']");
                 _logger.LogTrace("Got list to check for duplicates");
 
                 var certificatesResult =
@@ -301,7 +303,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Finished SetPanoramaTarget Function.");
 
-                    var duplicate = CheckForDuplicate(config, config.JobCertificate.Alias);
+                    var duplicate = await CheckForDuplicate(config, config.JobCertificate.Alias);
                     _logger.LogTrace(
                         $"Duplicate? = {duplicate.ToString()}. Config.Overwrite = {config.Overwrite.ToString()}");
 
@@ -313,7 +315,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
                             _logger.LogTrace("No Alias Found");
 
-                        var certPem = GetPemFile(config);
+                        var certPem = _pemParser.GetPemFile(config.JobCertificate.Contents, config.JobCertificate.PrivateKeyPassword, config.JobCertificate.Alias);
                         _logger.LogTrace($"Got certPem {certPem}");
 
                         var alias = config.JobCertificate?.Alias;
@@ -333,7 +335,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                             Encoding.UTF8.GetBytes(certPem), "yes", type,
                             config.CertificateStoreDetails.StorePath);
                         _logger.LogTrace("Finished Import About to Log Results...");
-                        content = importResult.Result;
+                        content = await importResult;
                         LogResponse(content);
                         _logger.LogTrace("Finished Logging Import Results...");
 
@@ -373,6 +375,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
             catch (Exception e)
             {
+                _logger.LogError(e, $"Error occurred within Management.PerformAddition: {e.Message}. {e.StackTrace}");
                 return new JobResult
                 {
                     Result = OrchestratorJobStatusJobResult.Failure,
@@ -416,14 +419,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                         }
                     }
 
-                    var delRespTryTwo = _client
-                        .SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath)
-                        .Result;
+                    var delRespTryTwo = await _client
+                        .SubmitDeleteCertificate(config.JobCertificate.Alias, config.CertificateStoreDetails.StorePath);
                     if (delRespTryTwo.Status.ToUpper() == "ERROR")
                     {
                         {
                             result.DeleteResult = ReturnJobResult(config, warnings, false,
-                                Validators.BuildPaloError(delResponse));
+                                Validators.BuildPaloError(delRespTryTwo));
                             return result;
                         }
                     }
@@ -482,59 +484,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             var resSerializer = new XmlSerializer(typeof(T));
             resSerializer.Serialize(resWriter, content);
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
-        }
-
-        private string GetPemFile(ManagementJobConfiguration config)
-        {
-            // Load PFX
-            var pfxBytes = Convert.FromBase64String(config.JobCertificate.Contents);
-            Pkcs12Store p;
-            using (var pfxBytesMemoryStream = new MemoryStream(pfxBytes))
-            {
-                p = new Pkcs12Store(pfxBytesMemoryStream,
-                    config.JobCertificate?.PrivateKeyPassword?.ToCharArray());
-            }
-
-            _logger.LogTrace(
-                $"Created Pkcs12Store containing Alias {config.JobCertificate.Alias} Contains Alias is {p.ContainsAlias(config.JobCertificate.Alias)}");
-
-            // Extract private key
-            string alias;
-            string privateKeyString;
-            using (var memoryStream = new MemoryStream())
-            {
-                using (TextWriter streamWriter = new StreamWriter(memoryStream))
-                {
-                    _logger.LogTrace("Extracting Private Key...");
-                    var pemWriter = new PemWriter(streamWriter);
-                    _logger.LogTrace("Created pemWriter...");
-                    alias = p.Aliases.Cast<string>().SingleOrDefault(a => p.IsKeyEntry(a));
-                    _logger.LogTrace($"Alias = {alias}");
-                    var publicKey = p.GetCertificate(alias).Certificate.GetPublicKey();
-                    _logger.LogTrace($"publicKey = {publicKey}");
-                    KeyEntry = p.GetKey(alias);
-                    _logger.LogTrace($"KeyEntry = {KeyEntry}");
-                    if (KeyEntry == null) throw new Exception("Unable to retrieve private key");
-
-                    var privateKey = KeyEntry.Key;
-                    _logger.LogTrace($"privateKey = {privateKey}");
-                    var keyPair = new AsymmetricCipherKeyPair(publicKey, privateKey);
-
-                    pemWriter.WriteObject(keyPair.Private);
-                    streamWriter.Flush();
-                    privateKeyString = Encoding.ASCII.GetString(memoryStream.GetBuffer()).Trim()
-                        .Replace("\r", "").Replace("\0", "");
-                    _logger.LogTrace($"Got Private Key String {privateKeyString}");
-                    memoryStream.Close();
-                    streamWriter.Close();
-                    _logger.LogTrace("Finished Extracting Private Key...");
-                }
-            }
-
-            var pubCertPem = OrderCertificatesAndConvertToPem(p.GetCertificateChain(alias));
-
-            var certPem = privateKeyString + pubCertPem;
-            return certPem;
         }
 
         private async Task<string> CommitChanges(ManagementJobConfiguration config, string warnings)
@@ -640,56 +589,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.MethodExit();
             
             return result.Message;
-        }
-
-        private static string OrderCertificatesAndConvertToPem(X509CertificateEntry[] certificateEntries)
-        {
-            // Convert to X509Certificate objects for easier processing
-            var certificates = certificateEntries
-                .Select(entry => entry.Certificate)
-                .ToList();
-
-            // Create a dictionary to map Subject DN to certificate
-            var subjectToCertificate = certificates.ToDictionary(cert => cert.SubjectDN.ToString());
-
-            // Create a dictionary to map Issuer DN to subject DN
-            var issuerToSubjects = certificates
-                .GroupBy(cert => cert.IssuerDN.ToString())
-                .ToDictionary(group => group.Key, group => group.Select(cert => cert.SubjectDN.ToString()).ToList());
-
-            // Find the end-entity certificate (subject DN not found as an issuer DN)
-            var endEntityCert = certificates.First(cert => !issuerToSubjects.ContainsKey(cert.SubjectDN.ToString()));
-
-            // Build the chain from end-entity to root
-            var orderedCertificates = new List<Org.BouncyCastle.X509.X509Certificate>();
-            var currentCert = endEntityCert;
-
-            while (currentCert != null)
-            {
-                orderedCertificates.Add(currentCert);
-                var issuer = currentCert.IssuerDN.ToString();
-
-                if (issuer == currentCert.SubjectDN.ToString()) // Self-signed certificate (root)
-                    break;
-
-                currentCert = subjectToCertificate.ContainsKey(issuer) ? subjectToCertificate[issuer] : null;
-            }
-
-            // Convert the ordered certificates to a PEM string
-            var pemString = string.Empty;
-
-            foreach (var cert in orderedCertificates)
-            {
-                using (var stringWriter = new System.IO.StringWriter())
-                {
-                    var pemWriter = new PemWriter(stringWriter);
-                    pemWriter.WriteObject(cert);
-                    pemWriter.Writer.Flush();
-                    pemString += stringWriter.ToString();
-                }
-            }
-
-            return pemString;
         }
     }
 }

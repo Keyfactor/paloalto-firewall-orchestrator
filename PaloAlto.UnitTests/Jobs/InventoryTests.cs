@@ -230,7 +230,7 @@ public class InventoryTests : BaseUnitTest
         FakeClient.WithNoTrustedRoots();
         var submitted = CaptureSubmittedItems();
         var inventory = new ThrowOnAliasInventory(
-            PamResolverMock.Object, ClientFactoryMock.Object, GetLoggerFactory(), throwForAlias: "bad-cert");
+            PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory, throwForAlias: "bad-cert");
 
         var result = inventory.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
 
@@ -483,16 +483,6 @@ public class InventoryTests : BaseUnitTest
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
 
     // ── Helpers for the BuildInventoryItem throw path ────────────────────────
-
-    private IClientLoggerFactory GetLoggerFactory()
-    {
-        var services = new ServiceCollection()
-            .AddLogging(b => b.SetMinimumLevel(LogLevel.Trace))
-            .BuildServiceProvider();
-        var mock = new Mock<IClientLoggerFactory>();
-        mock.Setup(f => f.CreateLogger<Inventory>()).Returns(services.GetRequiredService<ILogger<Inventory>>);
-        return mock.Object;
-    }
 
     private static string GenerateTestCertificatePem()
     {
