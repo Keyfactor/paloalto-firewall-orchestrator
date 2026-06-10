@@ -54,17 +54,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace("Initialized Management with IPAMSecretResolver and default logger.");
         }
 
-        // Constructor used by unit / integration tests
-        // TODO: Remove this deprecated fixture
-        public Management(IPAMSecretResolver resolver, ILogger logger)
-        {
-            _resolver = resolver;
-            var loggerFactory = new ClientLoggerFactory();
-            _logger = logger;
-            _clientFactory = new PaloAltoClientFactory(loggerFactory);
-            _logger.LogTrace("Initialized Management with IPAMSecretResolver and custom logger.");
-        }
-
         public Management(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory,
             IClientLoggerFactory loggerFactory)
         {
@@ -612,6 +601,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return string.Join("; ", warnings);
         }
         
+        /// <summary>
+        /// This function accepts a delegate to perform a commit action against Panorama. If a commit fails, we note
+        /// the failure and acknowledge it as a warning on the management job.
+        /// </summary>
+        /// <param name="description"></param>
+        /// <param name="commit"></param>
+        /// <returns></returns>
         private async Task<string?> TryCommit(string description, Func<Task<CommitResponseResult>> commit)
         {
             _logger.MethodEntry();

@@ -138,54 +138,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        [Obsolete("Use updated commit all handlers instead")]
-        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack)
-        {
-            try
-            {
-                //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
-                //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                var uri = string.Empty;
-                CommitResponse response = new ();
-                if (!string.IsNullOrEmpty(deviceGroup))
-                {
-                    foreach (var group in Validators.GetDeviceGroups(deviceGroup))
-                    {
-                        _logger.LogTrace($"Committing changes to device group {group}");
-                        uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                        response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-
-                        await HandleCommitResponse(response, _jobPoller);
-                    }
-                }
-                else
-                {
-                    var template = GetTemplateName(storePath);
-                    _logger.LogTrace($"Committing changes to template {template}");
-                    
-                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
-                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-                    
-                    await HandleCommitResponse(response, _jobPoller);
-                }
-
-                if (!string.IsNullOrEmpty(templateStack))
-                {
-                    _logger.LogTrace($"Committing changes to template stack {templateStack}");
-                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
-                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-                    
-                    await HandleCommitResponse(response, _jobPoller);
-                }
-                return response;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
-                throw;
-            }
-        }
-
         public async Task<CommitResponseResult> CommitDeviceGroup(string deviceGroup)
         {
             var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";

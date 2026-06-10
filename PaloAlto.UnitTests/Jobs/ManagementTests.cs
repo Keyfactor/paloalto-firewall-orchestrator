@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Orchestrators.Common.Enums;
-using Keyfactor.Orchestrators.Extensions.Interfaces;
-using MartinCostello.Logging.XUnit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
@@ -28,17 +23,13 @@ using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using PaloAlto.UnitTests.Builders;
-using PaloAlto.UnitTests.Fakes;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace PaloAlto.UnitTests.Jobs;
 
-public class ManagementTests
+public class ManagementTests : BaseUnitTest
 {
-    private readonly FakePaloAltoClient _fakeClient = new();
-    private readonly Mock<IPAMSecretResolver> _pamResolverMock = new();
-    private readonly Mock<IPaloAltoClientFactory> _clientFactoryMock = new();
     private readonly Management _sut;
 
     private const string FirewallStorePath = "/config/shared";
@@ -53,30 +44,9 @@ public class ManagementTests
     // Generated once per test class instance using BouncyCastle to match the production PFX parsing path.
     private static readonly string TestPfxBase64 = GenerateTestPfxBase64(TestAlias, TestPfxPassword);
 
-    public ManagementTests(ITestOutputHelper output)
+    public ManagementTests(ITestOutputHelper output) : base(output)
     {
-        var services = new ServiceCollection()
-            .AddLogging(b => b
-                .AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()))
-                .SetMinimumLevel(LogLevel.Trace))
-            .BuildServiceProvider();
-
-        var loggerFactoryMock = new Mock<IClientLoggerFactory>();
-
-        // Management.cs calls CreateLogger<Inventory>() due to a known copy/paste issue in the constructor.
-        loggerFactoryMock
-            .Setup(f => f.CreateLogger<Inventory>())
-            .Returns(services.GetRequiredService<ILogger<Inventory>>);
-
-        _clientFactoryMock
-            .Setup(f => f.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(_fakeClient.ClientMock.Object);
-
-        _pamResolverMock
-            .Setup(r => r.Resolve(It.IsAny<string>()))
-            .Returns((string v) => v);
-
-        _sut = new Management(_pamResolverMock.Object, _clientFactoryMock.Object, loggerFactoryMock.Object);
+        _sut = new Management(PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory);
     }
 
     // ── Store validation ─────────────────────────────────────────────────────
@@ -94,7 +64,7 @@ public class ManagementTests
 
         AssertFailure(result);
         Assert.Contains("Path is invalid", result.FailureMessage);
-        _fakeClient.ClientMock.Verify(c => c.ImportCertificate(
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
@@ -102,7 +72,7 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_PanoramaPath_TemplateNotFound_ReturnsFailure()
     {
-        _fakeClient.PanoramaHasTemplate("OtherTemplate");
+        FakeClient.PanoramaHasTemplate("OtherTemplate");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaStorePath)
@@ -135,7 +105,7 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_PanoramaPath_AliasTooLong_ReturnsFailure()
     {
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
         var alias = new string('a', 32);
         var job = new ManagementJobBuilder()
             .AsAdd()
@@ -171,8 +141,8 @@ public class ManagementTests
     public void ProcessJob_FirewallPath_AliasAtMaxLength_PassesAliasValidation()
     {
         var alias = new string('a', 63);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportFails("stopped here intentionally");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportFails("stopped here intentionally");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -193,8 +163,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_PanoramaVsysPath_SetPanoramaTargetFails_ReturnsFailure()
     {
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.SetPanoramaTargetFails("vsys target unavailable");
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.SetPanoramaTargetFails("vsys target unavailable");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaVsysStorePath)
@@ -210,8 +180,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_NonVsysPath_SetPanoramaTargetNotCalled()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportFails("stopped here intentionally");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportFails("stopped here intentionally");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -222,7 +192,7 @@ public class ManagementTests
 
         _sut.ProcessJob(job);
 
-        _fakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(It.IsAny<string>()), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(It.IsAny<string>()), Times.Never);
     }
 
     // ── Add: Duplicate check ─────────────────────────────────────────────────
@@ -230,7 +200,7 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_DuplicateExists_OverwriteFalse_ReturnsFailure()
     {
-        _fakeClient.DuplicateExists(TestAlias);
+        FakeClient.DuplicateExists(TestAlias);
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -248,8 +218,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_DuplicateExists_OverwriteTrue_ProceedsToImport()
     {
-        _fakeClient.DuplicateExists(TestAlias);
-        _fakeClient.ImportFails("reached import as expected");
+        FakeClient.DuplicateExists(TestAlias);
+        FakeClient.ImportFails("reached import as expected");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -261,7 +231,7 @@ public class ManagementTests
 
         _sut.ProcessJob(job);
 
-        _fakeClient.ClientMock.Verify(c => c.ImportCertificate(
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
@@ -269,8 +239,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_NoDuplicate_ProceedsToImport()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportFails("reached import as expected");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportFails("reached import as expected");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -281,7 +251,7 @@ public class ManagementTests
 
         _sut.ProcessJob(job);
 
-        _fakeClient.ClientMock.Verify(c => c.ImportCertificate(
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
@@ -291,8 +261,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_ImportReturnsError_ReturnsFailure()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportFails("certificate rejected by device");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportFails("certificate rejected by device");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -310,9 +280,9 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_ImportSucceeds_FirewallPath_ReturnsSuccess()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -325,18 +295,18 @@ public class ManagementTests
 
         AssertSuccess(result);
         // Firewall paths do not trigger commit-all.
-        _fakeClient.ClientMock.Verify(c => c.GetCommitAllResponse(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(
+            It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public void ProcessJob_Add_ImportSucceeds_PanoramaPath_CommitsAndPushesToDevices()
     {
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitTemplateSucceeds();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaStorePath)
@@ -348,9 +318,9 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.CommitTemplate(
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(
             It.IsAny<string>()), Times.Once);
-        _fakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
+        FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
             It.IsAny<string>()), Times.Never);
     }
     
@@ -358,12 +328,12 @@ public class ManagementTests
     public void ProcessJob_Add_ImportSucceeds_DeviceGroupDefined_CommitsToDeviceGroup()
     {
         var deviceGroup = "Group1";
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.PanoramaHasDeviceGroups(deviceGroup);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitDeviceGroupSucceeds();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups(deviceGroup);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitDeviceGroupSucceeds();
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(PanoramaStorePath)
@@ -376,9 +346,9 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
+        FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(
             deviceGroup), Times.Once);
-        _fakeClient.ClientMock.Verify(c => c.CommitTemplate(
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(
             It.IsAny<string>()), Times.Never);
     }
     
@@ -386,13 +356,13 @@ public class ManagementTests
     public void ProcessJob_Add_ImportSucceeds_TemplateStackDefined_CommitsToTemplateStack()
     {
         var templateStack = "TemplateStack";
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.PanoramaHasTemplateStacks(templateStack);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitTemplateSucceeds();
-        _fakeClient.CommitTemplateStackSucceeds();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks(templateStack);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        FakeClient.CommitTemplateStackSucceeds();
         
         var job = new ManagementJobBuilder()
             .AsAdd()
@@ -406,7 +376,7 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.CommitTemplateStack(
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack(
             templateStack), Times.Once);
     }
 
@@ -415,9 +385,9 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_NoPrivateKeyPassword_ImportsAsCertificate()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -428,7 +398,7 @@ public class ManagementTests
 
         _sut.ProcessJob(job);
 
-        _fakeClient.ClientMock.Verify(c => c.ImportCertificate(
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), "keypair", It.IsAny<string>()), Times.Once);
     }
@@ -438,9 +408,9 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_CommitFails_ReturnsWarning()
     {
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitFails("device rejected the commit");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitFails("device rejected the commit");
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -459,10 +429,10 @@ public class ManagementTests
     public void ProcessJob_Add_CommitWithJobId_JobCompletesOk_ReturnsSuccess()
     {
         const string jobId = "42";
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceedsWithJobId(jobId);
-        _fakeClient.JobCompletesSuccessfully(jobId);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceedsWithJobId(jobId);
+        FakeClient.JobCompletesSuccessfully(jobId);
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -474,17 +444,17 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.GetJobStatus(jobId), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.GetJobStatus(jobId), Times.Once);
     }
 
     [Fact]
     public void ProcessJob_Add_CommitWithJobId_JobFails_ReturnsWarning()
     {
         const string jobId = "99";
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceedsWithJobId(jobId);
-        _fakeClient.JobFails(jobId);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceedsWithJobId(jobId);
+        FakeClient.JobFails(jobId);
         var job = new ManagementJobBuilder()
             .AsAdd()
             .WithStorePath(FirewallStorePath)
@@ -502,11 +472,11 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Add_CommitTemplateFails_ReturnsWarning()
     {
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitTemplateFails();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateFails();
         
         var job = new ManagementJobBuilder()
             .AsAdd()
@@ -526,13 +496,13 @@ public class ManagementTests
     public void ProcessJob_Add_CommitTemplateStackFails_ReturnsWarning()
     {
         var templateStack = "TemplateStack";
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.PanoramaHasTemplateStacks(templateStack);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitTemplateSucceeds();
-        _fakeClient.CommitTemplateStackFails();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks(templateStack);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        FakeClient.CommitTemplateStackFails();
         
         var job = new ManagementJobBuilder()
             .AsAdd()
@@ -553,12 +523,12 @@ public class ManagementTests
     public void ProcessJob_Add_CommitDeviceGroupFails_ReturnsWarning()
     {
         var devicegroup = "Group1";
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.PanoramaHasDeviceGroups(devicegroup);
-        _fakeClient.NoDuplicateExists();
-        _fakeClient.ImportSucceeds();
-        _fakeClient.CommitSucceeds();
-        _fakeClient.CommitDeviceGroupFails();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups(devicegroup);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitDeviceGroupFails();
         
         var job = new ManagementJobBuilder()
             .AsAdd()
@@ -580,8 +550,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Remove_DeleteSucceeds_CommitSucceeds_ReturnsSuccess()
     {
-        _fakeClient.DeleteCertificateSucceeds();
-        _fakeClient.CommitSucceeds();
+        FakeClient.DeleteCertificateSucceeds();
+        FakeClient.CommitSucceeds();
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -591,14 +561,14 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(c => c.SubmitDeleteCertificate(TestAlias, FirewallStorePath), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.SubmitDeleteCertificate(TestAlias, FirewallStorePath), Times.Once);
     }
 
     [Fact]
     public void ProcessJob_Remove_DeleteSucceeds_CommitFails_ReturnsWarning()
     {
-        _fakeClient.DeleteCertificateSucceeds();
-        _fakeClient.CommitFails("commit failed after delete");
+        FakeClient.DeleteCertificateSucceeds();
+        FakeClient.CommitFails("commit failed after delete");
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -616,8 +586,8 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Remove_PanoramaVsysPath_SetPanoramaTargetFails_ReturnsFailure()
     {
-        _fakeClient.PanoramaHasTemplate(PanoramaTemplateName);
-        _fakeClient.SetPanoramaTargetFails("vsys target unavailable");
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.SetPanoramaTargetFails("vsys target unavailable");
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(PanoramaVsysStorePath)
@@ -635,7 +605,7 @@ public class ManagementTests
     [Fact]
     public void ProcessJob_Remove_DeleteFailsWithNonTrustedRootError_ReturnsFailure()
     {
-        _fakeClient.DeleteCertificateFails("certificate is in use by an SSL profile");
+        FakeClient.DeleteCertificateFails("certificate is in use by an SSL profile");
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -647,15 +617,15 @@ public class ManagementTests
         AssertFailure(result);
         Assert.Contains("certificate is in use by an SSL profile", result.FailureMessage);
         // Trusted root removal should not be attempted for non-trusted-root errors.
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteTrustedRoot(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public void ProcessJob_Remove_DeleteFailsDueToTrustedRoot_TrustedRootRemovalAlsoFails_ReturnsFailure()
     {
-        _fakeClient.DeleteCertificateFails("Object is referenced by trusted-root-CA profile");
-        _fakeClient.DeleteTrustedRootFails("cannot remove trusted root");
+        FakeClient.DeleteCertificateFails("Object is referenced by trusted-root-CA profile");
+        FakeClient.DeleteTrustedRootFails("cannot remove trusted root");
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -665,19 +635,19 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertFailure(result);
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteTrustedRoot(TestAlias, FirewallStorePath), Times.Once);
         // The retry of SubmitDeleteCertificate should not happen when SubmitDeleteTrustedRoot failed.
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteCertificate(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
     public void ProcessJob_Remove_DeleteFailsDueToTrustedRoot_TrustedRootRemovedSuccessfully_RetryDeleteSucceeds_ReturnsSuccess()
     {
-        _fakeClient.DeleteCertificateFailsThenSucceeds("Object is referenced by trusted-root-CA profile");
-        _fakeClient.DeleteTrustedRootSucceeds();
-        _fakeClient.CommitSucceeds();
+        FakeClient.DeleteCertificateFailsThenSucceeds("Object is referenced by trusted-root-CA profile");
+        FakeClient.DeleteTrustedRootSucceeds();
+        FakeClient.CommitSucceeds();
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -687,17 +657,17 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertSuccess(result);
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteTrustedRoot(TestAlias, FirewallStorePath), Times.Once);
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteCertificate(TestAlias, FirewallStorePath), Times.Exactly(2));
     }
 
     [Fact]
     public void ProcessJob_Remove_DeleteFailsDueToTrustedRoot_TrustedRootRemovedSuccessfully_RetryDeleteAlsoFails_ReturnsFailure()
     {
-        _fakeClient.DeleteCertificateAlwaysFails("Object is referenced by trusted-root-CA profile");
-        _fakeClient.DeleteTrustedRootSucceeds();
+        FakeClient.DeleteCertificateAlwaysFails("Object is referenced by trusted-root-CA profile");
+        FakeClient.DeleteTrustedRootSucceeds();
         var job = new ManagementJobBuilder()
             .AsRemove()
             .WithStorePath(FirewallStorePath)
@@ -707,7 +677,7 @@ public class ManagementTests
         var result = _sut.ProcessJob(job);
 
         AssertFailure(result);
-        _fakeClient.ClientMock.Verify(
+        FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteCertificate(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
     }
 

@@ -151,16 +151,6 @@ public sealed class FakePaloAltoClient
         ClientMock.Setup(c => c.GetCommitResponse())
             .ReturnsAsync(new CommitResponse { Status = "error", Text = text });
 
-    public void CommitAllSucceeds() =>
-        ClientMock.Setup(c => c.GetCommitAllResponse(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(new CommitResponse { Status = "success" });
-
-    public void CommitAllFails(string text = "push to devices failed") =>
-        ClientMock.Setup(c => c.GetCommitAllResponse(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(new CommitResponse { Status = "error", Text = text });
-
     public void CommitDeviceGroupSucceeds() => ClientMock
         .Setup(c => c.CommitDeviceGroup(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
             { IsSuccess = true, Message = "success" });

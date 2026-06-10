@@ -25,8 +25,6 @@ public interface IPaloAltoClient
     Task<NamedListResponse> GetDeviceGroupList();
     Task<NamedListResponse> GetTemplateStackList();
     Task<CommitResponse> GetCommitResponse();
-    [Obsolete("Use updated commit all handlers instead")]
-    Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack);
 
     Task<CommitResponseResult> CommitDeviceGroup(string deviceGroup);
     Task<CommitResponseResult> CommitTemplateStack(string templateStack);

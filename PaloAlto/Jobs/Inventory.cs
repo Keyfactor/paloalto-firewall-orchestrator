@@ -48,17 +48,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
         
         // Constructor used by unit / integration tests
-        // TODO: Remove this deprecated fixture
-        public Inventory(IPAMSecretResolver resolver, ILogger logger)
-        {
-            _resolver = resolver;
-            var loggerFactory = new ClientLoggerFactory();
-            _logger = logger;
-            _clientFactory = new PaloAltoClientFactory(loggerFactory);
-            _logger.LogTrace("Initialized Inventory with IPAMSecretResolver and custom logger.");
-        }
-        
-        // Constructor used by unit / integration tests
         public Inventory(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory, IClientLoggerFactory loggerFactory)
         {
             _resolver = resolver;
