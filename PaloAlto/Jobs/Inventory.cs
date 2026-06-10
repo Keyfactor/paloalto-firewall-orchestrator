@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
@@ -72,7 +73,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
 
-            return PerformInventory(jobConfiguration, submitInventoryUpdate);
+            return PerformInventory(jobConfiguration, submitInventoryUpdate)
+                .GetAwaiter()
+                .GetResult();
         }
 
         public string ResolvePamField(string name, string value)
@@ -81,7 +84,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return _resolver.Resolve(value);
         }
 
-        private JobResult PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)
+        private async Task<JobResult> PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)
         {
             try
             {
@@ -114,13 +117,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 _logger.LogTrace("Inventory Palo Alto Client Created");
 
                 //Change the path if you are pointed to a Panorama Device
-                var rawCertificatesResult = _client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry").Result;
+                var rawCertificatesResult = await _client.GetCertificateList($"{config.CertificateStoreDetails.StorePath}/certificate/entry");
 
                 var certificatesResult =
                     rawCertificatesResult.CertificateResult.Entry.FindAll(c => c.PublicKey != null);
                 LogResponse(certificatesResult); //Trace Write Certificate List Response from Palo Alto
 
-                var trustedRootPayload = _client.GetTrustedRootList().Result;
+                var trustedRootPayload = await _client.GetTrustedRootList();
                 LogResponse(trustedRootPayload); //Trace Write Trusted Cert List Response from Palo Alto
 
                 var warningFlag = false;

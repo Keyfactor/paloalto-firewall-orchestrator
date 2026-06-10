@@ -80,9 +80,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
                 jobConfiguration.CertificateStoreDetails.Properties,
                 new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
-
-            // TODO: We should use propagate async through all the sub-methods and use the synchronous 'GetAwaiter().GetResult()' at this level
-            return PerformManagement(jobConfiguration);
+            
+            return PerformManagement(jobConfiguration)
+                .GetAwaiter()
+                .GetResult();
         }
 
         private string ResolvePamField(string name, string value)
@@ -92,7 +93,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return _resolver.Resolve(value);
         }
 
-        private JobResult PerformManagement(ManagementJobConfiguration config)
+        private async Task<JobResult> PerformManagement(ManagementJobConfiguration config)
         {
             try
             {
@@ -142,7 +143,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     if (config != null)
                         _logger.LogTrace(
                             $"Add Config Json {SensitiveDataMasker.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
-                    complete = PerformAddition(config);
+                    complete = await PerformAddition(config);
                     _logger.LogTrace("Finished Perform Addition Function");
                 }
                 else if (config.OperationType.ToString() == "Remove")
@@ -150,7 +151,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace("Removing...");
                     _logger.LogTrace(
                         $"Remove Config Json {SensitiveDataMasker.MaskSensitiveData(JsonConvert.SerializeObject(config))}");
-                    complete = PerformRemoval(config);
+                    complete = await PerformRemoval(config);
                     _logger.LogTrace("Finished Perform Removal Function");
                 }
 
@@ -164,7 +165,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private JobResult PerformRemoval(ManagementJobConfiguration config)
+        private async Task<JobResult> PerformRemoval(ManagementJobConfiguration config)
         {
             try
             {
@@ -176,7 +177,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace("Palo Alto Client Created");
 
-                if (!SetPanoramaTarget(config))
+                if (!(await SetPanoramaTarget(config)))
                 {
                     return new JobResult
                     {
@@ -188,20 +189,24 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
-                if (!DeleteCertificate(config, warnings, out var deleteResult)) return deleteResult;
+                var deleteResult = await DeleteCertificate(config, warnings);
+                if (!deleteResult.IsSuccess)
+                {
+                    return deleteResult.DeleteResult;
+                }
+                
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                warnings = CommitChanges(config, warnings);
+                warnings = await CommitChanges(config, warnings);
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
-
                 {
                     _logger.LogTrace("Warnings Found");
-                    deleteResult.FailureMessage = warnings;
-                    deleteResult.Result = OrchestratorJobStatusJobResult.Warning;
+                    deleteResult.DeleteResult.FailureMessage = warnings;
+                    deleteResult.DeleteResult.Result = OrchestratorJobStatusJobResult.Warning;
                 }
 
-                return deleteResult;
+                return deleteResult.DeleteResult;
             }
             catch (Exception e)
             {
@@ -215,13 +220,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool SetPanoramaTarget(ManagementJobConfiguration config)
+        private async Task<bool> SetPanoramaTarget(ManagementJobConfiguration config)
         {
             _logger.MethodEntry();
             if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath))
             {
                 _logger.LogTrace("Trying to Set Panorama Target for Template Vsys Configuration");
-                var targetResult = _client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath).Result;
+                var targetResult = await _client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath);
                 _logger.LogTrace("Completed Set Panorama Target for Template Vsys Configuration");
                 if (targetResult != null &&
                     targetResult.Status.Equals("error", StringComparison.CurrentCultureIgnoreCase))
@@ -268,7 +273,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             }
         }
 
-        private JobResult PerformAddition(ManagementJobConfiguration config)
+        private async Task<JobResult> PerformAddition(ManagementJobConfiguration config)
         {
             try
             {
@@ -283,7 +288,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     _logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    if (!SetPanoramaTarget(config))
+                    if (!(await SetPanoramaTarget(config)))
                     {
                         return new JobResult
                         {
@@ -344,7 +349,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         _logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                        warnings = CommitChanges(config, warnings);
+                        warnings = await CommitChanges(config, warnings);
 
                         return ReturnJobResult(config, warnings, true, errorMsg);
                     }
@@ -379,30 +384,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
 
-        private bool DeleteCertificate(ManagementJobConfiguration config, string warnings,
-            out JobResult deleteResult)
+        private async Task<DeleteCertificateResult> DeleteCertificate(ManagementJobConfiguration config, string warnings)
         {
-            if (!SetPanoramaTarget(config))
+            var result = new DeleteCertificateResult()
             {
-                deleteResult = ReturnJobResult(config, warnings, false, "Could Not Set Panorama Target");
-                return false;
+                IsSuccess = false,
+                DeleteResult = null,
+            };
+            
+            if (!(await SetPanoramaTarget(config)))
+            {
+                result.DeleteResult = ReturnJobResult(config, warnings, false, "Could Not Set Panorama Target");
+                return result;
             }
 
-            var delResponse = _client.SubmitDeleteCertificate(config.JobCertificate.Alias,
-                config.CertificateStoreDetails.StorePath).Result;
+            var delResponse = await _client.SubmitDeleteCertificate(config.JobCertificate.Alias,
+                config.CertificateStoreDetails.StorePath);
             if (delResponse.Status.ToUpper() == "ERROR")
             {
                 var msg = Validators.BuildPaloError(delResponse);
                 if (msg.Contains("trusted-root-CA")) //Can't delete because Trusted Root
                 {
-                    var delTrustedResponse = _client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
-                        config.CertificateStoreDetails.StorePath).Result;
+                    var delTrustedResponse = await _client.SubmitDeleteTrustedRoot(config.JobCertificate.Alias,
+                        config.CertificateStoreDetails.StorePath);
                     if (delTrustedResponse.Status.ToUpper() == "ERROR")
                     {
                         {
-                            deleteResult = ReturnJobResult(config, warnings, false,
+                            result.DeleteResult = ReturnJobResult(config, warnings, false,
                                 Validators.BuildPaloError(delTrustedResponse));
-                            return false;
+                            return result;
                         }
                     }
 
@@ -412,9 +422,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     if (delRespTryTwo.Status.ToUpper() == "ERROR")
                     {
                         {
-                            deleteResult = ReturnJobResult(config, warnings, false,
+                            result.DeleteResult = ReturnJobResult(config, warnings, false,
                                 Validators.BuildPaloError(delResponse));
-                            return false;
+                            return result;
                         }
                     }
                 }
@@ -422,14 +432,21 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 {
                     //Delete Failed Return Error
                     {
-                        deleteResult = ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
-                        return false;
+                        result.DeleteResult = ReturnJobResult(config, warnings, false, Validators.BuildPaloError(delResponse));
+                        return result;
                     }
                 }
             }
 
-            deleteResult = ReturnJobResult(config, warnings, true, Validators.BuildPaloError(delResponse));
-            return true;
+            result.DeleteResult = ReturnJobResult(config, warnings, true, Validators.BuildPaloError(delResponse));
+            result.IsSuccess = true;
+            return result;
+        }
+
+        private class DeleteCertificateResult
+        {
+            public bool IsSuccess { get; set; }
+            public JobResult DeleteResult { get; set; }
         }
 
         private static JobResult ReturnJobResult(ManagementJobConfiguration config, string warnings, bool success,
@@ -520,10 +537,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return certPem;
         }
 
-        private string CommitChanges(ManagementJobConfiguration config, string warnings)
+        private async Task<string> CommitChanges(ManagementJobConfiguration config, string warnings)
         {
             _logger.MethodEntry();
-            var commitResponse = _client.GetCommitResponse().GetAwaiter().GetResult();
+            var commitResponse = await _client.GetCommitResponse();
             _logger.LogTrace("Got client commit response, attempting to log it");
             LogResponse(commitResponse);
 
@@ -542,9 +559,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
                 _logger.LogTrace($"Waiting for job ID {commitResponse.Result.JobId} to finish");
                 var jobPoller = new PanoramaJobPoller(_client);
-                var completionResult = jobPoller.WaitForJobCompletion(commitResponse.Result.JobId).GetAwaiter()
-                    .GetResult();
-
+                var completionResult = await jobPoller.WaitForJobCompletion(commitResponse.Result.JobId);
+                
                 if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
                 {
                     return completionResult.FailureMessage;
@@ -562,8 +578,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) ||
                 Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
             {
-                warnings += CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack)
-                    .GetAwaiter().GetResult();
+                warnings += await CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack);
             }
 
             return warnings;
