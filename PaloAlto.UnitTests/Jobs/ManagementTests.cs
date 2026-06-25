@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Common.Enums;
 using Moq;
 using Org.BouncyCastle.Asn1.X509;
@@ -49,7 +50,7 @@ public class ManagementTests : BaseUnitTest
         _sut = new Management(PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory);
     }
 
-    // ── Store validation ─────────────────────────────────────────────────────
+    #region Store Validation
 
     [Fact]
     public void ProcessJob_InvalidStorePath_ReturnsFailureWithoutCallingClient()
@@ -84,8 +85,10 @@ public class ManagementTests : BaseUnitTest
         AssertFailure(result);
         Assert.Contains("Could not find your Template", result.FailureMessage);
     }
-
-    // ── Alias validation ─────────────────────────────────────────────────────
+    
+    #endregion
+    
+    #region Alias Validation
 
     [Fact]
     public void ProcessJob_NullAlias_ReturnsFailure()
@@ -157,8 +160,10 @@ public class ManagementTests : BaseUnitTest
         Assert.DoesNotContain("too long", result.FailureMessage);
         Assert.DoesNotContain("alias must not be empty", result.FailureMessage);
     }
+    
+    #endregion
 
-    // ── Add: Panorama vsys SetPanoramaTarget ─────────────────────────────────
+    #region Add: Panorama vsys SetPanoramaTarget
 
     [Fact]
     public void ProcessJob_Add_PanoramaVsysPath_SetPanoramaTargetFails_ReturnsFailure()
@@ -194,8 +199,10 @@ public class ManagementTests : BaseUnitTest
 
         FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(It.IsAny<string>()), Times.Never);
     }
+    
+    #endregion
 
-    // ── Add: Duplicate check ─────────────────────────────────────────────────
+    #region Add: Duplicate check
 
     [Fact]
     public void ProcessJob_Add_DuplicateExists_OverwriteFalse_ReturnsFailure()
@@ -255,8 +262,10 @@ public class ManagementTests : BaseUnitTest
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
+    
+    #endregion
 
-    // ── Add: Import ──────────────────────────────────────────────────────────
+    #region Add: Import
 
     [Fact]
     public void ProcessJob_Add_ImportReturnsError_ReturnsFailure()
@@ -379,8 +388,10 @@ public class ManagementTests : BaseUnitTest
         FakeClient.ClientMock.Verify(c => c.CommitTemplateStack(
             templateStack), Times.Once);
     }
-
-    // ── Add: ImportCertificate type selection ────────────────────────────────
+    
+    #endregion
+    
+    #region Add: ImportCertificate type selection
 
     [Fact]
     public void ProcessJob_Add_NoPrivateKeyPassword_ImportsAsCertificate()
@@ -402,8 +413,10 @@ public class ManagementTests : BaseUnitTest
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), "keypair", It.IsAny<string>()), Times.Once);
     }
+    
+    #endregion
 
-    // ── Add: Commit behaviour ────────────────────────────────────────────────
+    #region Add: Commit behavior
 
     [Fact]
     public void ProcessJob_Add_CommitFails_ReturnsWarning()
@@ -544,8 +557,10 @@ public class ManagementTests : BaseUnitTest
         AssertWarning(result);
         Assert.Contains("push to device group failed", result.FailureMessage);
     }
-
-    // ── Remove: Basic delete ─────────────────────────────────────────────────
+    
+    #endregion
+    
+    #region Remove: Basic delete
 
     [Fact]
     public void ProcessJob_Remove_DeleteSucceeds_CommitSucceeds_ReturnsSuccess()
@@ -580,8 +595,10 @@ public class ManagementTests : BaseUnitTest
         AssertWarning(result);
         Assert.Contains("commit to the device failed", result.FailureMessage);
     }
+    
+    #endregion
 
-    // ── Remove: SetPanoramaTarget on vsys path ───────────────────────────────
+    #region Remove: SetPanoramaTarget on vsys path
 
     [Fact]
     public void ProcessJob_Remove_PanoramaVsysPath_SetPanoramaTargetFails_ReturnsFailure()
@@ -599,8 +616,10 @@ public class ManagementTests : BaseUnitTest
         AssertFailure(result);
         Assert.Contains("Failed To Set Target for Panorama", result.FailureMessage);
     }
+    
+    #endregion
 
-    // ── Remove: Delete failure paths ─────────────────────────────────────────
+    #region Remove: Delete failure paths
 
     [Fact]
     public void ProcessJob_Remove_DeleteFailsWithNonTrustedRootError_ReturnsFailure()
@@ -680,6 +699,76 @@ public class ManagementTests : BaseUnitTest
         FakeClient.ClientMock.Verify(
             c => c.SubmitDeleteCertificate(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
     }
+    
+    #endregion
+
+    #region Multiple Device Groups
+
+    [Theory]
+    [InlineData("Group1;Group2")]
+    [InlineData("Group1; Group2")]
+    public void ProcessJob_MultipleDeviceGroups_CommitsToEachDeviceGroup(string devicegroup)
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups("Group1", "Group2");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitDeviceGroupSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithDeviceGroup(devicegroup)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+        
+        FakeClient.ClientMock.Verify(p => p.CommitDeviceGroup("Group1"), Times.Once);
+        FakeClient.ClientMock.Verify(p => p.CommitDeviceGroup("Group2"), Times.Once);
+        
+        AssertSuccess(result);
+    }
+    
+    [Fact]
+    public void ProcessJob_MultipleDeviceGroups_OneDeviceGroupFails_ProcessesOtherDeviceGroup()
+    {
+        var devicegroup = "Group1;Group2";
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups("Group1", "Group2");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithDeviceGroup(devicegroup)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+        
+        FakeClient.ClientMock.Setup(p => p.CommitDeviceGroup("Group1")).ReturnsAsync(new CommitResponseResult()
+        {
+            IsSuccess = false,
+            Message = "blah",
+        });
+        FakeClient.ClientMock.Setup(p => p.CommitDeviceGroup("Group2")).ReturnsAsync(new CommitResponseResult()
+        {
+            IsSuccess = true,
+        });
+
+        var result = _sut.ProcessJob(job);
+
+        FakeClient.ClientMock.Verify(p => p.CommitDeviceGroup(It.IsAny<string>()), Times.Exactly(2));
+        AssertWarning(result);
+    }
+
+    #endregion
 
     // ── Assertion helpers ────────────────────────────────────────────────────
 
