@@ -103,7 +103,7 @@ public class InventoryTests : BaseUnitTest
         var result = _sut.ProcessJob(job, _submitMock.Object);
 
         AssertFailure(result);
-        Assert.Contains("Could not find your Template Stacks", result.FailureMessage);
+        Assert.Contains("Could not find Template Stack(s)", result.FailureMessage);
     }
 
     [Fact]

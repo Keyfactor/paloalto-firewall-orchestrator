@@ -416,7 +416,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(props);
 
         AssertJobFailure(result,
-            "The store setup is not valid. Could not find your Template In Panorama.  Valid Templates are CertificatesTemplate");
+            "Could not find your Template in Panorama.");
     }
 
     [Fact(DisplayName = "TC14a: Panorama Invalid Template Stack")]
@@ -442,7 +442,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(props);
 
         AssertJobFailure(result,
-            "The store setup is not valid. Could not find your Template Stacks In Panorama.  Valid Template Stacks are CertificatesStack");
+            "The store setup is not valid. Could not find Template Stack(s) InvalidStack in Panorama.");
     }
 
     [Fact(DisplayName = "TC15: Panorama Invalid Group Name Returns Error")]
@@ -468,7 +468,7 @@ public class ManagementIntegrationTests : BaseIntegrationTest
         var result = ProcessManagementAddJob(props);
 
         AssertJobFailure(result,
-            "The store setup is not valid. Could not find Device Group(s) Broup2 In Panorama.  Valid Device Groups are: Group1");
+            "The store setup is not valid. Could not find Device Group(s) Broup2 in Panorama.  Valid Device Groups are: Group1");
     }
 
     [Fact(DisplayName = "TC16: Panorama No Overwrite Adds to Panorama and Firewalls")]

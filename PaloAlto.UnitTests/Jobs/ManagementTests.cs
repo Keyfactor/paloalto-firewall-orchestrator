@@ -769,6 +769,76 @@ public class ManagementTests : BaseUnitTest
     }
 
     #endregion
+    
+    #region Multiple Template Stacks
+
+    [Theory]
+    [InlineData("Stack1;Stack2")]
+    [InlineData("Stack1; Stack2")]
+    public void ProcessJob_MultipleTemplateStacks_CommitsToEachTemplateStack(string templatestack)
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks("Stack1", "Stack2");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        FakeClient.CommitTemplateStackSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack(templatestack)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+        
+        FakeClient.ClientMock.Verify(p => p.CommitTemplateStack("Stack1"), Times.Once);
+        FakeClient.ClientMock.Verify(p => p.CommitTemplateStack("Stack2"), Times.Once);
+        
+        AssertSuccess(result);
+    }
+    
+    [Fact]
+    public void ProcessJob_MultipleTemplateStacks_OneDeviceGroupFails_ProcessesOtherDeviceGroup()
+    {
+        var templatestack = "Stack1;Stack2";
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks("Stack1", "Stack2");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack(templatestack)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+        
+        FakeClient.ClientMock.Setup(p => p.CommitTemplateStack("Stack1")).ReturnsAsync(new CommitResponseResult()
+        {
+            IsSuccess = false,
+            Message = "blah",
+        });
+        FakeClient.ClientMock.Setup(p => p.CommitTemplateStack("Stack2")).ReturnsAsync(new CommitResponseResult()
+        {
+            IsSuccess = true,
+        });
+
+        var result = _sut.ProcessJob(job);
+
+        FakeClient.ClientMock.Verify(p => p.CommitTemplateStack(It.IsAny<string>()), Times.Exactly(2));
+        AssertWarning(result);
+    }
+
+    #endregion
 
     // ── Assertion helpers ────────────────────────────────────────────────────
 

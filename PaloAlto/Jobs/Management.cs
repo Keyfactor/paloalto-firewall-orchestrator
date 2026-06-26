@@ -29,8 +29,6 @@ using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Pkcs;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
@@ -539,7 +537,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             
             var warnings = new List<string>();
 
-            var deviceGroups = Validators.GetDeviceGroups(deviceGroup);
+            var deviceGroups = Validators.SplitResourceList(deviceGroup);
             if (deviceGroups.Any())
             {
                 foreach (var group in deviceGroups)
@@ -554,9 +552,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 if (warning != null) warnings.Add(warning);
             }
 
-            if (!string.IsNullOrEmpty(templateStack))
+            var templateStacks = Validators.SplitResourceList(templateStack);
+            foreach (var stack in templateStacks)
             {
-                var warning = await TryCommit($"template stack '{templateStack}'", () => _client.CommitTemplateStack(templateStack));
+                var warning = await TryCommit($"template stack '{stack}'", () => _client.CommitTemplateStack(stack));
                 if (warning != null) warnings.Add(warning);
             }
 

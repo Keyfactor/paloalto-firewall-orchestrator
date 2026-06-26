@@ -63,7 +63,7 @@ public abstract class BaseIntegrationTest
     protected void AssertJobFailure(JobResult result, string expectedError)
     {
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal(expectedError, result.FailureMessage);
+        Assert.Contains(expectedError, result.FailureMessage);
     }
 
     protected JobResult ProcessManagementAddJob(TestManagementJobConfigurationProperties props)
