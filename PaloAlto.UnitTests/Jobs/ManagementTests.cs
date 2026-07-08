@@ -44,6 +44,8 @@ public class ManagementTests : BaseUnitTest
 
     // Generated once per test class instance using BouncyCastle to match the production PFX parsing path.
     private static readonly string TestPfxBase64 = GenerateTestPfxBase64(TestAlias, TestPfxPassword);
+    // PFX with no password protection, used to test the certificate-only import path.
+    private static readonly string TestPfxBase64NoPassword = GenerateTestPfxBase64(TestAlias, "");
 
     public ManagementTests(ITestOutputHelper output) : base(output)
     {
@@ -394,7 +396,7 @@ public class ManagementTests : BaseUnitTest
     #region Add: ImportCertificate type selection
 
     [Fact]
-    public void ProcessJob_Add_NoPrivateKeyPassword_ImportsAsCertificate()
+    public void ProcessJob_Add_WithPrivateKeyPassword_ImportsAsKeypair()
     {
         FakeClient.NoDuplicateExists();
         FakeClient.ImportSucceeds();
@@ -413,7 +415,48 @@ public class ManagementTests : BaseUnitTest
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
             It.IsAny<string>(), "keypair", It.IsAny<string>()), Times.Once);
     }
-    
+
+    [Fact]
+    public void ProcessJob_Add_NoPrivateKeyPassword_ImportsAsCertificate()
+    {
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(FirewallStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64NoPassword)
+            .Build(); // PrivateKeyPassword defaults to null
+
+        _sut.ProcessJob(job);
+
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<string>(), "certificate", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_EmptyPrivateKeyPassword_ImportsAsCertificate()
+    {
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(FirewallStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64NoPassword)
+            .WithPrivateKeyPassword("")
+            .Build();
+
+        _sut.ProcessJob(job);
+
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<string>(), "certificate", It.IsAny<string>()), Times.Once);
+    }
+
     #endregion
 
     #region Add: Commit behavior
@@ -434,7 +477,7 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(job);
 
-        AssertWarning(result);
+        AssertFailure(result);
         Assert.Contains("commit to the device failed", result.FailureMessage);
     }
 
@@ -479,7 +522,7 @@ public class ManagementTests : BaseUnitTest
         var result = _sut.ProcessJob(job);
 
         // A failed commit job poll returns the error message as warnings, resulting in Warning.
-        AssertWarning(result);
+        AssertFailure(result);
     }
 
     [Fact]
@@ -501,7 +544,7 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(job);
 
-        AssertWarning(result);
+        AssertFailure(result);
         Assert.Contains("push to template failed", result.FailureMessage);
     }
     
@@ -528,7 +571,7 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(job);
 
-        AssertWarning(result);
+        AssertFailure(result);
         Assert.Contains("push to template stack failed", result.FailureMessage);
     }
     
@@ -554,7 +597,7 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(job);
 
-        AssertWarning(result);
+        AssertFailure(result);
         Assert.Contains("push to device group failed", result.FailureMessage);
     }
     
@@ -592,7 +635,7 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(job);
 
-        AssertWarning(result);
+        AssertFailure(result);
         Assert.Contains("commit to the device failed", result.FailureMessage);
     }
     
@@ -614,7 +657,7 @@ public class ManagementTests : BaseUnitTest
         var result = _sut.ProcessJob(job);
 
         AssertFailure(result);
-        Assert.Contains("Failed To Set Target for Panorama", result.FailureMessage);
+        Assert.Contains("Failed to Set Target for Panorama", result.FailureMessage);
     }
     
     #endregion
@@ -765,7 +808,7 @@ public class ManagementTests : BaseUnitTest
         var result = _sut.ProcessJob(job);
 
         FakeClient.ClientMock.Verify(p => p.CommitDeviceGroup(It.IsAny<string>()), Times.Exactly(2));
-        AssertWarning(result);
+        AssertFailure(result);
     }
 
     #endregion
@@ -835,7 +878,7 @@ public class ManagementTests : BaseUnitTest
         var result = _sut.ProcessJob(job);
 
         FakeClient.ClientMock.Verify(p => p.CommitTemplateStack(It.IsAny<string>()), Times.Exactly(2));
-        AssertWarning(result);
+        AssertFailure(result);
     }
 
     #endregion

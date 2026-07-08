@@ -22,6 +22,7 @@ using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Exceptions;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -178,16 +179,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                 _logger.LogTrace("Palo Alto Client Created");
 
-                if (!(await SetPanoramaTarget(config)))
-                {
-                    return new JobResult
-                    {
-                        Result = OrchestratorJobStatusJobResult.Failure,
-                        JobHistoryId = config.JobHistoryId,
-                        FailureMessage = "Failed To Set Target for Panorama"
-                    };
-                }
-
                 _logger.LogTrace(
                     $"Alias to Remove From Palo Alto: {config.JobCertificate.Alias}");
                 var deleteResult = await DeleteCertificate(config, warnings);
@@ -197,7 +188,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 }
                 
                 _logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                warnings = await CommitChanges(config, warnings);
+                var commit = await CommitChanges(config);
+                if (commit.HardFailure != null)
+                {
+                    return ReturnJobResult(config, warnings, false, commit.HardFailure);
+                }
+                        
+                warnings += commit.Warning;
                 _logger.LogTrace("Finished Committing Changes.....");
 
                 if (warnings?.Length > 0)
@@ -349,7 +346,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         _logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                        warnings = await CommitChanges(config, warnings);
+                        var commit = await CommitChanges(config);
+                        if (commit.HardFailure != null)
+                        {
+                            return ReturnJobResult(config, warnings, false, commit.HardFailure);
+                        }
+                        
+                        warnings += commit.Warning;
 
                         return ReturnJobResult(config, warnings, true, errorMsg);
                     }
@@ -395,7 +398,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             
             if (!(await SetPanoramaTarget(config)))
             {
-                result.DeleteResult = ReturnJobResult(config, warnings, false, "Could Not Set Panorama Target");
+                result.DeleteResult = ReturnJobResult(config, warnings, false, "Failed to Set Target for Panorama");
                 return result;
             }
 
@@ -484,7 +487,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.LogTrace($"Serialized Xml Response {resWriter}");
         }
 
-        private async Task<string> CommitChanges(ManagementJobConfiguration config, string warnings)
+        private async Task<CommitResult> CommitChanges(ManagementJobConfiguration config)
         {
             _logger.MethodEntry();
             var commitResponse = await _client.GetCommitResponse();
@@ -493,8 +496,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
             if (commitResponse.Status != "success")
             {
-                warnings += $"The commit to the device failed. {commitResponse.Text}";
-                return warnings;
+                return new CommitResult($"The commit to the device failed. Failure: {commitResponse.Text}", null);
             }
 
             _logger.LogTrace("Commit response shows success");
@@ -510,7 +512,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 
                 if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
                 {
-                    return completionResult.FailureMessage;
+                    return new CommitResult($"The commit to the device failed. Failure: {completionResult.FailureMessage}", null);
                 }
             }
 
@@ -525,43 +527,54 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) ||
                 Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
             {
-                warnings += await CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack);
+                var failures = await CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack);
+                if (!string.IsNullOrEmpty(failures))
+                {
+                    return new CommitResult($"The commit to the device failed. Failure: {failures}", null);
+                }
+
+                return new CommitResult(null, failures);
             }
 
-            return warnings;
+            return new CommitResult(null, null);
         }
+
+        private record CommitResult(string? HardFailure = null, string? Warning = null);
 
         private async Task<string> CommitToPanorama(string storePath, string deviceGroup, string templateStack)
         {
             _logger.MethodEntry();
             
-            var warnings = new List<string>();
+            var failures = new List<string>();
 
             var deviceGroups = Validators.SplitResourceList(deviceGroup);
             if (deviceGroups.Any())
             {
+                // For each device group, try to commit changes. If any fail, capture the failures and bubble it to the caller to decide how to treat
+                // the failure
                 foreach (var group in deviceGroups)
                 {
                     var warning = await TryCommit($"device group '{group}'", () => _client.CommitDeviceGroup(group));
-                    if (warning != null) warnings.Add(warning);
+                    if (warning != null) failures.Add(warning);
                 }
             }
             else
             {
+                // If no device groups are configured, commit directly to the template (specified by the store path)
                 var warning = await TryCommit($"template at '{storePath}'", () => _client.CommitTemplate(storePath));
-                if (warning != null) warnings.Add(warning);
+                if (warning != null) failures.Add(warning);
             }
 
             var templateStacks = Validators.SplitResourceList(templateStack);
             foreach (var stack in templateStacks)
             {
                 var warning = await TryCommit($"template stack '{stack}'", () => _client.CommitTemplateStack(stack));
-                if (warning != null) warnings.Add(warning);
+                if (warning != null) failures.Add(warning);
             }
 
             _logger.MethodExit();
 
-            return string.Join("; ", warnings);
+            return string.Join("; ", failures);
         }
         
         /// <summary>
