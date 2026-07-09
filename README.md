@@ -143,7 +143,7 @@ the Keyfactor Command Portal
    | ServerUseSsl | Use SSL | Should be true, http is not supported. | Bool | true | ✅ Checked |
    | DeviceGroup | Device Group | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). | String |  | 🔲 Unchecked |
    | InventoryTrustedCerts | Inventory Trusted Certs | If false, will not inventory default trusted certs, saves time. | Bool | false | ✅ Checked |
-   | TemplateStack | Template Stack | Template stack used for device push of certificates via Template. | String |  | 🔲 Unchecked |
+   | TemplateStack | Template Stack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). | String |  | 🔲 Unchecked |
    | PushFailureBehavior | Push Failure Behavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. | MultipleChoice | Failure,Warning | 🔲 Unchecked |
 
    The Custom Fields tab should look like this:
@@ -188,7 +188,7 @@ the Keyfactor Command Portal
 
 
    ###### Template Stack
-   Template stack used for device push of certificates via Template.
+   A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.).
 
    ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.svg)
    ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.svg)
@@ -274,7 +274,7 @@ the Keyfactor Command Portal
    | ServerUseSsl | Should be true, http is not supported. |
    | DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
-   | TemplateStack | Template stack used for device push of certificates via Template. |
+   | TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
    | PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 </details>
@@ -304,7 +304,7 @@ the Keyfactor Command Portal
    | Properties.ServerUseSsl | Should be true, http is not supported. |
    | Properties.DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | Properties.InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
-   | Properties.TemplateStack | Template stack used for device push of certificates via Template. |
+   | Properties.TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
    | Properties.PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 3. **Import the CSV file to create the certificate stores**

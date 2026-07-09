@@ -85,7 +85,7 @@ curl -s -X POST "https://${KEYFACTOR_HOSTNAME}/${KEYFACTOR_API_PATH}/Certificate
       "DefaultValue": "",
       "Required": false,
       "IsPAMEligible": false,
-      "Description": "Template stack used for device push of certificates via Template."
+      "Description": "A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.)."
     },
     {
       "Name": "PushFailureBehavior",
