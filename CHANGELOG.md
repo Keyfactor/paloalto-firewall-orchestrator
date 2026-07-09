@@ -1,3 +1,17 @@
+# 2.6.0
+Features:
+- Added a `PushFailureBehavior` store property that controls the job result when Panorama fails
+  to push to a device group, template, or template stack. Defaults to `Failure`, which triggers
+  a retry; set to `Warning` to mark the job complete and log the failure instead. All configured
+  targets are always attempted, even if one fails.
+- Added a .NET 10 build target to the release.
+- The `TemplateStack` store property now accepts a semicolon-delimited list, allowing a single
+  management job to push to multiple template stacks.
+
+Fixes:
+- The integration now correctly returns `Failure` when committing the running configuration to Panorama fails.
+  Previously this was reported as `Warning`, which prevented Keyfactor from retrying the job.
+
 # 2.5.1
 Features:
 - Add validation logic for certificate alias length. If targeting Firewall directly, alias length must be less than 64 characters. If targeting Panorama, alias length must be less than 32 characters. This is to prevent errors when pushing certificates to Palo Alto.
