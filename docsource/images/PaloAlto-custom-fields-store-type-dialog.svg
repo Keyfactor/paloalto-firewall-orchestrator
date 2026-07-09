@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<svg width="700" height="544" viewBox="0 0 700 544" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+        text { font-family: 'Segoe UI', Arial, sans-serif; }
+        .title { font-size: 20px; font-weight: 600; fill: #222222; }
+        .section-header { font-size: 13px; font-weight: 600; fill: #333333; }
+        .label { font-size: 12px; fill: #555555; }
+        .value { font-size: 12px; fill: #222222; }
+        .tab-text { font-size: 12px; fill: #444444; }
+        .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="700" height="544" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
+  <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
+  <text x="16" y="32" class="title">Edit Certificate Store Type</text>
+  <g>
+    <rect x="0" y="44" width="700" height="36" fill="#ffffff" />
+    <line x1="0" y1="80" x2="700" y2="80" stroke="#d0d0d0" stroke-width="1" />
+    <text x="16" y="68" class="tab-text">Basic</text>
+    <text x="75" y="68" class="tab-text">Advanced</text>
+    <text x="155" y="68" class="tab-active">Custom Fields</text>
+    <rect x="155" y="77" width="93" height="3" fill="#3355ee" />
+    <text x="270" y="68" class="tab-text">Entry Parameters</text>
+  </g>
+  <rect x="20" y="96" width="660" height="422" fill="#ffffff" stroke="#d0d0d0" rx="8" />
+  <rect x="21" y="97" width="658" height="8" fill="#f2f2f2" />
+  <rect x="21" y="97" width="658" height="42" fill="#f2f2f2" rx="7" />
+  <rect x="28" y="104" width="58" height="28" fill="#333333" stroke="#bbbbbb" rx="4" />
+  <text x="57" y="124" text-anchor="middle" fill="#ffffff" font-size="11" font-family="'Segoe UI', Arial, sans-serif">ADD</text>
+  <rect x="94" y="104" width="58" height="28" fill="#f0f0f0" stroke="#bbbbbb" rx="4" />
+  <text x="123" y="124" text-anchor="middle" fill="#888888" font-size="11" font-family="'Segoe UI', Arial, sans-serif">EDIT</text>
+  <rect x="160" y="104" width="70" height="28" fill="#f0f0f0" stroke="#bbbbbb" rx="4" />
+  <text x="195" y="124" text-anchor="middle" fill="#888888" font-size="11" font-family="'Segoe UI', Arial, sans-serif">DELETE</text>
+  <text x="670" y="123" text-anchor="end" class="label">Total: 7</text>
+  <line x1="20" y1="140" x2="680" y2="140" stroke="#d0d0d0" stroke-width="1" />
+  <rect x="21" y="140" width="658" height="32" fill="#f8f8f8" />
+  <text x="72" y="162" class="label">Display Name</text>
+  <text x="292" y="162" class="label">Type</text>
+  <text x="452" y="162" class="label">Default Value / Options</text>
+  <line x1="64" y1="140" x2="64" y2="172" stroke="#d8d8d8" stroke-width="1" />
+  <line x1="284" y1="140" x2="284" y2="172" stroke="#d8d8d8" stroke-width="1" />
+  <line x1="444" y1="140" x2="444" y2="172" stroke="#d8d8d8" stroke-width="1" />
+  <line x1="20" y1="172" x2="680" y2="172" stroke="#d0d0d0" stroke-width="1" />
+  <rect x="21" y="172" width="658" height="38" fill="#ffffff" />
+  <line x1="20" y1="210" x2="680" y2="210" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="172" x2="64" y2="210" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="172" x2="284" y2="210" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="172" x2="444" y2="210" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="183" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="198" class="value">Server Username</text>
+  <text x="292" y="198" class="value">Secret</text>
+  <rect x="21" y="210" width="658" height="38" fill="#f7f7f7" />
+  <line x1="20" y1="248" x2="680" y2="248" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="210" x2="64" y2="248" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="210" x2="284" y2="248" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="210" x2="444" y2="248" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="221" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="236" class="value">Server Password</text>
+  <text x="292" y="236" class="value">Secret</text>
+  <rect x="21" y="248" width="658" height="38" fill="#ffffff" />
+  <line x1="20" y1="286" x2="680" y2="286" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="248" x2="64" y2="286" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="248" x2="284" y2="286" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="248" x2="444" y2="286" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="259" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="274" class="value">Use SSL</text>
+  <text x="292" y="274" class="value">Bool</text>
+  <text x="452" y="274" class="value">true</text>
+  <rect x="21" y="286" width="658" height="38" fill="#f7f7f7" />
+  <line x1="20" y1="324" x2="680" y2="324" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="286" x2="64" y2="324" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="286" x2="284" y2="324" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="286" x2="444" y2="324" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="297" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="312" class="value">Device Group</text>
+  <text x="292" y="312" class="value">String</text>
+  <rect x="21" y="324" width="658" height="38" fill="#ffffff" />
+  <line x1="20" y1="362" x2="680" y2="362" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="324" x2="64" y2="362" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="324" x2="284" y2="362" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="324" x2="444" y2="362" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="335" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="350" class="value">Inventory Trusted Certs</text>
+  <text x="292" y="350" class="value">Bool</text>
+  <text x="452" y="350" class="value">false</text>
+  <rect x="21" y="362" width="658" height="38" fill="#f7f7f7" />
+  <line x1="20" y1="400" x2="680" y2="400" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="362" x2="64" y2="400" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="362" x2="284" y2="400" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="362" x2="444" y2="400" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="373" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="388" class="value">Template Stack</text>
+  <text x="292" y="388" class="value">String</text>
+  <rect x="21" y="400" width="658" height="38" fill="#ffffff" />
+  <line x1="20" y1="438" x2="680" y2="438" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="64" y1="400" x2="64" y2="438" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="284" y1="400" x2="284" y2="438" stroke="#e8e8e8" stroke-width="1" />
+  <line x1="444" y1="400" x2="444" y2="438" stroke="#e8e8e8" stroke-width="1" />
+  <rect x="34" y="411" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
+  <text x="72" y="426" class="value">Push Failure Behavior</text>
+  <text x="292" y="426" class="value">MultipleChoice</text>
+  <text x="452" y="426" class="value">Failure,Warning</text>
+</svg>
