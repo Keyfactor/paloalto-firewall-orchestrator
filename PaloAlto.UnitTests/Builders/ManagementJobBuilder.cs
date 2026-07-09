@@ -32,6 +32,7 @@ public sealed class ManagementJobBuilder
     private CertStoreOperationType _operationType = CertStoreOperationType.Add;
     private string _deviceGroup = string.Empty;
     private string _templateStack = string.Empty;
+    private string? _pushFailureBehavior = "Failure";
 
     public ManagementJobBuilder AsAdd() { _operationType = CertStoreOperationType.Add; return this; }
     public ManagementJobBuilder AsRemove() { _operationType = CertStoreOperationType.Remove; return this; }
@@ -45,6 +46,8 @@ public sealed class ManagementJobBuilder
     public ManagementJobBuilder WithCredentials(string username, string password) { _serverUsername = username; _serverPassword = password; return this; }
     public ManagementJobBuilder WithClientMachine(string machine) { _clientMachine = machine; return this; }
 
+    public ManagementJobBuilder WithPushFailureBehavior(string? value) { _pushFailureBehavior = value; return this; }
+
     public ManagementJobConfiguration Build() => new()
     {
         JobHistoryId = 1,
@@ -57,6 +60,7 @@ public sealed class ManagementJobBuilder
                 DeviceGroup = _deviceGroup,
                 TemplateStack = _templateStack,
                 InventoryTrustedCerts = false,
+                PushFailureBehavior = _pushFailureBehavior,
             }),
         },
         ServerUsername = _serverUsername,

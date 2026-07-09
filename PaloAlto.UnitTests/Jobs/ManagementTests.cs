@@ -462,7 +462,7 @@ public class ManagementTests : BaseUnitTest
     #region Add: Commit behavior
 
     [Fact]
-    public void ProcessJob_Add_CommitFails_ReturnsWarning()
+    public void ProcessJob_Add_CommitFails_ReturnsFailure()
     {
         FakeClient.NoDuplicateExists();
         FakeClient.ImportSucceeds();
@@ -472,6 +472,27 @@ public class ManagementTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .WithAlias(TestAlias)
             .WithCertificateContents(TestPfxBase64)
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertFailure(result);
+        Assert.Contains("commit to the device failed", result.FailureMessage);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_CommitFails_WithPushFailureBehaviorIsWarning_ReturnsFailure()
+    {
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitFails("device rejected the commit");
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(FirewallStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithPushFailureBehavior("Warning")
             .WithPrivateKeyPassword(TestPfxPassword)
             .Build();
 
@@ -504,7 +525,7 @@ public class ManagementTests : BaseUnitTest
     }
 
     [Fact]
-    public void ProcessJob_Add_CommitWithJobId_JobFails_ReturnsWarning()
+    public void ProcessJob_Add_CommitWithJobId_JobFails_ReturnsFailure()
     {
         const string jobId = "99";
         FakeClient.NoDuplicateExists();
@@ -520,13 +541,13 @@ public class ManagementTests : BaseUnitTest
             .Build();
 
         var result = _sut.ProcessJob(job);
-
-        // A failed commit job poll returns the error message as warnings, resulting in Warning.
         AssertFailure(result);
     }
 
-    [Fact]
-    public void ProcessJob_Add_CommitTemplateFails_ReturnsWarning()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Failure")]
+    public void ProcessJob_Add_CommitTemplateFails_ReturnsFailure(string? pushFailureBehavior)
     {
         FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
         FakeClient.NoDuplicateExists();
@@ -539,6 +560,7 @@ public class ManagementTests : BaseUnitTest
             .WithStorePath(PanoramaStorePath)
             .WithAlias(TestAlias)
             .WithCertificateContents(TestPfxBase64)
+            .WithPushFailureBehavior(pushFailureBehavior)
             .WithPrivateKeyPassword(TestPfxPassword)
             .Build();
 
@@ -549,7 +571,33 @@ public class ManagementTests : BaseUnitTest
     }
     
     [Fact]
-    public void ProcessJob_Add_CommitTemplateStackFails_ReturnsWarning()
+    public void ProcessJob_Add_CommitTemplateFails_WithPushFailureBehaviorWarning_ReturnsWarning()
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateFails();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithPushFailureBehavior("Warning")
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertWarning(result);
+        Assert.Contains("push to template failed", result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Failure")]
+    public void ProcessJob_Add_CommitTemplateStackFails_ReturnsFailure(string? pushFailureBehavior)
     {
         var templateStack = "TemplateStack";
         FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
@@ -566,6 +614,7 @@ public class ManagementTests : BaseUnitTest
             .WithAlias(TestAlias)
             .WithCertificateContents(TestPfxBase64)
             .WithTemplateStack(templateStack)
+            .WithPushFailureBehavior(pushFailureBehavior)
             .WithPrivateKeyPassword(TestPfxPassword)
             .Build();
 
@@ -576,7 +625,37 @@ public class ManagementTests : BaseUnitTest
     }
     
     [Fact]
-    public void ProcessJob_Add_CommitDeviceGroupFails_ReturnsWarning()
+    public void ProcessJob_Add_CommitTemplateStackFails_WithPushFailureBehaviorWarning_ReturnsWarning()
+    {
+        var templateStack = "TemplateStack";
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks(templateStack);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        FakeClient.CommitTemplateStackFails();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack(templateStack)
+            .WithPushFailureBehavior("Warning")
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertWarning(result);
+        Assert.Contains("push to template stack failed", result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Failure")]
+    public void ProcessJob_Add_CommitDeviceGroupFails_ReturnsFailure(string? pushFailureBehavior)
     {
         var devicegroup = "Group1";
         FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
@@ -592,12 +671,40 @@ public class ManagementTests : BaseUnitTest
             .WithAlias(TestAlias)
             .WithCertificateContents(TestPfxBase64)
             .WithDeviceGroup(devicegroup)
+            .WithPushFailureBehavior(pushFailureBehavior)
             .WithPrivateKeyPassword(TestPfxPassword)
             .Build();
 
         var result = _sut.ProcessJob(job);
 
         AssertFailure(result);
+        Assert.Contains("push to device group failed", result.FailureMessage);
+    }
+    
+    [Fact]
+    public void ProcessJob_Add_CommitDeviceGroupFails_WithPushFailureBehaviorWarning_ReturnsWarning()
+    {
+        var devicegroup = "Group1";
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups(devicegroup);
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitDeviceGroupFails();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithDeviceGroup(devicegroup)
+            .WithPushFailureBehavior("Warning")
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        var result = _sut.ProcessJob(job);
+
+        AssertWarning(result);
         Assert.Contains("push to device group failed", result.FailureMessage);
     }
     
@@ -623,7 +730,7 @@ public class ManagementTests : BaseUnitTest
     }
 
     [Fact]
-    public void ProcessJob_Remove_DeleteSucceeds_CommitFails_ReturnsWarning()
+    public void ProcessJob_Remove_DeleteSucceeds_CommitFails_ReturnsFailure()
     {
         FakeClient.DeleteCertificateSucceeds();
         FakeClient.CommitFails("commit failed after delete");

@@ -530,11 +530,19 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 var failures = await CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack);
                 if (!string.IsNullOrEmpty(failures))
                 {
-                    return new CommitResult($"The commit to the device failed. Failure: {failures}", null);
+                    if (ShouldFailJobIfPushFails(StoreProperties))
+                    {
+                        _logger.LogInformation($"One or more pushes to a Panorama target failed. Marking the job as Failed");
+                        return new CommitResult($"The commit to the device failed. Failure: {failures}", null);
+                    }
+                    
+                    _logger.LogInformation($"One or more pushes to a Panorama target failed. Marking the job as Warning");
+                
+                    return new CommitResult(null, failures);
                 }
-
-                return new CommitResult(null, failures);
             }
+            
+            _logger.LogInformation($"Commits to Panorama and/or firewall devices completed successfully.");
 
             return new CommitResult(null, null);
         }
@@ -601,6 +609,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _logger.MethodExit();
             
             return result.Message;
+        }
+
+        /// <summary>
+        /// Determines whether the job should return a Failure if Panorama fails to commit to a template, device group, or template stack.
+        /// By default, the job should treat commit failures as a hard failure (and therefore retry). But we will allow the customer
+        /// to decide whether the job should treat this as a Warning.
+        /// </summary>
+        /// <param name="properties"></param>
+        /// <returns></returns>
+        private bool ShouldFailJobIfPushFails(JobProperties properties)
+        {
+            _logger.LogTrace($"Checking if job should fail if push fails. Properties.PushFailureBehavior: {properties?.PushFailureBehavior}");
+            var shouldFail = properties is null || string.IsNullOrWhiteSpace(properties.PushFailureBehavior) ||
+                   properties.PushFailureBehavior != "Warning";
+            _logger.LogDebug($"Should fail job if push fails? {shouldFail}");
+            return shouldFail;
         }
     }
 }
