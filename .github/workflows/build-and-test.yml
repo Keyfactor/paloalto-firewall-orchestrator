@@ -8,9 +8,6 @@ on:
 jobs:
     build-and-test-solution:
       runs-on: ubuntu-latest
-      strategy:
-        matrix:
-            dotnet-version: [ '6.0.x', '8.0.x' ]
       steps:
         - name: Checkout Code
           uses: actions/checkout@v4
@@ -24,6 +21,11 @@ jobs:
           uses: actions/setup-dotnet@v4
           with:
             dotnet-version: '8.0.x'
+
+        - name: Setup .NET 10
+          uses: actions/setup-dotnet@v4
+          with:
+            dotnet-version: '10.0.x'
 
         - name: Add Keyfactor NuGet Source
           run: dotnet nuget add source https://nuget.pkg.github.com/Keyfactor/index.json -n github -u ${{ github.actor }} -p ${{ secrets.V2BUILDTOKEN }} --store-password-in-clear-text
