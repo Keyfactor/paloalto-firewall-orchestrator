@@ -151,6 +151,7 @@ the Keyfactor Command Portal
    | DeviceGroup | Device Group | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). | String |  | 🔲 Unchecked |
    | InventoryTrustedCerts | Inventory Trusted Certs | If false, will not inventory default trusted certs, saves time. | Bool | false | ✅ Checked |
    | TemplateStack | Template Stack | Template stack used for device push of certificates via Template. | String |  | 🔲 Unchecked |
+   | PushFailureBehavior | Push Failure Behavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. | MultipleChoice | Failure,Warning | 🔲 Unchecked |
 
    The Custom Fields tab should look like this:
 
@@ -206,6 +207,14 @@ the Keyfactor Command Portal
 
    ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.png)
    ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.png)
+
+
+
+   ###### Push Failure Behavior
+   Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed.
+
+   ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-dialog.png)
+   ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-validation-options-dialog.png)
 
 
 
@@ -289,6 +298,7 @@ the Keyfactor Command Portal
    | DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
    | TemplateStack | Template stack used for device push of certificates via Template. |
+   | PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 </details>
 
@@ -320,6 +330,7 @@ the Keyfactor Command Portal
    | Properties.DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | Properties.InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
    | Properties.TemplateStack | Template stack used for device push of certificates via Template. |
+   | Properties.PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 3. **Import the CSV file to create the certificate stores**
 
@@ -369,9 +380,55 @@ Certificate alias 'alias' is too long, it must not be more than 31 characters. C
 >
 > The 2.5.2 release updates commit behavior to update commits (device group / template / template stack) to return a Warning instead of an Error. Commits that were unsuccessful will be logged and noted in the job status message. Please ensure any failed commits are manually handled to prevent an unintended outage.
 
+## Commit Behavior
+
+### Push Failure Behavior
+
+When a Panorama management job completes, the integration performs a two-phase commit:
+
+1. **Phase 1 — Commit to Panorama**: Saves the candidate configuration changes to Panorama's running config. This phase always returns a **Failure** result if unsuccessful, regardless of any store configuration, and the job will be retried by Keyfactor.
+
+2. **Phase 2 — Push to devices**: Pushes the committed configuration from Panorama out to managed firewalls via the configured device groups, templates, and/or template stacks. The behavior when this phase fails is controlled by the **Push Failure Behavior** store property.
+
+The **Push Failure Behavior** store property accepts two values:
+
+| Value | Job Result | Retry Triggered? | When to Use |
+|---|---|---|---|
+| `Failure` *(default)* | Failure | Yes | Use in most environments. Ensures the push to managed firewalls is confirmed before the job is marked complete. If the push fails, Keyfactor will automatically retry the job. |
+| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management job would cause unintended side effects. The failure message is still recorded in the job history. |
+
+> [!IMPORTANT]
+> Setting Push Failure Behavior to `Warning` means a failed push to a device group, template, or template stack **will not trigger a retry**. The certificate will be saved in Panorama's configuration, but managed firewalls may not receive the updated certificate until the next successful push. Ensure you have a plan to verify or manually trigger delivery in these cases.
+
+If the Push Failure Behavior property is absent or blank, the integration defaults to `Failure`.
+
+### Commit Timeout
+
+When Panorama processes a commit asynchronously, it returns a job ID. The integration polls that job until it reaches a terminal state (success or failure). Polling uses exponential backoff, starting at 10 seconds and capping at 90 seconds between polls.
+
+If a commit job does not complete within **60 minutes**, the integration stops polling and the management job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
+
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
 <summary>Store Path Permutations</summary>
+
+### Store Path Quick Reference
+
+The store path tells the integration where certificates live in the PAN-OS configuration tree and which device (Firewall or Panorama) is being managed. Choose the path format that matches your topology.
+
+| Format | Example | Endpoint | Scope | Phase 2 Push? |
+|---|---|---|---|---|
+| `/config/shared` | `/config/shared` | Firewall | Shared across all vsys on the device | No |
+| Firewall vsys | `/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | Firewall | Single virtual system | No |
+| Panorama template (shared) | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared` | Panorama | Template shared scope | Yes — template, and device group / template stack if configured |
+| Panorama template (vsys) | `/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']` | Panorama | Template + specific vsys | Yes — template, and device group / template stack if configured |
+| `/config/panorama` | `/config/panorama` | Panorama | Panorama administrative certificates | No |
+
+**Key points:**
+- `/config/shared` targets the local Firewall only. Querying this path against a Panorama instance will return no certificates.
+- Panorama paths trigger a two-phase commit: the certificate is first saved to Panorama, then pushed to managed firewalls. Firewall paths only commit locally.
+- The `localhost.localdomain` device name is a constant — do not substitute another value.
+- Panorama alias length is limited to 31 characters; Firewall allows up to 63.
 
 ### Store Path Explanation
 **Important Note** The store path permutations are show below

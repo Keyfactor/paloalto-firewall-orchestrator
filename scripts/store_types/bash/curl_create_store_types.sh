@@ -120,6 +120,15 @@ create_store_type "PaloAlto" '{
       "DefaultValue": "",
       "Required": false,
       "IsPAMEligible": false
+    },
+    {
+      "Name": "PushFailureBehavior",
+      "DisplayName": "Push Failure Behavior",
+      "Type": "MultipleChoice",
+      "DependsOn": "",
+      "DefaultValue": "Failure,Warning",
+      "Required": false,
+      "IsPAMEligible": false
     }
   ],
   "EntryParameters": [],
