@@ -49,7 +49,16 @@ The Palo Alto Universal Orchestrator extension is supported by Keyfactor. If you
 
 Before installing the Palo Alto Universal Orchestrator extension, we recommend that you install [kfutil](https://github.com/Keyfactor/kfutil). Kfutil is a command-line tool that simplifies the process of creating store types, installing extensions, and instantiating certificate stores in Keyfactor Command.
 
+### Tested Versions
 
+This integration has been tested and verified against the following PAN-OS versions:
+
+| Product | Tested Version |
+|---|---|
+| Panorama | PAN-OS 11.2.0 |
+| Firewall | PAN-OS 11.1.0 |
+
+Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
 
 ## PaloAlto Certificate Store Type
 
