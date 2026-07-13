@@ -6,6 +6,17 @@ The Palo Alto Orchestrator Extension is an integration that can replace and inve
 
 ## Requirements
 
+### Tested Versions
+
+This integration has been tested and verified against the following PAN-OS versions:
+
+| Product | Tested Version |
+|---|---|
+| Panorama | PAN-OS 11.2.0 |
+| Firewall | PAN-OS 11.1.0 |
+
+Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
+
 ## Release 2.5.1 Update on Alias Constraints
 **Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
 
