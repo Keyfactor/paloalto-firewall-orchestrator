@@ -16,9 +16,12 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Common.Enums;
+using Microsoft.Extensions.Logging;
+using MartinCostello.Logging.XUnit;
 using Moq;
 using PaloAlto.UnitTests.Mocks;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.UnitTests.Helpers;
 
@@ -28,11 +31,16 @@ public class PanoramaJobPollerTests
     private readonly FakeTimeProvider _fakeTimeProvider;
     private readonly PanoramaJobPoller _jobPoller;
     
-    public PanoramaJobPollerTests()
+    public PanoramaJobPollerTests(ITestOutputHelper output)
     {
+        var loggerFactory = LoggerFactory.Create(builder =>
+            builder.AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()))
+                .SetMinimumLevel(LogLevel.Trace));
+        var logger = loggerFactory.CreateLogger<PanoramaJobPollerTests>();
+        
         _mockApiClient = new Mock<IPaloAltoClient>();
         _fakeTimeProvider = new FakeTimeProvider();
-        _jobPoller = new PanoramaJobPoller(_mockApiClient.Object, _fakeTimeProvider);
+        _jobPoller = new PanoramaJobPoller(_mockApiClient.Object, _fakeTimeProvider, logger);
     }
 
     [Fact]
@@ -122,7 +130,15 @@ public class PanoramaJobPollerTests
                 Job = new Job()
                 {
                     Status = "FIN",
-                    Result = "SomethingHappened"
+                    Result = "SomethingHappened",
+                    Details = new Msg()
+                    {
+                        Line = new List<string>()
+                        {
+                            "Error detail 1",
+                            "Error detail 2"
+                        }
+                    }
                 }
             }
         };
@@ -131,7 +147,31 @@ public class PanoramaJobPollerTests
         
         var result = await _jobPoller.WaitForJobCompletion(jobId);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("An error occurred while checking job status: Job 12345 completed but failed. Result SomethingHappened", result.FailureMessage);
+        Assert.Equal("An error occurred while checking job status: Job 12345 completed but failed. Result SomethingHappened. Details: Error detail 1, Error detail 2", result.FailureMessage);
+    }
+    
+    [Fact]
+    public async Task WaitForJobCompletion_WhenJobIsFinishedButResultIsNotOk_DetailsIsNull_ReturnsFailedJob()
+    {
+        var jobId = "12345";
+        var job = new JobStatusResponse()
+        {
+            Result = new JobStatusResult()
+            {
+                Job = new Job()
+                {
+                    Status = "FIN",
+                    Result = "SomethingHappened",
+                    Details = null,
+                }
+            }
+        };
+
+        _mockApiClient.Setup(p => p.GetJobStatus(It.IsAny<string>())).ReturnsAsync(job);
+        
+        var result = await _jobPoller.WaitForJobCompletion(jobId);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        Assert.Equal("An error occurred while checking job status: Job 12345 completed but failed. Result SomethingHappened. Details: ", result.FailureMessage);
     }
     
     [Fact]
@@ -153,9 +193,9 @@ public class PanoramaJobPollerTests
         
         var result = await _jobPoller.WaitForJobCompletion(jobId);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("An error occurred while checking job status: Unknown job status: SomethingRandom", result.FailureMessage);
+        Assert.Equal("An error occurred while checking job status: Job ID 12345 encountered an unknown job status: SomethingRandom", result.FailureMessage);
     }
-
+    
     [Fact]
     public async Task WaitForJobCompletion_WhenTimeoutIsMet_ReturnsFailedJob()
     {
@@ -180,7 +220,36 @@ public class PanoramaJobPollerTests
 
         var result = await task;
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("Timeout exceeded waiting for job to complete. Job 12345 did not complete within 10 minutes", result.FailureMessage);
+        Assert.Equal($"Timeout exceeded waiting for job to complete. Job 12345 did not complete within {_jobPoller.Timeout.TotalMinutes} minutes", result.FailureMessage);
+    }
+
+    [Fact]
+    public async Task WaitForJobCompletion_WhenCancellationTokenIsCancelled_ReturnsFailedJob()
+    {
+        var jobId = "12345";
+        var job = new JobStatusResponse()
+        {
+            Result = new JobStatusResult()
+            {
+                Job = new Job()
+                {
+                    Status = "PEND"
+                }
+            }
+        };
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        
+        _mockApiClient.Setup(p => p.GetJobStatus(It.IsAny<string>())).ReturnsAsync(job);
+        
+        var task = _jobPoller.WaitForJobCompletion(jobId, cts.Token);
+        
+        // Advance timer to the timeout limit
+        await AdvanceTimeAndWaitForDelays(_jobPoller.Timeout);
+
+        var result = await task;
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        Assert.Equal($"Job polling was cancelled while waiting for job ID {jobId} to complete", result.FailureMessage);
     }
     
     [Fact]
@@ -243,6 +312,29 @@ public class PanoramaJobPollerTests
         var result = await _jobPoller.WaitForJobCompletion(jobId);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
         Assert.Equal("An error occurred while checking job status: Job 12345 failed to complete. Result . Details: Whoops!, That shouldn't have happened", result.FailureMessage);
+    }
+    
+    [Fact]
+    public async Task WaitForJobCompletion_WhenJobStatusIsFailed_DetailsIsNull_ReturnsFailedJob()
+    {
+        var jobId = "12345";
+        var job = new JobStatusResponse()
+        {
+            Result = new JobStatusResult()
+            {
+                Job = new Job()
+                {
+                    Status = "FAIL",
+                    Details = null,
+                }
+            }
+        };
+        
+        _mockApiClient.Setup(p => p.GetJobStatus(It.IsAny<string>())).ReturnsAsync(job);
+        
+        var result = await _jobPoller.WaitForJobCompletion(jobId);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        Assert.Equal("An error occurred while checking job status: Job 12345 failed to complete. Result . Details: ", result.FailureMessage);
     }
     
     private async Task AdvanceTimeAndWaitForDelays(TimeSpan timeToAdvance)
