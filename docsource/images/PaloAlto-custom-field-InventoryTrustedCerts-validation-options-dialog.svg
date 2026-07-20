@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<svg width="700" height="228" viewBox="0 0 700 228" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+        text { font-family: 'Segoe UI', Arial, sans-serif; }
+        .title { font-size: 20px; font-weight: 600; fill: #222222; }
+        .section-header { font-size: 13px; font-weight: 600; fill: #333333; }
+        .label { font-size: 12px; fill: #555555; }
+        .value { font-size: 12px; fill: #222222; }
+        .tab-text { font-size: 12px; fill: #444444; }
+        .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="700" height="228" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
+  <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
+  <text x="16" y="32" class="title">Edit Custom Field</text>
+  <text x="684" y="34" text-anchor="end" font-size="20" fill="#666666" font-family="'Segoe UI', Arial, sans-serif">×</text>
+  <g>
+    <rect x="0" y="44" width="700" height="36" fill="#ffffff" />
+    <line x1="0" y1="80" x2="700" y2="80" stroke="#d0d0d0" stroke-width="1" />
+    <text x="16" y="68" class="tab-text">Basic Information</text>
+    <text x="159" y="68" class="tab-active">Validation Options</text>
+    <rect x="159" y="77" width="128" height="3" fill="#3355ee" />
+  </g>
+  <text x="20" y="112" class="label">Creating a certificate store</text>
+  <circle cx="28" cy="134" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="40" y="138" class="label">Optional</text>
+  <circle cx="158" cy="134" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="158" cy="134" r="4" fill="#3355ee" />
+  <text x="170" y="138" class="label">Required</text>
+  <circle cx="288" cy="134" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="300" y="138" class="label">Hidden</text>
+  <line x1="0" y1="168" x2="700" y2="168" stroke="#e0e0e0" stroke-width="1" />
+  <rect x="500" y="180" width="90" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />
+  <text x="545" y="205" text-anchor="middle" font-size="13" font-family="'Segoe UI', Arial, sans-serif" fill="#333333">CANCEL</text>
+  <rect x="600" y="180" width="80" height="36" fill="#222222" stroke="none" rx="4" />
+  <text x="640" y="205" text-anchor="middle" font-size="13" font-family="'Segoe UI', Arial, sans-serif" fill="#ffffff">SAVE</text>
+</svg>

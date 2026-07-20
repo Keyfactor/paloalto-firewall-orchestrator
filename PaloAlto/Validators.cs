@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Keyfactor
+﻿// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             {
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
-                    var deviceGroups = GetDeviceGroups(storeProperties.DeviceGroup);
+                    var deviceGroups = SplitResourceList(storeProperties.DeviceGroup);
                     var deviceList = client.GetDeviceGroupList().GetAwaiter().GetResult();
                     var deviceListNames = deviceList.Result.Entry.Select(p => p.Name).ToList();
                     var missingDevices = deviceGroups.Where(p => !deviceListNames.Contains(p)).ToList();
@@ -107,18 +107,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                         var missingString = string.Join(", ", missingDevices);
                         var validDevices = string.Join(", ", deviceListNames);
                         errors +=
-                            $"Could not find Device Group(s) {missingString} In Panorama.  Valid Device Groups are: {validDevices}";
+                            $"Could not find Device Group(s) {missingString} in Panorama.  Valid Device Groups are: {validDevices}";
                     }
                 }
 
                 if (!string.IsNullOrEmpty(storeProperties?.TemplateStack))
                 {
-                    var templateStackList = client.GetTemplateStackList();
-                    var templateStacks = templateStackList.Result.Result.Entry.Where(d => d.Name == storeProperties?.TemplateStack);
-                    if (!templateStacks.Any())
+                    var templateStacks = SplitResourceList(storeProperties.TemplateStack);
+                    var templateStackList = client.GetTemplateStackList().GetAwaiter().GetResult();
+                    var templateStackListNames = templateStackList.Result.Entry.Select(p => p.Name).ToList();
+                    var missingTemplateStacks = templateStacks.Where(p => !templateStackListNames.Contains(p)).ToList();
+                    if (missingTemplateStacks.Any())
                     {
+                        var missingString = string.Join(", ", missingTemplateStacks);
+                        var validTemplateStacks = string.Join(", ", templateStackListNames);
                         errors +=
-                            $"Could not find your Template Stacks In Panorama.  Valid Template Stacks are {string.Join(",", templateStackList.Result.Result.Entry.Select(d => d.Name))}";
+                            $"Could not find Template Stack(s) {missingString} in Panorama. Valid Template Stacks are: {validTemplateStacks}";
                     }
                 }
 
@@ -149,6 +153,51 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
 
             return (true, new JobResult());
         }
+        
+        /// <summary>
+        /// Panorama and Firewall have different constraints around certificate name. Panorama will not allow
+        /// certificate names longer than 31 characters, while Firewall has this limit at 63 characters.
+        /// Even if certificate is pushed to Firewall via Panorama, Panorama will reject certificate names longer than 31 characters.
+        ///
+        /// See: https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os
+        /// </summary>
+        /// <param name="storePath">The store path the certificate will be pushed to</param>
+        /// <param name="alias">The alias (logical name) of the certificate in Panorama / Firewall</param>
+        /// <returns>A bool indicating if validation succeeds. If false, the JobResult contains the failure object.</returns>
+        public static (bool valid, JobResult result) ValidateCertificateAlias(string storePath, string alias)
+        {
+            if (string.IsNullOrWhiteSpace(alias))
+            {
+                var result = new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = "Certificate alias must not be empty"
+                };
+                
+                return (false, result);
+            }
+
+            int maxLength = 63;
+
+            if (storePath == "/config/panorama" || IsValidPanoramaFormat(storePath)  ||
+                IsValidPanoramaVsysFormat(storePath))
+            {
+                maxLength = 31;
+            }
+
+            if (alias.Length > maxLength)
+            {
+                var result = new JobResult
+                {
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = $"Certificate alias '{alias}' is too long, it must not be more than {maxLength} characters. Current length: {alias.Length}"
+                };
+
+                return (false, result);
+            }
+            
+            return (true, null);
+        }
 
         public static bool IsValidPanoramaVsysFormat(string storePath)
         {
@@ -156,13 +205,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return Regex.IsMatch(storePath, pattern);
         }
 
-        public static IReadOnlyCollection<string> GetDeviceGroups(string deviceGroupProperty)
+        public static IReadOnlyCollection<string> SplitResourceList(string list)
         {
             var result = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(deviceGroupProperty))
+            if (!string.IsNullOrWhiteSpace(list))
             {
-                result.AddRange(deviceGroupProperty.Split(";").Select(s => s.Trim()));
+                result.AddRange(list.Split(";").Select(s => s.Trim()));
             }
             
             return result;

@@ -35,24 +35,30 @@ The Palo Alto Orchestrator Extension is an integration that can replace and inve
 
 * PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
 
-
-
 ## Compatibility
 
 This integration is compatible with Keyfactor Universal Orchestrator version 10.4 and later.
 
 ## Support
-The Palo Alto Universal Orchestrator extension If you have a support issue, please open a support ticket by either contacting your Keyfactor representative or via the Keyfactor Support Portal at https://support.keyfactor.com.
 
-> To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
+The Palo Alto Universal Orchestrator extension is supported by Keyfactor. If you require support for any issues or have feature request, please open a support ticket by either contacting your Keyfactor representative or via the Keyfactor Support Portal at https://support.keyfactor.com.
+
+> If you want to contribute bug fixes or additional enhancements, use the **[Pull requests](../../pulls)** tab.
 
 ## Requirements & Prerequisites
 
 Before installing the Palo Alto Universal Orchestrator extension, we recommend that you install [kfutil](https://github.com/Keyfactor/kfutil). Kfutil is a command-line tool that simplifies the process of creating store types, installing extensions, and instantiating certificate stores in Keyfactor Command.
 
+### Tested Versions
 
+This integration has been tested and verified against the following PAN-OS versions:
 
+| Product | Tested Version |
+|---|---|
+| Panorama | PAN-OS 11.2.0 |
+| Firewall | PAN-OS 11.1.0 |
 
+Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
 
 ## PaloAlto Certificate Store Type
 
@@ -60,26 +66,22 @@ To use the Palo Alto Universal Orchestrator extension, you **must** create the P
 
 
 
-
-
-
-
-
 #### Supported Operations
 
-| Operation    | Is Supported                                                                                                           |
-|--------------|------------------------------------------------------------------------------------------------------------------------|
-| Add          | ✅ Checked        |
-| Remove       | ✅ Checked     |
-| Discovery    | 🔲 Unchecked  |
+| Operation    | Is Supported |
+|--------------|--------------|
+| Add          | ✅ Checked |
+| Remove       | ✅ Checked |
+| Discovery    | 🔲 Unchecked |
 | Reenrollment | 🔲 Unchecked |
-| Create       | 🔲 Unchecked     |
+| Create       | 🔲 Unchecked |
 
 #### Store Type Creation
 
 ##### Using kfutil:
 `kfutil` is a custom CLI for the Keyfactor Command API and can be used to create certificate store types.
 For more information on [kfutil](https://github.com/Keyfactor/kfutil) check out the [docs](https://github.com/Keyfactor/kfutil?tab=readme-ov-file#quickstart)
+
    <details><summary>Click to expand PaloAlto kfutil details</summary>
 
    ##### Using online definition from GitHub:
@@ -98,10 +100,10 @@ For more information on [kfutil](https://github.com/Keyfactor/kfutil) check out 
    ```
    </details>
 
-
 #### Manual Creation
 Below are instructions on how to create the PaloAlto store type manually in
 the Keyfactor Command Portal
+
    <details><summary>Click to expand manual PaloAlto details</summary>
 
    Create a store type called `PaloAlto` with the attributes in the tables below:
@@ -112,11 +114,11 @@ the Keyfactor Command Portal
    | Name | PaloAlto | Display name for the store type (may be customized) |
    | Short Name | PaloAlto | Short display name for the store type |
    | Capability | PaloAlto | Store type name orchestrator will register with. Check the box to allow entry of value |
-   | Supports Add | ✅ Checked | Check the box. Indicates that the Store Type supports Management Add |
-   | Supports Remove | ✅ Checked | Check the box. Indicates that the Store Type supports Management Remove |
-   | Supports Discovery | 🔲 Unchecked |  Indicates that the Store Type supports Discovery |
-   | Supports Reenrollment | 🔲 Unchecked |  Indicates that the Store Type supports Reenrollment |
-   | Supports Create | 🔲 Unchecked |  Indicates that the Store Type supports store creation |
+   | Supports Add | ✅ Checked | Indicates that the Store Type supports Management Add |
+   | Supports Remove | ✅ Checked | Indicates that the Store Type supports Management Remove |
+   | Supports Discovery | 🔲 Unchecked | Indicates that the Store Type supports Discovery |
+   | Supports Reenrollment | 🔲 Unchecked | Indicates that the Store Type supports Reenrollment |
+   | Supports Create | 🔲 Unchecked | Indicates that the Store Type supports store creation |
    | Needs Server | ✅ Checked | Determines if a target server name is required when creating store |
    | Blueprint Allowed | 🔲 Unchecked | Determines if store type may be included in an Orchestrator blueprint |
    | Uses PowerShell | 🔲 Unchecked | Determines if underlying implementation is PowerShell |
@@ -125,18 +127,18 @@ the Keyfactor Command Portal
 
    The Basic tab should look like this:
 
-   ![PaloAlto Basic Tab](docsource/images/PaloAlto-basic-store-type-dialog.png)
+   ![PaloAlto Basic Tab](docsource/images/PaloAlto-basic-store-type-dialog.svg)
 
    ##### Advanced Tab
    | Attribute | Value | Description |
    | --------- | ----- | ----- |
    | Supports Custom Alias | Required | Determines if an individual entry within a store can have a custom Alias. |
-   | Private Key Handling | Optional | This determines if Keyfactor can send the private key associated with a certificate to the store. Required because IIS certificates without private keys would be invalid. |
+   | Private Key Handling | Optional | This determines if Keyfactor can send the private key associated with a certificate to the store. |
    | PFX Password Style | Default | 'Default' - PFX password is randomly generated, 'Custom' - PFX password may be specified when the enrollment job is created (Requires the Allow Custom Password application setting to be enabled.) |
 
    The Advanced tab should look like this:
 
-   ![PaloAlto Advanced Tab](docsource/images/PaloAlto-advanced-store-type-dialog.png)
+   ![PaloAlto Advanced Tab](docsource/images/PaloAlto-advanced-store-type-dialog.svg)
 
    > For Keyfactor **Command versions 24.4 and later**, a Certificate Format dropdown is available with PFX and PEM options. Ensure that **PFX** is selected, as this determines the format of new and renewed certificates sent to the Orchestrator during a Management job. Currently, all Keyfactor-supported Orchestrator extensions support only PFX.
 
@@ -150,11 +152,63 @@ the Keyfactor Command Portal
    | ServerUseSsl | Use SSL | Should be true, http is not supported. | Bool | true | ✅ Checked |
    | DeviceGroup | Device Group | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). | String |  | 🔲 Unchecked |
    | InventoryTrustedCerts | Inventory Trusted Certs | If false, will not inventory default trusted certs, saves time. | Bool | false | ✅ Checked |
-   | TemplateStack | Template Stack | Template stack used for device push of certificates via Template. | String |  | 🔲 Unchecked |
+   | TemplateStack | Template Stack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). | String |  | 🔲 Unchecked |
+   | PushFailureBehavior | Push Failure Behavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. | MultipleChoice | Failure,Warning | 🔲 Unchecked |
 
    The Custom Fields tab should look like this:
 
-   ![PaloAlto Custom Fields Tab](docsource/images/PaloAlto-custom-fields-store-type-dialog.png)
+   ![PaloAlto Custom Fields Tab](docsource/images/PaloAlto-custom-fields-store-type-dialog.svg)
+
+   ###### Server Username
+   Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+   ###### Server Password
+   Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+   ###### Use SSL
+   Should be true, http is not supported.
+
+   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-dialog.svg)
+   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-validation-options-dialog.svg)
+
+
+   ###### Device Group
+   A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.).
+
+   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-dialog.svg)
+   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-validation-options-dialog.svg)
+
+
+   ###### Inventory Trusted Certs
+   If false, will not inventory default trusted certs, saves time.
+
+   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-dialog.svg)
+   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-validation-options-dialog.svg)
+
+
+   ###### Template Stack
+   A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.).
+
+   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.svg)
+   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.svg)
+
+
+   ###### Push Failure Behavior
+   Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed.
+
+   ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-dialog.svg)
+   ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-validation-options-dialog.svg)
+
 
    </details>
 
@@ -162,7 +216,7 @@ the Keyfactor Command Portal
 
 1. **Download the latest Palo Alto Universal Orchestrator extension from GitHub.**
 
-    Navigate to the [Palo Alto Universal Orchestrator extension GitHub version page](https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases/latest). Refer to the compatibility matrix below to determine whether the `net6.0` or `net8.0` asset should be downloaded. Then, click the corresponding asset to download the zip archive.
+    Navigate to the [Palo Alto Universal Orchestrator extension GitHub version page](https://github.com/Keyfactor/paloalto-firewall-orchestrator/releases/latest). Refer to the compatibility matrix below to determine which asset should be downloaded. Then, click the corresponding asset to download the zip archive.
 
    | Universal Orchestrator Version | Latest .NET version installed on the Universal Orchestrator server | `rollForward` condition in `Orchestrator.runtimeconfig.json` | `paloalto-firewall-orchestrator` .NET version to download |
    | --------- | ----------- | ----------- | ----------- |
@@ -170,11 +224,12 @@ the Keyfactor Command Portal
    | Between `11.0.0` and `11.5.1` (inclusive) | `net6.0` | | `net6.0` |
    | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `Disable` | `net6.0` |
    | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `LatestMajor` | `net8.0` |
-   | `11.6` _and_ newer | `net8.0` | | `net8.0` |
+   | Between `11.6.0` and `24.x` | `net8.0` | | `net8.0` |
+   | `25.0` _and_ newer | `net10.0` | | `net10.0` |
 
     Unzip the archive containing extension assemblies to a known location.
 
-    > **Note** If you don't see an asset with a corresponding .NET version, you should always assume that it was compiled for `net6.0`.
+    > **Note** If you don't see an asset with a corresponding .NET version, you should always assume that it was compiled for `net10.0`.
 
 2. **Locate the Universal Orchestrator extensions directory.**
 
@@ -192,21 +247,15 @@ the Keyfactor Command Portal
 
     Refer to [Starting/Restarting the Universal Orchestrator service](https://software.keyfactor.com/Core-OnPrem/Current/Content/InstallingAgents/NetCoreOrchestrator/StarttheService.htm).
 
-
 6. **(optional) PAM Integration**
 
     The Palo Alto Universal Orchestrator extension is compatible with all supported Keyfactor PAM extensions to resolve PAM-eligible secrets. PAM extensions running on Universal Orchestrators enable secure retrieval of secrets from a connected PAM provider.
 
     To configure a PAM provider, [reference the Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam) to select an extension and follow the associated instructions to install it on the Universal Orchestrator (remote).
 
-
 > The above installation steps can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/InstallingAgents/NetCoreOrchestrator/CustomExtensions.htm?Highlight=extensions).
 
-
-
 ## Defining Certificate Stores
-
-
 
 ### Store Creation
 
@@ -222,8 +271,8 @@ the Keyfactor Command Portal
 
     Click the Add button to add a new Certificate Store. Use the table below to populate the **Attributes** in the **Add** form.
 
-   | Attribute | Description                                             |
-   | --------- |---------------------------------------------------------|
+   | Attribute | Description |
+   | --------- | ----------- |
    | Category | Select "PaloAlto" or the customized certificate store name from the previous step. |
    | Container | Optional container to associate certificate store with. |
    | Client Machine | Either the Panorama or Palo Alto Firewall URI or IP address. |
@@ -234,11 +283,10 @@ the Keyfactor Command Portal
    | ServerUseSsl | Should be true, http is not supported. |
    | DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
-   | TemplateStack | Template stack used for device push of certificates via Template. |
+   | TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
+   | PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 </details>
-
-
 
 #### Using kfutil CLI
 
@@ -265,7 +313,8 @@ the Keyfactor Command Portal
    | Properties.ServerUseSsl | Should be true, http is not supported. |
    | Properties.DeviceGroup | A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.). |
    | Properties.InventoryTrustedCerts | If false, will not inventory default trusted certs, saves time. |
-   | Properties.TemplateStack | Template stack used for device push of certificates via Template. |
+   | Properties.TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
+   | Properties.PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
 
 3. **Import the CSV file to create the certificate stores**
 
@@ -274,7 +323,6 @@ the Keyfactor Command Portal
     ```
 
 </details>
-
 
 #### PAM Provider Eligible Fields
 <details><summary>Attributes eligible for retrieval by a PAM Provider on the Universal Orchestrator</summary>
@@ -291,20 +339,76 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 
 </details>
 
-
 > The content in this section can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
 
 
+## Release 2.5.1 Update on Alias Constraints
+**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
 
+If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
+```
+Certificate alias 'alias' is too long, it must not be more than 31 characters. Current length: 32.
+```
 
 ## Release 2.2 Update on Entry Params
 **Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
 
 **Important Note** Please review the new path considerations in the section below.  It explains how the paths work for Panorama and the Firewalls.  `'locahost.localdomain'` will always be that `constant value` do not make that **anything else!**.
 
+## Release 2.5.2 Update on Panorama Commits
+> [!IMPORTANT]
+>
+> The 2.5.2 release updates commit behavior to update commits (device group / template / template stack) to return a Warning instead of an Error. Commits that were unsuccessful will be logged and noted in the job status message. Please ensure any failed commits are manually handled to prevent an unintended outage.
+
+## Commit Behavior
+
+### Push Failure Behavior
+
+When a Panorama management job completes, the integration performs a two-phase commit:
+
+1. **Phase 1 — Commit to Panorama**: Saves the candidate configuration changes to Panorama's running config. This phase always returns a **Failure** result if unsuccessful, regardless of any store configuration, and the job will be retried by Keyfactor.
+
+2. **Phase 2 — Push to devices**: Pushes the committed configuration from Panorama out to managed firewalls via the configured device groups, templates, and/or template stacks. The behavior when this phase fails is controlled by the **Push Failure Behavior** store property.
+
+The **Push Failure Behavior** store property accepts two values:
+
+| Value | Job Result | Retry Triggered? | When to Use |
+|---|---|---|---|
+| `Failure` *(default)* | Failure | Yes | Use in most environments. Ensures the push to managed firewalls is confirmed before the job is marked complete. If the push fails, Keyfactor will automatically retry the job. |
+| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management job would cause unintended side effects. The failure message is still recorded in the job history. |
+
+> [!IMPORTANT]
+> Setting Push Failure Behavior to `Warning` means a failed push to a device group, template, or template stack **will not trigger a retry**. The certificate will be saved in Panorama's configuration, but managed firewalls may not receive the updated certificate until the next successful push. Ensure you have a plan to verify or manually trigger delivery in these cases.
+
+If the Push Failure Behavior property is absent or blank, the integration defaults to `Failure`.
+
+### Commit Timeout
+
+When Panorama processes a commit asynchronously, it returns a job ID. The integration polls that job until it reaches a terminal state (success or failure). Polling uses exponential backoff, starting at 10 seconds and capping at 90 seconds between polls.
+
+If a commit job does not complete within **60 minutes**, the integration stops polling and the management job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
+
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
 <summary>Store Path Permutations</summary>
+
+### Store Path Quick Reference
+
+The store path tells the integration where certificates live in the PAN-OS configuration tree and which device (Firewall or Panorama) is being managed. Choose the path format that matches your topology.
+
+| Format | Example | Endpoint | Scope | Phase 2 Push? |
+|---|---|---|---|---|
+| `/config/shared` | `/config/shared` | Firewall | Shared across all vsys on the device | No |
+| Firewall vsys | `/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | Firewall | Single virtual system | No |
+| Panorama template (shared) | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared` | Panorama | Template shared scope | Yes — template, and device group / template stack if configured |
+| Panorama template (vsys) | `/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']` | Panorama | Template + specific vsys | Yes — template, and device group / template stack if configured |
+| `/config/panorama` | `/config/panorama` | Panorama | Panorama administrative certificates | No |
+
+**Key points:**
+- `/config/shared` targets the local Firewall only. Querying this path against a Panorama instance will return no certificates.
+- Panorama paths trigger a two-phase commit: the certificate is first saved to Panorama, then pushed to managed firewalls. Firewall paths only commit locally.
+- The `localhost.localdomain` device name is a constant — do not substitute another value.
+- Panorama alias length is limited to 31 characters; Firewall allows up to 63.
 
 ### Store Path Explanation
 **Important Note** The store path permutations are show below
@@ -477,7 +581,6 @@ TC29|Panorama Level Remove  unbound Cert|/config/panorama|N/A|Cert is removed be
 TC30|Panorama Level Replace bound Cert|/config/panorama|**Alias**:<br>PanoramaNoPK<br>**Overwrite**:<br>true|Cert is replaced, binding updated|True|![](images/TC30.gif)
 TC31|Firewall previous version cert store settings|/config/shared|**Alias**:<br>www.extraparams.com<br>**Overwrite**:<br>false|Cert is still installed because it ignores extra params|True|![](images/TC31.gif)
 </details>
-
 
 ## License
 

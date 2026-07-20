@@ -30,5 +30,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
         [JsonProperty("InventoryTrustedCerts")]
         [DefaultValue(false)]
         public bool InventoryTrustedCerts { get; set; }
+        
+        [JsonProperty("PushFailureBehavior")]
+        public string? PushFailureBehavior { get; set; }
     }
 }
