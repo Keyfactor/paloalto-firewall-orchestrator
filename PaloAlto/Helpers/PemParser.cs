@@ -70,7 +70,7 @@ public class PemParser
         }
 
         _logger.MethodExit();
-        return privateKeyString + certPem;
+        return privateKeyString + "\n" + certPem;
     }
 
     private string OrderCertificatesAndConvertToPem(X509CertificateEntry[] certificateEntries)
