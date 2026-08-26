@@ -2,9 +2,9 @@
   "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
   "integration_type": "orchestrator",
   "name": "Palo Alto Orchestrator",
-  "status": "production",
   "update_catalog": true,
   "link_github": true,
+  "status": "production",
   "support_level": "kf-supported",
   "release_project": "PaloAlto/PaloAlto.csproj",
   "release_dir": "PaloAlto/bin/Release",
@@ -105,7 +105,17 @@
               "DefaultValue": "",
               "Required": false,
               "IsPAMEligible": false,
-              "Description": "Template stack used for device push of certificates via Template."
+              "Description": "A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.)."
+            },
+            {
+              "Name": "PushFailureBehavior",
+              "DisplayName": "Push Failure Behavior",
+              "Type": "MultipleChoice",
+              "DependsOn": "",
+              "DefaultValue": "Failure,Warning",
+              "Required": false,
+              "IsPAMEligible": false,
+              "Description": "Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed."
             }
           ],
           "EntryParameters": [

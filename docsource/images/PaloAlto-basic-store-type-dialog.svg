@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<svg width="700" height="661" viewBox="0 0 700 661" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+        text { font-family: 'Segoe UI', Arial, sans-serif; }
+        .title { font-size: 20px; font-weight: 600; fill: #222222; }
+        .section-header { font-size: 13px; font-weight: 600; fill: #333333; }
+        .label { font-size: 12px; fill: #555555; }
+        .value { font-size: 12px; fill: #222222; }
+        .tab-text { font-size: 12px; fill: #444444; }
+        .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="700" height="661" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
+  <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
+  <text x="16" y="32" class="title">Edit Certificate Store Type</text>
+  <g>
+    <rect x="0" y="44" width="700" height="36" fill="#ffffff" />
+    <line x1="0" y1="80" x2="700" y2="80" stroke="#d0d0d0" stroke-width="1" />
+    <text x="16" y="68" class="tab-active">Basic</text>
+    <rect x="16" y="77" width="37" height="3" fill="#3355ee" />
+    <text x="75" y="68" class="tab-text">Advanced</text>
+    <text x="155" y="68" class="tab-text">Custom Fields</text>
+    <text x="270" y="68" class="tab-text">Entry Parameters</text>
+  </g>
+  <rect x="0" y="80" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="91" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="99" x2="32" y2="99" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="105" class="section-header">Details</text>
+  <line x1="0" y1="118" x2="700" y2="118" stroke="#3355ee" stroke-width="2" />
+  <text x="20" y="142" class="label">Name</text>
+  <rect x="20" y="145" width="660" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />
+  <text x="30" y="170" class="value">PaloAlto</text>
+  <text x="20" y="205" class="label">Short Name</text>
+  <rect x="20" y="208" width="660" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />
+  <text x="30" y="233" class="value">PaloAlto</text>
+  <text x="20" y="268" class="label">Custom Capability</text>
+  <rect x="20" y="281" width="15" height="15" fill="#ffffff" stroke="#cccccc" rx="2" />
+  <rect x="43" y="271" width="637" height="36" fill="#e0e0e0" stroke="#cccccc" rx="4" />
+  <text x="53" y="296" fill="#999999" font-size="12" font-family="'Segoe UI', Arial, sans-serif">Custom Capability</text>
+  <rect x="0" y="321" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="332" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="340" x2="32" y2="340" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="346" class="section-header">Supported Job Types</text>
+  <line x1="0" y1="359" x2="700" y2="359" stroke="#3355ee" stroke-width="2" />
+  <rect x="20" y="379" width="15" height="15" fill="#a0a0a0" stroke="#a0a0a0" stroke-width="1" rx="2" />
+  <polyline points="23,386 26,390 32,383" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="41" y="393" class="label">Inventory</text>
+  <rect x="240" y="379" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
+  <polyline points="243,386 246,390 252,383" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="261" y="393" class="label">Add</text>
+  <rect x="460" y="379" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
+  <polyline points="463,386 466,390 472,383" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="481" y="393" class="label">Remove</text>
+  <rect x="20" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="41" y="429" class="label">Create</text>
+  <rect x="240" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="261" y="429" class="label">Discovery</text>
+  <rect x="460" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="481" y="429" class="label">ODKG</text>
+  <rect x="0" y="455" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="466" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="474" x2="32" y2="474" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="480" class="section-header">General Settings</text>
+  <line x1="0" y1="493" x2="700" y2="493" stroke="#3355ee" stroke-width="2" />
+  <rect x="20" y="513" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
+  <polyline points="23,520 26,524 32,517" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="41" y="527" class="label">Needs Server</text>
+  <rect x="240" y="513" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="261" y="527" class="label">Blueprint Allowed</text>
+  <rect x="460" y="513" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="481" y="527" class="label">Uses PowerShell</text>
+  <rect x="0" y="553" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="564" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="572" x2="32" y2="572" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="578" class="section-header">Password Settings</text>
+  <line x1="0" y1="591" x2="700" y2="591" stroke="#3355ee" stroke-width="2" />
+  <rect x="20" y="611" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="41" y="625" class="label">Requires Store Password</text>
+  <rect x="350" y="611" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <text x="371" y="625" class="label">Supports Entry Password</text>
+</svg>

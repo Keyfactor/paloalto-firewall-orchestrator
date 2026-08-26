@@ -98,7 +98,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             {
                 if (!string.IsNullOrEmpty(storeProperties?.DeviceGroup))
                 {
-                    var deviceGroups = GetDeviceGroups(storeProperties.DeviceGroup);
+                    var deviceGroups = SplitResourceList(storeProperties.DeviceGroup);
                     var deviceList = client.GetDeviceGroupList().GetAwaiter().GetResult();
                     var deviceListNames = deviceList.Result.Entry.Select(p => p.Name).ToList();
                     var missingDevices = deviceGroups.Where(p => !deviceListNames.Contains(p)).ToList();
@@ -107,18 +107,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
                         var missingString = string.Join(", ", missingDevices);
                         var validDevices = string.Join(", ", deviceListNames);
                         errors +=
-                            $"Could not find Device Group(s) {missingString} In Panorama.  Valid Device Groups are: {validDevices}";
+                            $"Could not find Device Group(s) {missingString} in Panorama.  Valid Device Groups are: {validDevices}";
                     }
                 }
 
                 if (!string.IsNullOrEmpty(storeProperties?.TemplateStack))
                 {
-                    var templateStackList = client.GetTemplateStackList();
-                    var templateStacks = templateStackList.Result.Result.Entry.Where(d => d.Name == storeProperties?.TemplateStack);
-                    if (!templateStacks.Any())
+                    var templateStacks = SplitResourceList(storeProperties.TemplateStack);
+                    var templateStackList = client.GetTemplateStackList().GetAwaiter().GetResult();
+                    var templateStackListNames = templateStackList.Result.Entry.Select(p => p.Name).ToList();
+                    var missingTemplateStacks = templateStacks.Where(p => !templateStackListNames.Contains(p)).ToList();
+                    if (missingTemplateStacks.Any())
                     {
+                        var missingString = string.Join(", ", missingTemplateStacks);
+                        var validTemplateStacks = string.Join(", ", templateStackListNames);
                         errors +=
-                            $"Could not find your Template Stacks In Panorama.  Valid Template Stacks are {string.Join(",", templateStackList.Result.Result.Entry.Select(d => d.Name))}";
+                            $"Could not find Template Stack(s) {missingString} in Panorama. Valid Template Stacks are: {validTemplateStacks}";
                     }
                 }
 
@@ -201,13 +205,13 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto
             return Regex.IsMatch(storePath, pattern);
         }
 
-        public static IReadOnlyCollection<string> GetDeviceGroups(string deviceGroupProperty)
+        public static IReadOnlyCollection<string> SplitResourceList(string list)
         {
             var result = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(deviceGroupProperty))
+            if (!string.IsNullOrWhiteSpace(list))
             {
-                result.AddRange(deviceGroupProperty.Split(";").Select(s => s.Trim()));
+                result.AddRange(list.Split(";").Select(s => s.Trim()));
             }
             
             return result;
