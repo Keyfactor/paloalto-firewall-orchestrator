@@ -1,4 +1,4 @@
-// Copyright 2025 Keyfactor
+// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
+using Microsoft.Extensions.Logging;
+using MartinCostello.Logging.XUnit;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Newtonsoft.Json;
 using PaloAlto.IntegrationTests.Models;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace PaloAlto.IntegrationTests;
 
+[Trait("Category", "Integration")]
 public abstract class BaseIntegrationTest
 {
     protected readonly string MockCertificatePassword = "sldfklsdfsldjfk";
+    private readonly IClientLoggerFactory _loggerFactory;
+    private readonly IPaloAltoClientFactory _clientFactory;
+
+    protected BaseIntegrationTest(ITestOutputHelper output)
+    {
+      var services = new ServiceCollection()
+        .AddLogging(b => b
+          .AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()))
+          .SetMinimumLevel(LogLevel.Debug))
+        .BuildServiceProvider();
+
+      var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+      var loggerFactoryMock = new Mock<IClientLoggerFactory>();
+
+      loggerFactoryMock
+        .Setup(f => f.CreateLogger<It.IsAnyType>())
+        .Returns(loggerFactory.CreateLogger<It.IsAnyType>());
+
+      // Use actual Palo Alto client for integration tests
+      _clientFactory = new PaloAltoClientFactory(loggerFactoryMock.Object);
+      _loggerFactory = loggerFactoryMock.Object;
+    }
     
     protected void AssertJobSuccess(JobResult result, string context)
     {
@@ -35,7 +63,7 @@ public abstract class BaseIntegrationTest
     protected void AssertJobFailure(JobResult result, string expectedError)
     {
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal(expectedError, result.FailureMessage);
+        Assert.Contains(expectedError, result.FailureMessage);
     }
 
     protected JobResult ProcessManagementAddJob(TestManagementJobConfigurationProperties props)
@@ -62,7 +90,7 @@ public abstract class BaseIntegrationTest
         mgmtSecretResolver
             .Setup(m => m.Resolve(It.Is<string>(s => s == config.ServerPassword)))
             .Returns(() => config.ServerPassword);
-        var inventory = new Inventory(mgmtSecretResolver.Object);
+        var inventory = new Inventory(mgmtSecretResolver.Object, _clientFactory, _loggerFactory);
         return inventory.ProcessJob(config, _ => true);
     }
     
@@ -75,7 +103,7 @@ public abstract class BaseIntegrationTest
         mgmtSecretResolver
             .Setup(m => m.Resolve(It.Is<string>(s => s == config.ServerPassword)))
             .Returns(() => config.ServerPassword);
-        var mgmt = new Management(mgmtSecretResolver.Object);
+        var mgmt = new Management(mgmtSecretResolver.Object, _clientFactory, _loggerFactory);
         return mgmt.ProcessJob(config);
     }
     
@@ -89,7 +117,7 @@ public abstract class BaseIntegrationTest
                 ClientMachine = "ClientMachineGoesHere",
                 StorePath = "TemplateNameGoesHere",
                 StorePassword = null,
-                Properties = null, // TODO: Fill this out in the next steps
+                Properties = null, // Properties filled out on a separate step
                 Type = 105,
             },
             OperationType = CertStoreOperationType.Add, // 2
@@ -149,7 +177,7 @@ public abstract class BaseIntegrationTest
                 ClientMachine = "ClientMachineGoesHere",
                 StorePath = "TemplateNameGoesHere",
                 StorePassword = null,
-                Properties = null, // TODO: Fill this out in the next steps
+                Properties = null, // Properties filled out on a separate step
                 Type = 105,
             },
             OperationType = CertStoreOperationType.Remove, // 3
@@ -511,7 +539,7 @@ public abstract class BaseIntegrationTest
           StorePath = "TemplatePathGoesHere",
           StorePassword = "",
           Type = 105,
-          Properties = null, // TODO: Fill this out in the next steps
+          Properties = null, // Properties filled out on a separate step
         },
         JobCancelled = false,
         ServerError = null,

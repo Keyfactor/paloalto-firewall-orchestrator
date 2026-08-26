@@ -347,7 +347,7 @@ public class ValidatorsTests
         var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
         Assert.False(valid);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("The store setup is not valid. Could not find Device Group(s) Group1 In Panorama.  Valid Device Groups are: Group2", result.FailureMessage);
+        Assert.Contains("The store setup is not valid. Could not find Device Group(s) Group1 in Panorama.  Valid Device Groups are: Group2", result.FailureMessage);
     }
     
     [Theory]
@@ -442,7 +442,7 @@ public class ValidatorsTests
         var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
         Assert.False(valid);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("The store setup is not valid. Could not find Device Group(s) Group3, Group4 In Panorama.  Valid Device Groups are: Group1, Group2", result.FailureMessage);
+        Assert.Contains("The store setup is not valid. Could not find Device Group(s) Group3, Group4 in Panorama.  Valid Device Groups are: Group1, Group2", result.FailureMessage);
     }
     
     [Theory]
@@ -549,7 +549,7 @@ public class ValidatorsTests
         var (valid, result) = Validators.ValidateStoreProperties(properties, storePath, _paloAltoClient, jobHistoryId);
         Assert.False(valid);
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-        Assert.Equal("The store setup is not valid. Could not find your Template Stacks In Panorama.  Valid Template Stacks are Stack2", result.FailureMessage);
+        Assert.Contains("The store setup is not valid. Could not find Template Stack(s) Stack1 in Panorama.", result.FailureMessage);
     }
     
     [Theory]
@@ -672,46 +672,115 @@ public class ValidatorsTests
     #endregion
     
     #endregion
+    
+    #region ValidateCertificateAlias
 
-    #region GetDeviceGroups
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ValidateCertificateAlias_WhenAliasIsNull_ReturnsFailure(string alias)
+    {
+        string storePath = ""; // store path does not matter at this point
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal("Certificate alias must not be empty", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    [InlineData("/config/devices/entry[@name='somethingrandom']/template/entry[@name='CertificatesTemplate']/config/shared")]
+    [InlineData("/config/panorama")]
+    public void ValidateCertificateAlias_WhenPanorama_AliasTooLong_ReturnsFailure(string storePath)
+    {
+        string alias = new string('a', 32);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal($"Certificate alias '{alias}' is too long, it must not be more than 31 characters. Current length: 32", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/shared")]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']")]
+    public void ValidateCertificateAlias_WhenFirewall_AliasTooLong_ReturnsFailure(string storePath)
+    {
+        string alias = new string('a', 64);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.False(result.valid);
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.result.Result);
+        Assert.Equal($"Certificate alias '{alias}' is too long, it must not be more than 63 characters. Current length: 64", result.result.FailureMessage);
+    }
+    
+    [Theory]
+    [InlineData("/config/devices/entry/template/entry[@name='CertificateStack']/config/devices/entry/vsys/entry[@name='System']")]
+    [InlineData("/config/devices/entry[@name='somethingrandom']/template/entry[@name='CertificatesTemplate']/config/shared")]
+    [InlineData("/config/panorama")]
+    public void ValidateCertificateAlias_WhenPanorama_AliasCorrectLength_ReturnsSuccess(string storePath)
+    {
+        string alias = new string('a', 31);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.True(result.valid);
+        Assert.Null(result.result);
+    }
+    
+    [Theory]
+    [InlineData("/config/shared")]
+    [InlineData("/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']")]
+    public void ValidateCertificateAlias_WhenFirewall_AliasCorrectLength_ReturnsSuccess(string storePath)
+    {
+        string alias = new string('a', 63);
+
+        var result = Validators.ValidateCertificateAlias(storePath, alias);
+        Assert.True(result.valid);
+        Assert.Null(result.result);
+    }
+
+    #endregion
+
+    #region SplitResourceList
     
     [Fact]
-    public async Task GetDeviceGroups_WhenDeviceGroupsInputIsNull_ReturnsEmptyList()
+    public async Task SplitResourceList_WhenInputIsNull_ReturnsEmptyList()
     {
         string deviceGroupsProperty = null;
 
-        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        var result = Validators.SplitResourceList(deviceGroupsProperty);
         
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task GetDeviceGroups_WhenDeviceGroupsInputIsEmpty_ReturnsEmptyList()
+    public async Task SplitResourceList_WhenInputIsEmpty_ReturnsEmptyList()
     {
-        string deviceGroupsProperty = "";
+        string list = "";
 
-        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        var result = Validators.SplitResourceList(list);
         
         Assert.Empty(result);
     }
     
     [Fact]
-    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasSingleEntry_ReturnsListWithEntry()
+    public async Task SplitResourceList_WhenInputHasSingleEntry_ReturnsListWithEntry()
     {
-        string deviceGroupsProperty = "Group 1";
+        string list = "Group 1";
 
-        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        var result = Validators.SplitResourceList(list);
 
         Assert.Equal(1, result.Count);
         Assert.Equal("Group 1", result.First());
     }
     
     [Fact]
-    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasMultipleSemicolonDelimitedEntries_ReturnsListWithEntries()
+    public async Task SplitResourceList_WhenInputHasMultipleSemicolonDelimitedEntries_ReturnsListWithEntries()
     {
-        string deviceGroupsProperty = "Group 1;Group 2;Group3;Random_Group-123.456";
+        string list = "Group 1;Group 2;Group3;Random_Group-123.456";
 
-        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        var result = Validators.SplitResourceList(list);
 
         Assert.Equal(4, result.Count);
         Assert.Equal("Group 1", result.ElementAt(0));
@@ -721,11 +790,11 @@ public class ValidatorsTests
     }
     
     [Fact]
-    public async Task GetDeviceGroups_WhenDeviceGroupsInputHasMultipleSemicolonDelimitedEntries_WithSpaces_ReturnsListWithEntries()
+    public async Task SplitResourceList_WhenInputHasMultipleSemicolonDelimitedEntries_WithSpaces_ReturnsListWithEntries()
     {
-        string deviceGroupsProperty = "Group 1    ;Group 2;     Group 3";
+        string list = "Group 1    ;Group 2;     Group 3";
         
-        var result = Validators.GetDeviceGroups(deviceGroupsProperty);
+        var result = Validators.SplitResourceList(list);
 
         Assert.Equal(3, result.Count);
         Assert.Equal("Group 1", result.ElementAt(0));

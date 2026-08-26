@@ -18,7 +18,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
@@ -27,20 +26,20 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
 {
     public class PaloAltoClient : IPaloAltoClient
     {
         private readonly ILogger _logger;
+        private readonly PanoramaJobPoller _jobPoller;
 
         public PaloAltoClient(string url, string userName, string password)
         {
             _logger = LogHandler.GetClassLogger<PaloAltoClient>();
             ServerUserName = Uri.EscapeDataString(userName);
             ServerPassword = Uri.EscapeDataString(password);
+            _jobPoller = new PanoramaJobPoller(this);
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
@@ -139,75 +138,75 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task<CommitResponse> GetCommitAllResponse(string deviceGroup,string storePath,string templateStack)
+        public async Task<CommitResponseResult> CommitDeviceGroup(string deviceGroup)
         {
-            try
-            {
-                //Palo alto claims this commented out line works for push to devices by userid but can't get this to work
-                //var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><admin><member>{ServerUserName}</member></admin><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                var uri = string.Empty;
-                CommitResponse response = new ();
-                var jobPoller = new PanoramaJobPoller(this);
-                if (!string.IsNullOrEmpty(deviceGroup))
-                {
-                    foreach (var group in Validators.GetDeviceGroups(deviceGroup))
-                    {
-                        _logger.LogTrace($"Committing changes to device group {group}");
-                        uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{group}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
-                        response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+            var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><shared-policy><device-group><entry name=\"{deviceGroup}\"/></device-group></shared-policy></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-                        await HandleCommitResponse(response, jobPoller);
-                    }
-                }
-                else
-                {
-                    var template = GetTemplateName(storePath);
-                    _logger.LogTrace($"Committing changes to template {template}");
-                    
-                    uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
-                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-                    
-                    await HandleCommitResponse(response, jobPoller);
-                }
+            return await HandleCommitResponse(response, $"device group {deviceGroup}");
+        }
+        
+        public async Task<CommitResponseResult> CommitTemplateStack(string templateStack)
+        {
+            var uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
 
-                if (!string.IsNullOrEmpty(templateStack))
-                {
-                    _logger.LogTrace($"Committing changes to template stack {templateStack}");
-                    uri = $"/api/?&type=commit&action=all&cmd=<commit-all><template-stack><name>{templateStack}</name></template-stack></commit-all>&key={ApiKey}";
-                    response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
-                    
-                    await HandleCommitResponse(response, jobPoller);
-                }
-                return response;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"Error Occured in PaloAltoClient.GetCommitAllResponse: {e.Message}");
-                throw;
-            }
+            return await HandleCommitResponse(response, $"template stack {templateStack}");
         }
 
-        private async Task HandleCommitResponse(CommitResponse response, PanoramaJobPoller jobPoller)
+        public async Task<CommitResponseResult> CommitTemplate(string storePath)
         {
+            var template = GetTemplateName(storePath);
+            _logger.LogTrace($"Committing changes to template {template}");
+                    
+            var uri =$"/api/?&type=commit&action=all&cmd=<commit-all><template><name>{template}</name></template></commit-all>&key={ApiKey}";
+            var response = await GetXmlResponseAsync<CommitResponse>(await HttpClient.GetAsync(uri));
+                    
+            return await HandleCommitResponse(response, $"template {template}");
+        }
+
+        private async Task<CommitResponseResult> HandleCommitResponse(CommitResponse response, string description)
+        {
+            _logger.LogTrace($"Handling commit response for {description}");
+            
             if (response.Status != "success")
             {
-                throw new Exception(
-                    $"Job status did not indicate success. Response: {response.Status}");
+                _logger.LogWarning($"Failed to commit to {description}. Response: {response.Status}");
+                
+                return new CommitResponseResult()
+                {
+                    IsSuccess = false,
+                    Message = $"Commit to {description} failed: Job status did not indicate success. Response: {response.Status}",
+                };
             }
-
-            _logger.LogTrace($"Response text: {response.Text}");
-
+            
+            _logger.LogDebug($"{description} commit response text: {response.Text}");
+            
             if (response.Result?.HasJobId ?? false)
             {
-                _logger.LogTrace($"Waiting to make sure commit was successful. Job ID: {response.Result?.JobId}...");
-                var result = await jobPoller.WaitForJobCompletion(response.Result.JobId);
+                var jobId = response.Result?.JobId;
+                _logger.LogTrace($"Waiting to make sure {description} commit was successful. Job ID: {jobId}...");
+                var result = await _jobPoller.WaitForJobCompletion(jobId);
+                
                 if (result.Result == OrchestratorJobStatusJobResult.Failure)
                 {
-                    throw new Exception(result.FailureMessage);
+                    _logger.LogWarning($"Failed to commit to {description}. Job ID: {jobId}. Failure: {result.FailureMessage}");
+
+                    return new CommitResponseResult()
+                    {
+                        IsSuccess = false,
+                        Message =
+                            $"Commit job for {description} experienced a failure during processing. Job status did not indicate success. Response: {response.Status}.",
+                    };
                 }
             }
+            
+            _logger.LogInformation($"Successfully committed {description}.");
 
-            _logger.LogTrace($"Changes pushed successfully.");
+            return new CommitResponseResult()
+            {
+                IsSuccess = true,
+            };
         }
 
         public async Task<JobStatusResponse> GetJobStatus(string jobId)
@@ -439,59 +438,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.EnsureSuccessfulResponse: {e.Message}");
                 throw;
-            }
-        }
-
-        public string MaskSensitiveData(string json)
-        {
-            try
-            {
-                JObject jsonObject = JObject.Parse(json);
-
-                // Replace all keys named "Password" or similar
-                MaskKey(jsonObject, "StorePassword");
-                MaskKey(jsonObject, "ServerPassword");
-                MaskKey(jsonObject, "PrivateKeyPassword");
-
-                return jsonObject.ToString(Newtonsoft.Json.Formatting.Indented);
-            }
-            catch (JsonException ex)
-            {
-                Console.WriteLine("Invalid JSON provided: " + ex.Message);
-                return json; // Return the original JSON if parsing fails
-            }
-        }
-
-        private static void MaskKey(JObject jsonObject, string key)
-        {
-            foreach (var property in jsonObject.Properties())
-            {
-                if (property.Name.Equals(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    property.Value = "*****";
-                }
-                else if (property.Value.Type == JTokenType.Object)
-                {
-                    MaskKey((JObject)property.Value, key);
-                }
-                else if (property.Value.Type == JTokenType.String)
-                {
-                    // Optionally handle nested JSON strings
-                    string value = property.Value.ToString();
-                    if (value.StartsWith("{") && value.EndsWith("}"))
-                    {
-                        try
-                        {
-                            JObject nestedObject = JObject.Parse(value);
-                            MaskKey(nestedObject, key);
-                            property.Value = nestedObject.ToString(Newtonsoft.Json.Formatting.None);
-                        }
-                        catch
-                        {
-                            // Not a valid JSON string, skip
-                        }
-                    }
-                }
             }
         }
     }
