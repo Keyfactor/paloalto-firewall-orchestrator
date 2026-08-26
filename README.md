@@ -210,61 +210,6 @@ the Keyfactor Command Portal
    ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-validation-options-dialog.svg)
 
 
-
-   ###### Server Username
-   Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
-
-
-   > [!IMPORTANT]
-   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
-
-
-
-
-   ###### Server Password
-   Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
-
-
-   > [!IMPORTANT]
-   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
-
-
-
-
-   ###### Use SSL
-   Should be true, http is not supported.
-
-   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-dialog.png)
-   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-validation-options-dialog.png)
-
-
-
-   ###### Device Group
-   A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.).
-
-   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-dialog.png)
-   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-validation-options-dialog.png)
-
-
-
-   ###### Inventory Trusted Certs
-   If false, will not inventory default trusted certs, saves time.
-
-   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-dialog.png)
-   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-validation-options-dialog.png)
-
-
-
-   ###### Template Stack
-   Template stack used for device push of certificates via Template.
-
-   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.png)
-   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.png)
-
-
-
-
-
    </details>
 
 ## Installation
@@ -396,14 +341,6 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 
 > The content in this section can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
 
-
-## Release 2.5.1 Update on Alias Constraints
-**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
-
-If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
-```
-Certificate alias 'alias' is too long, it must not be more than 31 characters. Current length: 32.
-```
 
 ## Release 2.5.1 Update on Alias Constraints
 **Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
