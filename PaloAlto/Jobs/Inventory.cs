@@ -49,8 +49,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         private JobProperties StoreProperties { get; set; }
 
-        public string ExtensionName => "PaloAlto";
-
         public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration,
             SubmitInventoryUpdate submitInventoryUpdate)
         {
@@ -62,12 +60,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return PerformInventory(jobConfiguration, submitInventoryUpdate)
                 .GetAwaiter()
                 .GetResult();
-        }
-
-        public string ResolvePamField(string name, string value)
-        {
-            Logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
-            return Resolver.Resolve(value);
         }
 
         private async Task<JobResult> PerformInventory(InventoryJobConfiguration config, SubmitInventoryUpdate submitInventory)

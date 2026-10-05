@@ -13,6 +13,8 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
     protected readonly IClientLoggerFactory LoggerFactory;
     protected readonly ILogger Logger;
     
+    public string ExtensionName => "PaloAlto";
+    
     /// <summary>
     /// Default constructor called by UO framework
     /// </summary>
@@ -39,5 +41,12 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
         Logger = loggerFactory.CreateLogger<T>();
         ClientFactory = clientFactory;
         Logger.LogTrace($"Initialized {typeof(T)} with IPAMSecretResolver, custom PaloAlto client factory and logger.");
+    }
+    
+    protected string ResolvePamField(string name, string value)
+    {
+        Logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
+
+        return Resolver.Resolve(value);
     }
 }

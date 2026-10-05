@@ -58,8 +58,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
         protected internal virtual AsymmetricKeyEntry KeyEntry { get; set; }
 
-        public string ExtensionName => "PaloAlto";
-
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
             Logger.LogTrace($"Processing job with configuration: {JsonConvert.SerializeObject(jobConfiguration)}");
@@ -70,13 +68,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             return PerformManagement(jobConfiguration)
                 .GetAwaiter()
                 .GetResult();
-        }
-
-        private string ResolvePamField(string name, string value)
-        {
-            Logger.LogTrace($"Attempting to resolved PAM eligible field {name}");
-
-            return Resolver.Resolve(value);
         }
 
         private async Task<JobResult> PerformManagement(ManagementJobConfiguration config)
