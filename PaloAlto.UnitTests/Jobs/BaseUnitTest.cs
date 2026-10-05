@@ -29,6 +29,13 @@ public abstract class BaseUnitTest
     protected readonly Mock<IPaloAltoClientFactory> ClientFactoryMock = new();
     protected readonly IClientLoggerFactory LoggerFactory;
     protected readonly Mock<IPAMSecretResolver> PamResolverMock = new ();
+
+    protected const string TestClientMachine = "https://example-firewall-url.com";
+    protected const string FirewallStorePath = "/config/shared";
+    protected const string PanoramaStorePath =
+        "/config/devices/entry[@name='panorama1']/template/entry[@name='MyTemplate']/config/shared";
+    protected const string PanoramaVsysStorePath =
+        "/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']";
     
     protected BaseUnitTest(ITestOutputHelper output)
     {

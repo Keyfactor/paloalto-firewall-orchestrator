@@ -32,12 +32,7 @@ namespace PaloAlto.UnitTests.Jobs;
 public class ManagementTests : BaseUnitTest
 {
     private readonly Management _sut;
-
-    private const string FirewallStorePath = "/config/shared";
-    private const string PanoramaStorePath =
-        "/config/devices/entry[@name='panorama1']/template/entry[@name='MyTemplate']/config/shared";
-    private const string PanoramaVsysStorePath =
-        "/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']";
+    
     private const string PanoramaTemplateName = "MyTemplate";
     private const string TestAlias = "my-cert";
     private const string TestPfxPassword = "test-password";
