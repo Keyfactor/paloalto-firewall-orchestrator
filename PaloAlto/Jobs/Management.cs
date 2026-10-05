@@ -38,12 +38,10 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
     {
         private readonly IPAMSecretResolver _resolver;
         private readonly IPaloAltoClientFactory _clientFactory;
+        private readonly ILogger _logger;
         private readonly PemParser _pemParser;
 
         private IPaloAltoClient _client;
-
-
-        private ILogger _logger;
 
         public Management(IPAMSecretResolver resolver)
         {

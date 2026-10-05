@@ -34,10 +34,9 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
     public class Inventory : IInventoryJobExtension
     {
-        private ILogger _logger;
-
         private readonly IPAMSecretResolver _resolver;
         private readonly IPaloAltoClientFactory _clientFactory;
+        private readonly ILogger _logger;
 
         public Inventory(IPAMSecretResolver resolver)
         {
