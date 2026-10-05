@@ -989,6 +989,34 @@ public class ManagementTests : BaseUnitTest
     }
 
     #endregion
+    
+    // ── PAM resolution ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void ProcessJob_PamResolverCalledForServerPasswordAndUsername()
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks("Stack1");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack("Stack1")
+            .WithCredentials("raw-username", "raw-password")
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
+
+        _sut.ProcessJob(job);
+
+        PamResolverMock.Verify(r => r.Resolve("raw-password"), Times.Once);
+        PamResolverMock.Verify(r => r.Resolve("raw-username"), Times.Once);
+    }
 
     // ── Assertion helpers ────────────────────────────────────────────────────
 
