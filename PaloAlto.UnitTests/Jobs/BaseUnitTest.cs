@@ -35,7 +35,7 @@ public abstract class BaseUnitTest
         var services = new ServiceCollection()
             .AddLogging(b => b
                 .AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()))
-                .SetMinimumLevel(LogLevel.Debug))
+                .SetMinimumLevel(LogLevel.Trace))
             .BuildServiceProvider();
 
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
