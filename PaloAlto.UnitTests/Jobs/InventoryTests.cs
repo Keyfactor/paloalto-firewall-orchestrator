@@ -462,20 +462,6 @@ public class InventoryTests : BaseUnitTest
         return captured;
     }
 
-    // ── Assertion helpers ────────────────────────────────────────────────────
-
-    private static void AssertSuccess(JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
-
-    private static void AssertWarning(JobResult result)
-    {
-        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
-        Assert.NotEmpty(result.FailureMessage);
-    }
-
-    private static void AssertFailure(JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-
     // ── Helpers for the BuildInventoryItem throw path ────────────────────────
 
     private static string GenerateTestCertificatePem()

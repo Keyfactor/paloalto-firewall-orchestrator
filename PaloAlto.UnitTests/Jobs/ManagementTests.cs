@@ -1013,20 +1013,6 @@ public class ManagementTests : BaseUnitTest
         PamResolverMock.Verify(r => r.Resolve("raw-username"), Times.Once);
     }
 
-    // ── Assertion helpers ────────────────────────────────────────────────────
-
-    private static void AssertSuccess(Keyfactor.Orchestrators.Extensions.JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
-
-    private static void AssertWarning(Keyfactor.Orchestrators.Extensions.JobResult result)
-    {
-        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
-        Assert.NotEmpty(result.FailureMessage);
-    }
-
-    private static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
-
     // ── PFX generation ───────────────────────────────────────────────────────
 
     // Creates a BouncyCastle PKCS12 with a two-cert chain (EE + Root CA) stored under the given alias.

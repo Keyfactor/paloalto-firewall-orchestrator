@@ -13,12 +13,14 @@
 // limitations under the License.
 
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using MartinCostello.Logging.XUnit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PaloAlto.UnitTests.Fakes;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace PaloAlto.UnitTests.Jobs;
@@ -63,4 +65,18 @@ public abstract class BaseUnitTest
         
         LoggerFactory = loggerFactoryMock.Object;
     }
+    
+    // ── Assertion helpers ────────────────────────────────────────────────────
+
+    protected static void AssertSuccess(Keyfactor.Orchestrators.Extensions.JobResult result) =>
+        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
+
+    protected static void AssertWarning(Keyfactor.Orchestrators.Extensions.JobResult result)
+    {
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        Assert.NotEmpty(result.FailureMessage);
+    }
+
+    protected static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result) =>
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
 }
