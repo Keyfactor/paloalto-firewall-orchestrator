@@ -14,6 +14,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
@@ -155,4 +156,15 @@ public interface IPaloAltoClient
     /// <param name="storePath">The store path XPath identifying the target certificate store.</param>
     Task<ErrorSuccessResponse> ImportCertificate(string name, string passPhrase, byte[] bytes,
         string includeKey, string category, string storePath);
+
+    /// <summary>
+    /// Generates a certificate signing request (CSR) against Palo Alto (Panorama and Firewall compatible). To get
+    /// the generated CSR, use the GetCertificateByName API with the alias provided in the metadata.
+    /// The CSR will be generated and stored in the PAN-OS config, but it will not be signed or exported.
+    /// You will need to submit the CSR to a CA for signing and then import the signed certificate
+    /// back into PAN-OS using the ImportCertificate API.
+    /// </summary>
+    /// <param name="metadata"></param>
+    /// <returns></returns>
+    Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata);
 }

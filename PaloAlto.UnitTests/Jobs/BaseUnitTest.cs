@@ -77,6 +77,15 @@ public abstract class BaseUnitTest
         Assert.NotEmpty(result.FailureMessage);
     }
 
-    protected static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result) =>
+    protected static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result,
+        string? expectedMessage = null)
+    {
         Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        
+        if (expectedMessage != null)
+        {
+            Assert.Contains(expectedMessage, result.FailureMessage);
+        }
+    }
+        
 }
