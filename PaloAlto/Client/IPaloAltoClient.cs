@@ -96,6 +96,14 @@ public interface IPaloAltoClient
     Task<string> GetCertificateByName(string name);
 
     /// <summary>
+    /// Exports a named certificate signing request from PAN-OS in PKCS#10 format
+    /// Used during re-enrollment to get the certificate signing request to send to Keyfactor Command
+    /// </summary>
+    /// <param name="name">The certificate name (alias) as it appears in PAN-OS config.</param>
+    /// <returns>The PKCS#10 certificate signing request (CSR)</returns>
+    Task<string> GetCertificateSigningRequestByName(string name);
+
+    /// <summary>
     /// Deletes a certificate entry from the PAN-OS candidate config at the given store path.
     /// Changes are not applied to the running config until a subsequent commit.
     /// </summary>
@@ -159,12 +167,12 @@ public interface IPaloAltoClient
 
     /// <summary>
     /// Generates a certificate signing request (CSR) against Palo Alto (Panorama and Firewall compatible). To get
-    /// the generated CSR, use the GetCertificateByName API with the alias provided in the metadata.
+    /// the generated CSR, use the GetCertificateSigningRequestByName API with the alias provided in the metadata.
     /// The CSR will be generated and stored in the PAN-OS config, but it will not be signed or exported.
-    /// You will need to submit the CSR to a CA for signing and then import the signed certificate
+    /// You will need to submit the CSR to Keyfactor Command for signing and then import the signed certificate
     /// back into PAN-OS using the ImportCertificate API.
     /// </summary>
-    /// <param name="metadata"></param>
+    /// <param name="metadata">The metadata of the CSR to generate (e.g., algorithm, subject, alias, SANs)</param>
     /// <returns></returns>
     Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata);
 }

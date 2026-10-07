@@ -1,4 +1,5 @@
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Moq;
@@ -8,6 +9,21 @@ namespace PaloAlto.UnitTests.Fakes;
 public sealed class FakePaloAltoClient
 {
     public readonly Mock<IPaloAltoClient> ClientMock = new();
+
+    public string FakeCsr => @"-----BEGIN CERTIFICATE REQUEST-----
+MIICKjCCAZMCAQAwgZgxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJPSDEVMBMGA1UE
+BwwMSW5kZXBlbmRlbmNlMRIwEAYDVQQKDAlLZXlmYWN0b3IxFTATBgNVBAsMDElu
+dGVncmF0aW9uczEZMBcGA1UEAwwQYmxhaC5leGFtcGxlLmNvbTEfMB0GCSqGSIb3
+DQEJARYQamRvZUBleGFtcGxlLmNvbTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkC
+gYEAqiHDwGCfke5htDhM7tbvaI381hS1jR/fNauhHn2fFUqgXo5NJJ2YfNp/Yhnr
+96EMAhSkH2rbhTeXqwxkplw0YDd/3AX+Iu6Wt7dNYZPXcDN4kuA+y0ARX3YJSZJ3
+drYkcCfuS13XwJSXJeP2fJzxQY+NotSlFtxfUiNYD0TvSssCAwEAAaBRME8GCSqG
+SIb3DQEJDjFCMEAwPgYDVR0RBDcwNYINKi5leGFtcGxlLmNvbYcEe3t7e4ENaEBl
+eGFtcGxlLmNvbYEPZm9vQGV4YW1wbGUuY29tMA0GCSqGSIb3DQEBCwUAA4GBAA/H
+cNL6kKJqQnFpTA3DmF5ep43EBW2ItW2yvZC5jP7N3oJywiJT8Nd+0Ix4Oi3YLaLQ
+hEKmhUmLqxn1lHktFm6qZA2ik49vec8iG1biOnyjZ3ezsJ6hXPCXmHbyZ5erXMqT
+iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
+-----END CERTIFICATE REQUEST-----";
 
     // ── Inventory: Certificate list ──────────────────────────────────────────
 
@@ -19,6 +35,13 @@ public sealed class FakePaloAltoClient
             });
 
     public void WithNoCertificates() => WithCertificates();
+    
+    public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
+    
+    /// <summary>
+    /// Fakes the Palo Alto client to return a static CSR
+    /// </summary>
+    public void HasCsr() => WithCsr(FakeCsr);
 
     // ── Inventory: Trusted roots ─────────────────────────────────────────────
 
@@ -174,6 +197,16 @@ public sealed class FakePaloAltoClient
     public void CommitTemplateStackFails(string text = "push to template stack failed") => ClientMock
         .Setup(c => c.CommitTemplateStack(It.IsAny<string>())).ReturnsAsync(new CommitResponseResult()
             { IsSuccess = false, Message = text });
+    
+    // ── Generate Certificate Request ─────────────────────────────────────────
+
+    public void GenerateCertificateCalledWithKeySizeAndType(string keyType, int keySize)
+    {
+        ClientMock
+            .Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
+                c.Algorithm != null && c.Algorithm.Algorithm == keyType && c.Algorithm.Size == keySize
+            )));
+    }
 
     // ── Management: Job polling ──────────────────────────────────────────────
 
