@@ -665,7 +665,7 @@ public class ReenrollmentTests : BaseUnitTest
         JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
         AssertSuccess(result);
         
-        FakeClient.GenerateCertificateCalledWithKeySizeAndType("RSA", keySize);
+        FakeClient.GenerateCertificateCalledWithKeySizeAndType("RSA", keySize.ToString());
     }
     
     [Theory]
@@ -683,7 +683,7 @@ public class ReenrollmentTests : BaseUnitTest
         JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
         AssertSuccess(result);
         
-        FakeClient.GenerateCertificateCalledWithKeySizeAndType("ECDSA", keySize);
+        FakeClient.GenerateCertificateCalledWithKeySizeAndType("ECDSA", keySize.ToString());
     }
     
     [Theory]
@@ -702,7 +702,7 @@ public class ReenrollmentTests : BaseUnitTest
         JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
         AssertSuccess(result);
         
-        FakeClient.GenerateCertificateCalledWithKeySizeAndType(mappedKeyType, keySize);
+        FakeClient.GenerateCertificateCalledWithKeySizeAndType(mappedKeyType, keySize.ToString());
     }
     
     [Fact]

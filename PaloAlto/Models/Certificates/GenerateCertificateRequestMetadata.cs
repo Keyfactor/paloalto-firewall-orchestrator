@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -90,13 +91,13 @@ public class GenerateCertificateRequestMetadata
 public abstract class GenerateCertificateRequestAlgorithm
 {
     public string Algorithm { get; set; }
-    public int Size { get; init; }
+    public string Size { get; init; }
     public abstract XElement ToElement();
 }
 
 public class RsaAlgorithm : GenerateCertificateRequestAlgorithm
 {
-    public RsaAlgorithm(int size)
+    public RsaAlgorithm(string size)
     {
         Algorithm = "RSA";
         Size = size;
@@ -107,7 +108,7 @@ public class RsaAlgorithm : GenerateCertificateRequestAlgorithm
 
 public class EcdsaAlgorithm : GenerateCertificateRequestAlgorithm
 {
-    public EcdsaAlgorithm(int size)
+    public EcdsaAlgorithm(string size)
     {
         Algorithm = "ECDSA";
         Size = size;

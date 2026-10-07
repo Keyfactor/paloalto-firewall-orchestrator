@@ -202,11 +202,11 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
         switch (keyType)
         {
             case "RSA":
-                result = new RsaAlgorithm((int)keySize!);
+                result = new RsaAlgorithm($"{keySize}");
                 break;
             case "ECC":
             case "ECDSA":
-                result = new EcdsaAlgorithm((int)keySize!);
+                result = new EcdsaAlgorithm($"{keySize}");
                 break;
             default:
                 throw new ReenrollmentException($"Unmapped key type '{keyType}'");

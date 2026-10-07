@@ -185,7 +185,7 @@ public class GenerateCertificateRequestMetadataTests
     [Fact]
     public void GetCommand_WhenAlgorithmIsRsa_OutputsAlgorithm()
     {
-        int size = 2048;
+        string size = "2048";
         GenerateCertificateRequestMetadata metadata = new();
         metadata.Algorithm = new RsaAlgorithm(size);
         
@@ -196,7 +196,7 @@ public class GenerateCertificateRequestMetadataTests
     [Fact]
     public void GetCommand_WhenAlgorithmIsEcdsa_OutputsAlgorithm()
     {
-        int size = 256;
+        string size = "256";
         GenerateCertificateRequestMetadata metadata = new();
         metadata.Algorithm = new EcdsaAlgorithm(size);
         

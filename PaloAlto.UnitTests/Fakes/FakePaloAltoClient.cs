@@ -200,7 +200,7 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
     
     // ── Generate Certificate Request ─────────────────────────────────────────
 
-    public void GenerateCertificateCalledWithKeySizeAndType(string keyType, int keySize)
+    public void GenerateCertificateCalledWithKeySizeAndType(string keyType, string keySize)
     {
         ClientMock
             .Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
