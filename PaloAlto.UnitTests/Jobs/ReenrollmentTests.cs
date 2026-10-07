@@ -429,6 +429,153 @@ public class ReenrollmentTests : BaseUnitTest
 
     #endregion
 
+    #region Commit Behavior
+
+    [Fact]
+    public void ProcessJob_WhenImportSucceeds_FirewallPath_DoesNotCommitToTemplate()
+    {
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(FirewallStorePath)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertSuccess(result);
+        // Firewall paths do not trigger commit-all.
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenImportSucceeds_PanoramaPath_CommitsToTemplate()
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaStorePath)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenDeviceGroupDefined_CommitsToDeviceGroupInsteadOfTemplate()
+    {
+        var deviceGroup = "Group1";
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasDeviceGroups(deviceGroup);
+        FakeClient.CommitDeviceGroupSucceeds();
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaStorePath)
+            .WithDeviceGroup(deviceGroup)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(deviceGroup), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenCommitFails_ReturnsFailure()
+    {
+        SetupHappyPath();
+        FakeClient.CommitFails("device rejected the commit");
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(FirewallStorePath)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertFailure(result);
+        Assert.Contains("commit to the device failed", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenCommitHasJobId_JobCompletesOk_ReturnsSuccess()
+    {
+        const string jobId = "42";
+        SetupHappyPath();
+        FakeClient.CommitSucceedsWithJobId(jobId);
+        FakeClient.JobCompletesSuccessfully(jobId);
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(FirewallStorePath)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.GetJobStatus(jobId), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenCommitHasJobId_JobFails_ReturnsFailure()
+    {
+        const string jobId = "99";
+        SetupHappyPath();
+        FakeClient.CommitSucceedsWithJobId(jobId);
+        FakeClient.JobFails(jobId);
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(FirewallStorePath)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertFailure(result);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Failure")]
+    public void ProcessJob_WhenTemplatePushFails_DefaultOrFailureBehavior_ReturnsFailure(string? pushFailureBehavior)
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        SetupHappyPath();
+        FakeClient.CommitTemplateFails();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaStorePath)
+            .WithPushFailureBehavior(pushFailureBehavior)
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertFailure(result);
+        Assert.Contains("push to template failed", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenTemplatePushFails_WarningBehavior_ReturnsWarning()
+    {
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        SetupHappyPath();
+        FakeClient.CommitTemplateFails();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaStorePath)
+            .WithPushFailureBehavior("Warning")
+            .Build();
+
+        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertWarning(result);
+        Assert.Contains("push to template failed", result.FailureMessage);
+    }
+
+    #endregion
+
     #region Alias Validation
 
     [Fact]

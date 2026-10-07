@@ -46,6 +46,7 @@ public sealed class ReenrollmentJobBuilder
     public ReenrollmentJobBuilder WithStorePath(string path) { _storePath = path; return this; }
     public ReenrollmentJobBuilder WithDeviceGroup(string group) { _deviceGroup = group; return this; }
     public ReenrollmentJobBuilder WithTemplateStack(string stack) { _templateStack = stack; return this; }
+    public ReenrollmentJobBuilder WithPushFailureBehavior(string? value) { _pushFailureBehavior = value; return this; }
     public ReenrollmentJobBuilder WithCredentials(string username, string password) { _serverUsername = username; _serverPassword = password; return this; }
     public ReenrollmentJobBuilder WithAlias(string alias) { _alias = alias; return this; }
     
