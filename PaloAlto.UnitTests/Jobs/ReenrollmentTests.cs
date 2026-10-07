@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Security.Cryptography.X509Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Extensions;
 using Moq;
 using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Generators;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,11 +31,16 @@ public class ReenrollmentTests : BaseUnitTest
     private readonly Reenrollment _sut;
     private readonly Mock<SubmitReenrollmentCSR> _submitReenrollmentCSRMock = new ();
     private const string PanoramaTemplateName = "MyTemplate";
+
+    private static readonly X509Certificate2 _testCertificate =
+        CertificateGenerator.GenerateCertificate("example.com", "foobar", true);
     
     public ReenrollmentTests(ITestOutputHelper output) : base(output)
     {
         _sut = new Reenrollment(PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory);
     }
+
+    #region Processing
 
     [Fact]
     public void SubmitJob_WhenReenrollmentIsSuccessful_ReturnsSuccess()
@@ -40,13 +48,48 @@ public class ReenrollmentTests : BaseUnitTest
         SetupHappyPath();
 
         ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
-            .WithClientMachine(TestClientMachine)
-            .WithStorePath(FirewallStorePath)
             .Build();
         
         JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
         AssertSuccess(result);
     }
+
+    #endregion
+    
+    #region CSR Submission
+    
+    [Fact]
+    public void SubmitJob_WhenCsrIsGenerated_SubmitsCsrToKeyfactorCommand()
+    {
+        SetupHappyPath();
+        string csr = FakeClient.FakeCsr;
+        FakeClient.WithCsr(csr);
+
+        ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
+            .Build();
+        
+        _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        
+        // The method delegate sends the CSR to Keyfactor Command
+        _submitReenrollmentCSRMock.Verify(p => p.Invoke(csr), Times.Once);
+    }
+    
+    [Fact]
+    public void SubmitJob_WhenReenrollmentSubmissionReturnsNull_FailsJob()
+    {
+        SetupHappyPath();
+        _submitReenrollmentCSRMock
+            .Setup(p => p.Invoke(It.IsAny<string>()))
+            .Returns((X509Certificate2)null);
+
+        ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
+            .Build();
+        
+        JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        AssertFailure(result, "CSR submission failed");
+    }
+    
+    #endregion
     
     #region SubjectText Parsing
 
@@ -283,7 +326,109 @@ public class ReenrollmentTests : BaseUnitTest
     }
     
     #endregion
-    
+
+    #region Certificate Import
+
+    [Fact]
+    public void ProcessJob_WhenCertificateIsReturnedFromCommand_ImportsItUnderTheSameAlias()
+    {
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithAlias("my-cert")
+            .Build();
+
+        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        AssertSuccess(result);
+
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            "my-cert", null, It.IsAny<byte[]>(), "no", "certificate", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenCertificateIsReturnedFromCommand_ImportsAfterCsrIsSubmitted()
+    {
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .Build();
+
+        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        FakeClient.ClientMock
+            .Verify(p => p.ImportCertificate(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())
+                , Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenImportFails_ReturnsFailure()
+    {
+        SetupHappyPath();
+        FakeClient.ImportFails("device rejected the certificate");
+
+        var job = new ReenrollmentJobBuilder().Build();
+
+        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertFailure(result, "device rejected the certificate");
+    }
+
+    #endregion
+
+    #region Panorama Target Sequencing
+
+    [Fact]
+    public void ProcessJob_WhenStorePathIsPanoramaVsysFormat_SetsPanoramaTargetBeforeImporting()
+    {
+        SetupHappyPath();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.SetPanoramaTargetSucceeds();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaVsysStorePath)
+            .Build();
+
+        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        AssertSuccess(result);
+
+        FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(PanoramaVsysStorePath), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenStorePathIsNotPanoramaVsysFormat_DoesNotSetPanoramaTarget()
+    {
+        SetupHappyPath();
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(FirewallStorePath)
+            .Build();
+
+        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        AssertSuccess(result);
+
+        FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenSetPanoramaTargetFails_ReturnsFailureAndDoesNotImport()
+    {
+        SetupHappyPath();
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.SetPanoramaTargetFails("could not reach Panorama target");
+
+        var job = new ReenrollmentJobBuilder()
+            .WithStorePath(PanoramaVsysStorePath)
+            .Build();
+
+        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+
+        AssertFailure(result, "Failed to set target for Panorama");
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    #endregion
+
     #region Alias Validation
 
     [Fact]
@@ -457,5 +602,8 @@ public class ReenrollmentTests : BaseUnitTest
         FakeClient.ImportSucceeds();
         FakeClient.CommitSucceeds();
         FakeClient.CommitTemplateSucceeds();
+        
+        _submitReenrollmentCSRMock.Setup(p => p.Invoke(It.IsAny<string>()))
+            .Returns(_testCertificate);
     }
 }

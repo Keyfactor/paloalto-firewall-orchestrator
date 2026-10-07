@@ -277,6 +277,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<string> GetCertificateSigningRequestByName(string name)
+        {
+            try
+            {
+                var uri = $"/api/?type=export&category=certificate&certificate-name={name}&include-key=no&format=pkcs10&key={ApiKey}";
+                return await GetResponseAsync(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateSigningRequestByName: {e.Message}");
+                throw;
+            }
+        }
+
 
         public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath)
         {
