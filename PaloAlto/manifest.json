@@ -8,6 +8,10 @@
 			"CertStores.PaloAlto.Management": {
 				"assemblypath": "PaloAlto.dll",
 				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Management"
+			},
+			"CertStores.PaloAlto.Reenrollment": {
+				"assemblypath": "PaloAlto.dll",
+				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Reenrollment"
 			}
 		}
 	}
