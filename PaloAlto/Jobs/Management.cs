@@ -13,16 +13,11 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Exceptions;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -50,11 +45,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             _pemParser = new PemParser(LoggerFactory);
         }
 
-        private string ServerPassword { get; set; }
-
         private JobProperties StoreProperties { get; set; }
-
-        private string ServerUserName { get; set; }
 
         protected internal virtual AsymmetricKeyEntry KeyEntry { get; set; }
 
@@ -75,13 +66,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 Logger.MethodEntry();
-                ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
-                ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
 
-                Logger.LogTrace("Creating PaloAlto Client for Management job");
-
-                _client = ClientFactory.Create(config.CertificateStoreDetails.ClientMachine, ServerUserName,
-                    ServerPassword);
+                _client = CreatePanoramaClient(config.CertificateStoreDetails, config);
 
                 Logger.LogTrace("Validating Store Properties for Management Job");
 
@@ -163,7 +149,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 }
                 
                 Logger.LogTrace("Attempting to Commit Changes for Removal Job...");
-                var commit = await CommitChanges(config);
+                var commit = await CommitChanges(StoreProperties, config.CertificateStoreDetails, _client);
                 if (commit.HardFailure != null)
                 {
                     return ReturnJobResult(config, warnings, false, commit.HardFailure);
@@ -190,32 +176,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     FailureMessage = $"PerformRemoval: {LogHandler.FlattenException(e)}"
                 };
             }
-        }
-
-
-        private async Task<bool> SetPanoramaTarget(ManagementJobConfiguration config)
-        {
-            Logger.MethodEntry();
-            if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath))
-            {
-                Logger.LogTrace("Trying to Set Panorama Target for Template Vsys Configuration");
-                var targetResult = await _client.SetPanoramaTarget(config.CertificateStoreDetails.StorePath);
-                Logger.LogTrace("Completed Set Panorama Target for Template Vsys Configuration");
-                if (targetResult != null &&
-                    targetResult.Status.Equals("error", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    {
-                        var error = targetResult.LineMsg != null
-                            ? Validators.BuildPaloError(targetResult)
-                            : "Could not retrieve error results";
-                        Logger.LogTrace($"Could not set target for Panorama vsys {error}");
-                        return false;
-                    }
-                }
-            }
-
-            Logger.MethodExit();
-            return true;
         }
 
         private async Task<bool> CheckForDuplicate(ManagementJobConfiguration config,
@@ -260,7 +220,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                     Logger.LogTrace(
                         "Palo Alto Client Created");
 
-                    if (!(await SetPanoramaTarget(config)))
+                    if (!(await SetPanoramaTarget(config.CertificateStoreDetails, _client)))
                     {
                         return new JobResult
                         {
@@ -321,7 +281,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 
                         //4. Try to commit to firewall or Palo Alto then Push to the devices
                         Logger.LogTrace("Attempting to Commit Changes, no errors were found");
-                        var commit = await CommitChanges(config);
+                        var commit = await CommitChanges(StoreProperties, config.CertificateStoreDetails, _client);
                         if (commit.HardFailure != null)
                         {
                             return ReturnJobResult(config, warnings, false, commit.HardFailure);
@@ -371,7 +331,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 DeleteResult = null,
             };
             
-            if (!(await SetPanoramaTarget(config)))
+            if (!(await SetPanoramaTarget(config.CertificateStoreDetails, _client)))
             {
                 result.DeleteResult = ReturnJobResult(config, warnings, false, "Failed to Set Target for Panorama");
                 return result;
@@ -452,154 +412,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
                 JobHistoryId = config.JobHistoryId,
                 FailureMessage = $"Result returned error {errorMessage}"
             };
-        }
-
-        private void LogResponse<T>(T content)
-        {
-            var resWriter = new StringWriter();
-            var resSerializer = new XmlSerializer(typeof(T));
-            resSerializer.Serialize(resWriter, content);
-            Logger.LogTrace($"Serialized Xml Response {resWriter}");
-        }
-
-        private async Task<CommitResult> CommitChanges(ManagementJobConfiguration config)
-        {
-            Logger.MethodEntry();
-            var commitResponse = await _client.GetCommitResponse();
-            Logger.LogTrace("Got client commit response, attempting to log it");
-            LogResponse(commitResponse);
-
-            if (commitResponse.Status != "success")
-            {
-                return new CommitResult($"The commit to the device failed. Failure: {commitResponse.Text}", null);
-            }
-
-            Logger.LogTrace("Commit response shows success");
-
-            // Not every commit action comes with a Job ID (having a Job ID means Palo Alto is processing it asynchronously).
-            if (commitResponse.Result?.HasJobId ?? false)
-            {
-                // Poll the Panorama API to determine whether the initial commit job finishes
-                // (Panorama has a limit to the number of queued jobs it allows, so we want to make sure this one completes).
-                Logger.LogTrace($"Waiting for job ID {commitResponse.Result.JobId} to finish");
-                var jobPoller = new PanoramaJobPoller(_client);
-                var completionResult = await jobPoller.WaitForJobCompletion(commitResponse.Result.JobId);
-                
-                if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
-                {
-                    return new CommitResult($"The commit to the device failed. Failure: {completionResult.FailureMessage}", null);
-                }
-            }
-
-            //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices
-            var deviceGroup = StoreProperties?.DeviceGroup;
-            Logger.LogTrace($"Device Group {deviceGroup}");
-
-            var templateStack = StoreProperties?.TemplateStack;
-            Logger.LogTrace($"Template Stack {templateStack}");
-
-            //If there is a template and device group then push to all firewall devices because it is Panorama
-            if (Validators.IsValidPanoramaVsysFormat(config.CertificateStoreDetails.StorePath) ||
-                Validators.IsValidPanoramaFormat(config.CertificateStoreDetails.StorePath))
-            {
-                var failures = await CommitToPanorama(config.CertificateStoreDetails.StorePath, deviceGroup, templateStack);
-                if (!string.IsNullOrEmpty(failures))
-                {
-                    if (ShouldFailJobIfPushFails(StoreProperties))
-                    {
-                        Logger.LogInformation($"One or more pushes to a Panorama target failed. Marking the job as Failed");
-                        return new CommitResult($"The commit to the device failed. Failure: {failures}", null);
-                    }
-                    
-                    Logger.LogInformation($"One or more pushes to a Panorama target failed. Marking the job as Warning");
-                
-                    return new CommitResult(null, failures);
-                }
-            }
-            
-            Logger.LogInformation($"Commits to Panorama and/or firewall devices completed successfully.");
-
-            return new CommitResult(null, null);
-        }
-
-        private record CommitResult(string? HardFailure = null, string? Warning = null);
-
-        private async Task<string> CommitToPanorama(string storePath, string deviceGroup, string templateStack)
-        {
-            Logger.MethodEntry();
-            
-            var failures = new List<string>();
-
-            var deviceGroups = Validators.SplitResourceList(deviceGroup);
-            if (deviceGroups.Any())
-            {
-                // For each device group, try to commit changes. If any fail, capture the failures and bubble it to the caller to decide how to treat
-                // the failure
-                foreach (var group in deviceGroups)
-                {
-                    var warning = await TryCommit($"device group '{group}'", () => _client.CommitDeviceGroup(group));
-                    if (warning != null) failures.Add(warning);
-                }
-            }
-            else
-            {
-                // If no device groups are configured, commit directly to the template (specified by the store path)
-                var warning = await TryCommit($"template at '{storePath}'", () => _client.CommitTemplate(storePath));
-                if (warning != null) failures.Add(warning);
-            }
-
-            var templateStacks = Validators.SplitResourceList(templateStack);
-            foreach (var stack in templateStacks)
-            {
-                var warning = await TryCommit($"template stack '{stack}'", () => _client.CommitTemplateStack(stack));
-                if (warning != null) failures.Add(warning);
-            }
-
-            Logger.MethodExit();
-
-            return string.Join("; ", failures);
-        }
-        
-        /// <summary>
-        /// This function accepts a delegate to perform a commit action against Panorama. If a commit fails, we note
-        /// the failure and acknowledge it as a warning on the management job.
-        /// </summary>
-        /// <param name="description"></param>
-        /// <param name="commit"></param>
-        /// <returns></returns>
-        private async Task<string?> TryCommit(string description, Func<Task<CommitResponseResult>> commit)
-        {
-            Logger.MethodEntry();
-            
-            Logger.LogDebug("Committing changes to {Description}", description);
-            var result = await commit();
-
-            if (result.IsSuccess)
-            {
-                Logger.LogInformation("Successfully committed changes to {Description}", description);
-                return null;
-            }
-
-            Logger.LogWarning("Failed to commit to {Description}: {Message}", description, result.Message);
-            Logger.MethodExit();
-            
-            return result.Message;
-        }
-
-        /// <summary>
-        /// Determines whether the job should return a Failure if Panorama fails to commit to a template, device group, or template stack.
-        /// By default, the job should treat commit failures as a hard failure (and therefore retry). But we will allow the customer
-        /// to decide whether the job should treat this as a Warning.
-        /// </summary>
-        /// <param name="properties"></param>
-        /// <returns></returns>
-        private bool ShouldFailJobIfPushFails(JobProperties properties)
-        {
-            Logger.LogTrace($"Checking if job should fail if push fails. Properties.PushFailureBehavior: {properties?.PushFailureBehavior}");
-            var shouldFail = properties is null || string.IsNullOrWhiteSpace(properties.PushFailureBehavior) ||
-                   properties.PushFailureBehavior != "Warning";
-            Logger.LogDebug($"Should fail job if push fails? {shouldFail}");
-            return shouldFail;
         }
     }
 }

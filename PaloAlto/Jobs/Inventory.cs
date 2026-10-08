@@ -44,8 +44,6 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         }
 
         private IPaloAltoClient _client;
-        private string ServerPassword { get; set; }
-        private string ServerUserName { get; set; }
 
         private JobProperties StoreProperties { get; set; }
 
@@ -67,14 +65,8 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             try
             {
                 Logger.MethodEntry(LogLevel.Debug);
-                ServerPassword = ResolvePamField("ServerPassword", config.ServerPassword);
-                ServerUserName = ResolvePamField("ServerUserName", config.ServerUsername);
-                Logger.LogTrace("Got Server User Name and Password");
-
-                Logger.LogTrace("Creating PaloAlto Client for Inventory job");
-
-                _client = ClientFactory.Create(config.CertificateStoreDetails.ClientMachine, ServerUserName,
-                    ServerPassword);
+                
+                _client = CreatePanoramaClient(config.CertificateStoreDetails, config);
                 
                 Logger.LogTrace("Validating Store Properties for Inventory Job");
 
