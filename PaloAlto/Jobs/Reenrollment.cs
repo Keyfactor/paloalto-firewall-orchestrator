@@ -21,6 +21,7 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -162,11 +163,9 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
 
         GenerateCertificateRequestMetadata metadata = GenerateCsrMetadata(config, subjectInformation, algorithm);
 
-        Logger.LogDebug($"Sending CSR metadata to PaloAlto client for alias {metadata.Alias}");
+        await GenerateCertificateRequest(metadata);
         
-        await _client.GenerateCertificateRequest(metadata);
-        
-        Logger.LogDebug($"Successfully generated CSR. Fetching CSR from PaloAlto client for alias {metadata.Alias}");
+        Logger.LogDebug($"Fetching CSR from PaloAlto client for alias {metadata.Alias}");
         
         string csr = await _client.GetCertificateSigningRequestByName(metadata.Alias);
         
@@ -271,6 +270,25 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
         
         Logger.LogDebug($"Successfully generated CSR Metadata: {JsonConvert.SerializeObject(metadata)}");
         return metadata;
+    }
+
+    private async Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Sending CSR metadata to PaloAlto client for alias {metadata.Alias}");
+        
+        ErrorSuccessResponse response = await _client.GenerateCertificateRequest(metadata);
+        if (response.Status.Equals("error", StringComparison.InvariantCultureIgnoreCase))
+        {
+            string errorMsg = response.LineMsg != null
+                ? Validators.BuildPaloError(response)
+                : "Could not retrieve error results";
+            
+            throw new ReenrollmentException($"Unable to generate a CSR for alias {metadata.Alias}: {errorMsg}");
+        }
+        
+        Logger.LogDebug($"Successfully generated CSR.");
+        Logger.MethodExit();
     }
 
     private X509Certificate2 GenerateCertificateFromCsr(string csr, SubmitReenrollmentCSR submitReenrollmentUpdate)

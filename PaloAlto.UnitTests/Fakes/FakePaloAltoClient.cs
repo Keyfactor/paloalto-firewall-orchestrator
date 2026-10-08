@@ -208,6 +208,14 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
             )));
     }
 
+    public void GenerateCertificateSucceeds() => ClientMock
+        .Setup(p => p.GenerateCertificateRequest(It.IsAny<GenerateCertificateRequestMetadata>()))
+        .ReturnsAsync(Ok());
+    
+    public void GenerateCertificateFails(string message) => ClientMock
+        .Setup(p => p.GenerateCertificateRequest(It.IsAny<GenerateCertificateRequestMetadata>()))
+        .ReturnsAsync(Error(message));
+
     // ── Management: Job polling ──────────────────────────────────────────────
 
     public void JobCompletesSuccessfully(string jobId) =>

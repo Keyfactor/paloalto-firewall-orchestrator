@@ -56,6 +56,24 @@ public class ReenrollmentTests : BaseUnitTest
 
     #endregion
     
+    #region Generate Certificate
+
+    [Fact]
+    public async Task SubmitJob_WhenCertificateGenerateRequestFails_FailsJob()
+    {
+        string errorMessage = "Invalid paramerter for number of bits"; // This failure can surface when key size is invalid
+        SetupHappyPath();
+        FakeClient.GenerateCertificateFails(errorMessage);
+        
+        ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
+            .Build();
+
+        JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        AssertFailure(result, errorMessage);
+    }
+    
+    #endregion
+    
     #region CSR Submission
     
     [Fact]
@@ -749,6 +767,7 @@ public class ReenrollmentTests : BaseUnitTest
         FakeClient.ImportSucceeds();
         FakeClient.CommitSucceeds();
         FakeClient.CommitTemplateSucceeds();
+        FakeClient.GenerateCertificateSucceeds();
         
         _submitReenrollmentCSRMock.Setup(p => p.Invoke(It.IsAny<string>()))
             .Returns(_testCertificate);

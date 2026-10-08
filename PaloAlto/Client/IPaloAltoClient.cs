@@ -174,5 +174,5 @@ public interface IPaloAltoClient
     /// </summary>
     /// <param name="metadata">The metadata of the CSR to generate (e.g., algorithm, subject, alias, SANs)</param>
     /// <returns></returns>
-    Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata);
+    Task<ErrorSuccessResponse> GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata);
 }

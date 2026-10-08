@@ -388,12 +388,14 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
-        public async Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata)
+        public async Task<ErrorSuccessResponse> GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata)
         {
             try
             {
-                string uri = $"/api/?type=op&cmd={metadata.GetCommand()}&key={ApiKey}";
-                await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+                string uri = $"/api/?type=op&cmd={metadata.GetCommand()}";
+                _logger.LogDebug($"GenerateCertificateRequest URI: {uri}");
+                ErrorSuccessResponse response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync($"{uri}&key={ApiKey}"));
+                return response;
             }
             catch (Exception e)
             {
