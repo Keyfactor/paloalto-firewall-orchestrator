@@ -56,7 +56,7 @@ public class ReenrollmentTests : BaseUnitTest
 
     #endregion
     
-    #region Generate Certificate
+    #region CSR Generation
 
     [Fact]
     public async Task SubmitJob_WhenCertificateGenerateRequestFails_FailsJob()
