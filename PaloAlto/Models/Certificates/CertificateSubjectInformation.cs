@@ -48,7 +48,7 @@ public class CertificateSubjectInformation
             var oid = (DerObjectIdentifier)oids[i];
             var attr = new SubjectAttribute(
                 oid.Id,
-                X509Name.DefaultSymbols[oid] as string,
+                X509Name.DefaultSymbols.TryGetValue(oid, out var typeName) ? typeName : null,
                 (string)values[i],
                 i,
                 IsMultiValuedRdn: false); // see note below on RDN grouping
@@ -109,7 +109,7 @@ public class CertificateSubjectInformation
     public IReadOnlyList<SubjectAttribute> Email => GetValues(X509Name.EmailAddress.Id);
 
     private static string ResolveOid(string oidOrName) =>
-        X509Name.DefaultLookup[oidOrName.ToLowerInvariant()] is DerObjectIdentifier oid
+        X509Name.DefaultLookup.TryGetValue(oidOrName.ToLowerInvariant(), out var oid)
             ? oid.Id
             : oidOrName; // assume caller passed a raw OID string already
 }

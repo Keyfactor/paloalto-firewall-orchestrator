@@ -23,13 +23,6 @@ public sealed class ReenrollmentJobBuilder
     private string _keyType = "RSA";
     private int _keySize = 1024;
     private string _subjectText = "CN=test.example.com, O=TestOrg, OU=TestOU, L=TestCity, ST=TestState, C=US";
-
-    private string _commonName = "test.example.com";
-    private string _organization = "TestOrg";
-    private string _organizationUnit = "TestOU";
-    private string _locality = "TestCity";
-    private string _state = "TestState";
-    private string _country = "US";
     
     private string _storePath = "/config/shared";
     private string _clientMachine = "firewall.example.com";
