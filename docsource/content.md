@@ -18,7 +18,7 @@ This integration has been tested and verified against the following PAN-OS versi
 Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
 
 ## Release 2.5.1 Update on Alias Constraints
-**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
+**Important Note** For management / re-enrollment jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
 
 If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
 ```
@@ -39,7 +39,7 @@ Certificate alias 'alias' is too long, it must not be more than 31 characters. C
 
 ### Push Failure Behavior
 
-When a Panorama management job completes, the integration performs a two-phase commit:
+When a Panorama management / re-enrollment job completes, the integration performs a two-phase commit:
 
 1. **Phase 1 — Commit to Panorama**: Saves the candidate configuration changes to Panorama's running config. This phase always returns a **Failure** result if unsuccessful, regardless of any store configuration, and the job will be retried by Keyfactor.
 
@@ -50,7 +50,7 @@ The **Push Failure Behavior** store property accepts two values:
 | Value | Job Result | Retry Triggered? | When to Use |
 |---|---|---|---|
 | `Failure` *(default)* | Failure | Yes | Use in most environments. Ensures the push to managed firewalls is confirmed before the job is marked complete. If the push fails, Keyfactor will automatically retry the job. |
-| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management job would cause unintended side effects. The failure message is still recorded in the job history. |
+| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management / re-enrollment job would cause unintended side effects. The failure message is still recorded in the job history. |
 
 > [!IMPORTANT]
 > Setting Push Failure Behavior to `Warning` means a failed push to a device group, template, or template stack **will not trigger a retry**. The certificate will be saved in Panorama's configuration, but managed firewalls may not receive the updated certificate until the next successful push. Ensure you have a plan to verify or manually trigger delivery in these cases.
@@ -61,7 +61,7 @@ If the Push Failure Behavior property is absent or blank, the integration defaul
 
 When Panorama processes a commit asynchronously, it returns a job ID. The integration polls that job until it reaches a terminal state (success or failure). Polling uses exponential backoff, starting at 10 seconds and capping at 90 seconds between polls.
 
-If a commit job does not complete within **60 minutes**, the integration stops polling and the management job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
+If a commit job does not complete within **60 minutes**, the integration stops polling and the management / re-enrollment job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
 
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
@@ -201,6 +201,37 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 *** 
 
 </details>
+
+## Re-Enrollment / ODKG
+
+Version 2.7.0 of this integration introduces support for re-enrollment, also known as [On-Device Key Generation (ODKG)](https://software.keyfactor.com/Core-Hosted/Current/Content/ReferenceGuide/On-Device-Key-Generation.htm). 
+
+### Supported Key Sizes / Types for ODKG
+As of writing, PAN-OS supports the following key types and sizes:
+- RSA
+    - 512
+    - 1024
+    - 2048
+    - 3072
+    - 4096
+    - **If your next-generation firewall is in FIPS-CC mode, RSA key sizes must be either 2048 or 3072 bits.**
+- ECC / ECDSA
+    - 256
+    - 384
+
+Reference: [Palo Alto Generate Certificate documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate)
+
+> [!IMPORTANT]
+> While this integration enforces the supported key types for ODKG, **this integration does not enforce key size restrictions for ODKG.** It is the responsibility of the user to ensure that the key sizes are compatible with their PAN-OS device and its configuration. PAN-OS will reject the request if the key size is not supported. Enrollment Pattern / Certificate Template configuration in Keyfactor Command can control the key size requirements for certificates issued through this integration.
+
+### Supported SANs
+As of writing, PAN-OS supports the following SANs:
+- DNS
+- IP
+- Email
+
+PAN-OS allows multiple SANs of each supported type to be included in a certificate. The ODKG flow in Keyfactor Command supports specifying these SANs during the re-enrollment process. SAN types other than DNS, IP and Email are not included in the CSR and will be missing from the issued certificate.
+
 
 ## Integration Tests
 
