@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -20,6 +21,7 @@ using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
@@ -28,6 +30,8 @@ using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Org.BouncyCastle.X509;
+using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 
@@ -35,14 +39,21 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
 {
     private IPaloAltoClient _client;
     private JobProperties StoreProperties { get; set; }
+    private readonly ICertificateChainService _certificateChainService;
+
+    private const string TrustChainWarning =
+        "Enrollment completed but the certificate's trust chain could not be built. " +
+        "Please verify the intermediate and root certificates are part of your system's trust store or have publicly available AIA information.";
 
     public Reenrollment(IPAMSecretResolver resolver) : base(resolver)
     {
+        _certificateChainService = new CertificateChainService();
     }
 
     public Reenrollment(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory,
-        IClientLoggerFactory loggerFactory) : base(resolver, clientFactory, loggerFactory)
+        IClientLoggerFactory loggerFactory, ICertificateChainService certificateChainService) : base(resolver, clientFactory, loggerFactory)
     {
+        _certificateChainService = certificateChainService;
     }
     
     public JobResult ProcessJob(ReenrollmentJobConfiguration jobConfiguration, SubmitReenrollmentCSR submitReenrollmentUpdate)
@@ -76,7 +87,7 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
             string csr = await GenerateCertificateSigningRequest(config);
             X509Certificate2 certificate = GenerateCertificateFromCsr(csr, submitReenrollmentUpdate);
 
-            JobResult? importFailure = await ImportSignedCertificate(config, certificate);
+            var (importFailure, trustChainBuilt) = await ImportSignedCertificate(config, certificate);
             if (importFailure != null)
             {
                 return importFailure;
@@ -93,13 +104,17 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
                 };
             }
 
-            if (!string.IsNullOrEmpty(commit.Warning))
+            var warnings = new List<string>();
+            if (!string.IsNullOrEmpty(commit.Warning)) warnings.Add(commit.Warning);
+            if (!trustChainBuilt) warnings.Add(TrustChainWarning);
+
+            if (warnings.Count > 0)
             {
                 return new JobResult
                 {
                     JobHistoryId = config.JobHistoryId,
                     Result = OrchestratorJobStatusJobResult.Warning,
-                    FailureMessage = commit.Warning
+                    FailureMessage = string.Join(" ", warnings)
                 };
             }
 
@@ -307,18 +322,28 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
         return certificate;
     }
 
-    private async Task<JobResult?> ImportSignedCertificate(ReenrollmentJobConfiguration config, X509Certificate2 certificate)
+    private async Task<(JobResult? Failure, bool TrustChainBuilt)> ImportSignedCertificate(ReenrollmentJobConfiguration config, X509Certificate2 certificate)
     {
         Logger.MethodEntry();
 
         if (!(await SetPanoramaTarget(config.CertificateStoreDetails, _client)))
         {
-            return new JobResult
+            return (new JobResult
             {
                 JobHistoryId = config.JobHistoryId,
                 Result = OrchestratorJobStatusJobResult.Failure,
                 FailureMessage = "Failed to set target for Panorama"
-            };
+            }, false);
+        }
+
+        var collection = _certificateChainService.BuildCertificateCollection(
+            new X509CertificateParser().ReadCertificate(certificate.RawData));
+        var chainCerts = collection.ChainCerts?.ToList();
+        bool trustChainBuilt = chainCerts != null && chainCerts.Count > 0;
+
+        if (!trustChainBuilt)
+        {
+            Logger.LogWarning($"Trust chain could not be built for alias {config.Alias}. Importing the end entity certificate only.");
         }
 
         Logger.LogDebug($"Importing signed certificate for alias {config.Alias}");
@@ -326,7 +351,7 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
         var importResult = await _client.ImportCertificate(
             config.Alias,
             null,
-            ToPemBytes(certificate),
+            ToPemBytes(collection.EndEntityCert, chainCerts),
             "no",
             "certificate",
             config.CertificateStoreDetails.StorePath);
@@ -339,24 +364,39 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
 
             Logger.LogError($"Failed to import signed certificate for alias {config.Alias}: {error}");
 
-            return new JobResult
+            return (new JobResult
             {
                 JobHistoryId = config.JobHistoryId,
                 Result = OrchestratorJobStatusJobResult.Failure,
                 FailureMessage = $"Failed to import signed certificate: {error}"
-            };
+            }, false);
         }
 
         Logger.LogInformation($"Successfully imported signed certificate for alias {config.Alias}");
         Logger.MethodExit();
-        return null;
+        return (null, trustChainBuilt);
     }
 
-    private static byte[] ToPemBytes(X509Certificate2 certificate)
+    /// <summary>
+    /// Encodes the end entity certificate followed by any chain certificates as concatenated PEM blocks.
+    /// Chain certificates identical to the end entity certificate are skipped.
+    /// </summary>
+    private static byte[] ToPemBytes(X509Certificate endEntity, IEnumerable<X509Certificate>? chain)
     {
-        var base64 = Convert.ToBase64String(certificate.RawData, Base64FormattingOptions.InsertLineBreaks);
-        var pem = $"-----BEGIN CERTIFICATE-----\n{base64}\n-----END CERTIFICATE-----\n";
-        return Encoding.UTF8.GetBytes(pem);
+        var certs = new List<X509Certificate> { endEntity };
+        foreach (var c in chain ?? Enumerable.Empty<X509Certificate>())
+        {
+            if (!certs.Any(existing => existing.Equals(c))) certs.Add(c);
+        }
+
+        var pem = new StringBuilder();
+        foreach (var c in certs)
+        {
+            var base64 = Convert.ToBase64String(c.GetEncoded(), Base64FormattingOptions.InsertLineBreaks);
+            pem.Append($"-----BEGIN CERTIFICATE-----\n{base64}\n-----END CERTIFICATE-----\n");
+        }
+
+        return Encoding.UTF8.GetBytes(pem.ToString());
     }
 }
 

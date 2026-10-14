@@ -14,30 +14,42 @@
 
 using System.Security.Cryptography.X509Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Extensions;
 using Moq;
+using Org.BouncyCastle.X509;
 using PaloAlto.UnitTests.Builders;
 using PaloAlto.UnitTests.Generators;
 using Xunit;
 using Xunit.Abstractions;
+using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace PaloAlto.UnitTests.Jobs;
 
 public class ReenrollmentTests : BaseUnitTest
 {
     private readonly Reenrollment _sut;
-    private readonly Mock<SubmitReenrollmentCSR> _submitReenrollmentCSRMock = new ();
+    private readonly Mock<SubmitReenrollmentCSR> _mockSubmitReenrollmentCSR = new ();
+    private readonly Mock<ICertificateChainService> _mockCertificateChainService = new Mock<ICertificateChainService>();
     private const string PanoramaTemplateName = "MyTemplate";
 
     private static readonly X509Certificate2 _testCertificate =
         CertificateGenerator.GenerateCertificate("example.com", "foobar", true);
+
+    private static readonly X509Certificate TestBcCert = CreateSelfSignedCertBouncyCastle(_testCertificate);
+
+    private static readonly X509Certificate TestChainBcCert = CreateSelfSignedCertBouncyCastle(
+        CertificateGenerator.GenerateCertificate("chain.example.com", "foobar", false));
+
+    private const string TrustChainWarningMessage =
+        "Enrollment completed but the certificate's trust chain could not be built. " +
+        "Please verify the intermediate and root certificates are part of your system's trust store or have publicly available AIA information.";
     
     public ReenrollmentTests(ITestOutputHelper output) : base(output)
     {
-        _sut = new Reenrollment(PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory);
+        _sut = new Reenrollment(PamResolverMock.Object, ClientFactoryMock.Object, LoggerFactory, _mockCertificateChainService.Object);
     }
 
     #region Processing
@@ -50,7 +62,7 @@ public class ReenrollmentTests : BaseUnitTest
         ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
             .Build();
         
-        JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(config, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
     }
 
@@ -68,7 +80,7 @@ public class ReenrollmentTests : BaseUnitTest
         ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
             .Build();
 
-        JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(config, _mockSubmitReenrollmentCSR.Object);
         AssertFailure(result, errorMessage);
     }
     
@@ -86,24 +98,24 @@ public class ReenrollmentTests : BaseUnitTest
         ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
             .Build();
         
-        _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(config, _mockSubmitReenrollmentCSR.Object);
         
         // The method delegate sends the CSR to Keyfactor Command
-        _submitReenrollmentCSRMock.Verify(p => p.Invoke(csr), Times.Once);
+        _mockSubmitReenrollmentCSR.Verify(p => p.Invoke(csr), Times.Once);
     }
     
     [Fact]
     public void SubmitJob_WhenReenrollmentSubmissionReturnsNull_FailsJob()
     {
         SetupHappyPath();
-        _submitReenrollmentCSRMock
+        _mockSubmitReenrollmentCSR
             .Setup(p => p.Invoke(It.IsAny<string>()))
             .Returns((X509Certificate2)null);
 
         ReenrollmentJobConfiguration config = new ReenrollmentJobBuilder()
             .Build();
         
-        JobResult result = _sut.ProcessJob(config, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(config, _mockSubmitReenrollmentCSR.Object);
         AssertFailure(result, "CSR submission failed");
     }
     
@@ -121,7 +133,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -139,7 +151,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -157,7 +169,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -175,7 +187,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -193,7 +205,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -211,7 +223,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -229,7 +241,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com,O=Keyfactor,OU=Engineering,L=San Francisco,ST=California,C=US,E=test@example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -247,7 +259,7 @@ public class ReenrollmentTests : BaseUnitTest
                 "CN=example.com")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c => 
@@ -280,7 +292,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithSans(sans)
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
             c.DnsSans.Any() == true && c.DnsSans.First() == value)));
@@ -301,7 +313,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithSans(sans)
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
             c.IpSans.Any() == true && c.IpSans.First() == value)));
@@ -322,7 +334,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithSans(sans)
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
             c.EmailSans.Any() == true && c.EmailSans.First() == value)));
@@ -337,7 +349,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithSans(null)
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         FakeClient.ClientMock.Verify(p => p.GenerateCertificateRequest(It.Is<GenerateCertificateRequestMetadata>(c =>
             c.DnsSans.Any() == false && c.IpSans.Any() == false && c.DnsSans.Any() == false)));
@@ -356,7 +368,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithAlias("my-cert")
             .Build();
 
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
 
         FakeClient.ClientMock.Verify(c => c.ImportCertificate(
@@ -371,7 +383,7 @@ public class ReenrollmentTests : BaseUnitTest
         var job = new ReenrollmentJobBuilder()
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         FakeClient.ClientMock
             .Verify(p => p.ImportCertificate(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())
                 , Times.Once);
@@ -385,9 +397,74 @@ public class ReenrollmentTests : BaseUnitTest
 
         var job = new ReenrollmentJobBuilder().Build();
 
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result, "device rejected the certificate");
+    }
+
+    #endregion
+    
+    #region Certificate Chain Building
+
+    [Fact]
+    public void ProcessJob_WhenTrustChainIsBuilt_SendsEntireChainToPaloAlto()
+    {
+        SetupHappyPath();
+        CertificateServiceBuildsTrustChain(TestBcCert, new List<X509Certificate> { TestChainBcCert });
+
+        var job = new ReenrollmentJobBuilder().Build();
+
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            It.IsAny<string>(), It.IsAny<string>(),
+            It.Is<byte[]>(b => ContainsOnlyCertificates(b, TestBcCert, TestChainBcCert)),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenTrustChainIsNull_SendsOnlyEndEntityCertificateToPaloAlto()
+    {
+        SetupHappyPath();
+        CertificateServiceHasNullTrustChain();
+
+        var job = new ReenrollmentJobBuilder().Build();
+
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
+
+        FakeClient.ClientMock.Verify(c => c.ImportCertificate(
+            It.IsAny<string>(), It.IsAny<string>(),
+            It.Is<byte[]>(b => ContainsOnlyCertificates(b, TestBcCert)),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenTrustChainIsNull_ReturnsWarningWithTrustChainMessage()
+    {
+        SetupHappyPath();
+        CertificateServiceHasNullTrustChain();
+
+        var job = new ReenrollmentJobBuilder().Build();
+
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
+
+        AssertWarning(result);
+        Assert.Contains(TrustChainWarningMessage, result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_WhenTrustChainIsBuilt_DoesNotReturnTrustChainWarning()
+    {
+        SetupHappyPath();
+        CertificateServiceBuildsTrustChain(TestBcCert, new List<X509Certificate> { TestChainBcCert });
+
+        var job = new ReenrollmentJobBuilder().Build();
+
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
+
+        AssertSuccess(result);
+        Assert.DoesNotContain(TrustChainWarningMessage, result.FailureMessage ?? string.Empty);
     }
 
     #endregion
@@ -405,7 +482,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(PanoramaVsysStorePath)
             .Build();
 
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
 
         FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(PanoramaVsysStorePath), Times.Once);
@@ -420,7 +497,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .Build();
 
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
 
         FakeClient.ClientMock.Verify(c => c.SetPanoramaTarget(It.IsAny<string>()), Times.Never);
@@ -437,7 +514,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(PanoramaVsysStorePath)
             .Build();
 
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result, "Failed to set target for Panorama");
         FakeClient.ClientMock.Verify(c => c.ImportCertificate(
@@ -458,7 +535,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertSuccess(result);
         // Firewall paths do not trigger commit-all.
@@ -475,7 +552,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(PanoramaStorePath)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertSuccess(result);
         FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Once);
@@ -496,7 +573,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithDeviceGroup(deviceGroup)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertSuccess(result);
         FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(deviceGroup), Times.Once);
@@ -513,7 +590,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
         Assert.Contains("commit to the device failed", result.FailureMessage);
@@ -531,7 +608,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertSuccess(result);
         FakeClient.ClientMock.Verify(c => c.GetJobStatus(jobId), Times.Once);
@@ -549,7 +626,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithStorePath(FirewallStorePath)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
     }
@@ -568,7 +645,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithPushFailureBehavior(pushFailureBehavior)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
         Assert.Contains("push to template failed", result.FailureMessage);
@@ -586,7 +663,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithPushFailureBehavior("Warning")
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertWarning(result);
         Assert.Contains("push to template failed", result.FailureMessage);
@@ -604,7 +681,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithAlias("")
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
         Assert.Contains("alias must not be empty", result.FailureMessage);
@@ -620,7 +697,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithAlias(alias)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
         Assert.Contains("too long", result.FailureMessage);
@@ -636,7 +713,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithAlias(alias)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         AssertFailure(result);
         Assert.Contains("too long", result.FailureMessage);
@@ -654,7 +731,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithAlias(alias)
             .Build();
 
-        var result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        var result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         // Alias validation passed — we reached ImportCertificate (which we set to fail to stop here).
         Assert.DoesNotContain("too long", result.FailureMessage);
@@ -680,7 +757,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithKeySize(keySize)
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.GenerateCertificateCalledWithKeySizeAndType("RSA", keySize.ToString());
@@ -698,7 +775,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithKeySize(keySize)
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.GenerateCertificateCalledWithKeySizeAndType("ECDSA", keySize.ToString());
@@ -717,7 +794,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithKeySize(keySize)
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertSuccess(result);
         
         FakeClient.GenerateCertificateCalledWithKeySizeAndType(mappedKeyType, keySize.ToString());
@@ -732,7 +809,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithKeyType("FOOBAR")
             .Build();
         
-        JobResult result = _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        JobResult result = _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
         AssertFailure(result, "Unmapped key type 'FOOBAR'");
     }
     
@@ -752,7 +829,7 @@ public class ReenrollmentTests : BaseUnitTest
             .WithCredentials("raw-username", "raw-password")
             .Build();
 
-        _sut.ProcessJob(job, _submitReenrollmentCSRMock.Object);
+        _sut.ProcessJob(job, _mockSubmitReenrollmentCSR.Object);
 
         PamResolverMock.Verify(r => r.Resolve("raw-password"), Times.Once);
         PamResolverMock.Verify(r => r.Resolve("raw-username"), Times.Once);
@@ -769,7 +846,60 @@ public class ReenrollmentTests : BaseUnitTest
         FakeClient.CommitTemplateSucceeds();
         FakeClient.GenerateCertificateSucceeds();
         
-        _submitReenrollmentCSRMock.Setup(p => p.Invoke(It.IsAny<string>()))
+        _mockSubmitReenrollmentCSR.Setup(p => p.Invoke(It.IsAny<string>()))
             .Returns(_testCertificate);
+
+        // Default: 
+        CertificateServiceBuildsTrustChain(TestBcCert);
+    }
+
+    /// <summary>
+    /// Chain service returns a valid chain (end entity + one chain cert).
+    /// </summary>
+    private void CertificateServiceBuildsTrustChain(X509Certificate cert, IEnumerable<X509Certificate>? chain = null)
+    {
+        _mockCertificateChainService
+            .Setup(c => c.BuildCertificateCollection(It.IsAny<X509Certificate>()))
+            .Returns(new CertificateCollection()
+            {
+                EndEntityCert = cert,
+                ChainCerts = chain ?? new List<X509Certificate> { cert },
+            });
+    }
+
+    /// <summary>
+    /// True when the PEM payload contains exactly the expected certificates (compared by DER encoding), in any order.
+    /// </summary>
+    private static bool ContainsOnlyCertificates(byte[] pemBytes, params X509Certificate[] expected)
+    {
+        var pem = System.Text.Encoding.UTF8.GetString(pemBytes);
+        var actual = System.Text.RegularExpressions.Regex
+            .Matches(pem, "-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----",
+                System.Text.RegularExpressions.RegexOptions.Singleline)
+            .Select(m => Convert.ToBase64String(Convert.FromBase64String(m.Groups[1].Value.Trim())))
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        var wanted = expected
+            .Select(c => Convert.ToBase64String(c.GetEncoded()))
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        return actual.SequenceEqual(wanted);
+    }
+
+    /// <summary>
+    /// Chain service returns only the end entity certificate with a null trust chain (occurs when a trust chain could not be built)
+    /// </summary>
+    private void CertificateServiceHasNullTrustChain()
+    {
+        _mockCertificateChainService
+            .Setup(s => s.BuildCertificateCollection(It.IsAny<X509Certificate>()))
+            .Returns(new CertificateCollection { EndEntityCert = TestBcCert, ChainCerts = null });
+    }
+    
+    private static X509Certificate CreateSelfSignedCertBouncyCastle(X509Certificate2 cert)
+    {
+        return new X509CertificateParser().ReadCertificate(cert.RawData);
     }
 }

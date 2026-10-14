@@ -232,6 +232,23 @@ As of writing, PAN-OS supports the following SANs:
 
 PAN-OS allows multiple SANs of each supported type to be included in a certificate. The ODKG flow in Keyfactor Command supports specifying these SANs during the re-enrollment process. SAN types other than DNS, IP and Email are not included in the CSR and will be missing from the issued certificate.
 
+### Trust Chain Building
+
+On re-enrollment, due to a technical limitation in Keyfactor Command, only the end-entity certificate is returned from the CSR enrollment process. However, standard TLS implementations expect a full certificate chain to be provided for proper validation of the end-entity certificate with a trusted root.
+
+PAN-OS presents only the certificates that were imported along with the end-entity certificate. Having the intermediate or root certificates in the device's certificate store does **not** cause PAN-OS to present them. If only the end-entity certificate is imported, clients connecting to the firewall may not be able to validate the certificate and **may not trust it**.
+
+To work around this, the integration attempts to rebuild the trust chain before importing the certificate to PAN-OS. This process involves retrieving the intermediate and root certificates via the certificate's AIA information, or by accessing the orchestrator machine's trust store. If the trust chain cannot be built, only the end-entity certificate will be sent to PAN-OS.
+
+Failure to build the trust chain will not fail the re-enrollment job, but it will return a Warning status if the rest of the job processed successfully. The message begins with:
+
+```text
+Enrollment completed but the certificate's trust chain could not be built.
+```
+
+If the job also produces a Panorama push warning (see [Push Failure Behavior](#push-failure-behavior)), both messages are returned together in the same Warning.
+
+We recommend ensuring either the intermediate and root certificates have AIA information that is reachable from the orchestrator machine, or, in the case of a private CA, that the intermediate and root certificates are available in the orchestrator machine's trust store.
 
 ## Integration Tests
 
