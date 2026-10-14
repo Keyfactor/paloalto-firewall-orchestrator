@@ -1,3 +1,10 @@
+# 3.0.0
+Features:
+- Added support for re-enrollment, also known as On-Device Key Generation (ODKG).
+
+> [!IMPORTANT]
+> Breaking changes: Version 3.0.0 of this integration drops support for .NET 6 and requires .NET 8 or later. Please refer to the integration documentation for supported Universal Orchestrator versions.
+
 # 2.6.0
 Features:
 - Added a `PushFailureBehavior` store property that controls the job result when Panorama fails

@@ -204,7 +204,7 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 
 ## Re-Enrollment / ODKG
 
-Version 2.7.0 of this integration introduces support for re-enrollment, also known as [On-Device Key Generation (ODKG)](https://software.keyfactor.com/Core-Hosted/Current/Content/ReferenceGuide/On-Device-Key-Generation.htm). 
+Version 3.0.0 of this integration introduces support for re-enrollment, also known as [On-Device Key Generation (ODKG)](https://software.keyfactor.com/Core-Hosted/Current/Content/ReferenceGuide/On-Device-Key-Generation.htm). 
 
 ### Supported Key Sizes / Types for ODKG
 As of writing, PAN-OS supports the following key types and sizes:
