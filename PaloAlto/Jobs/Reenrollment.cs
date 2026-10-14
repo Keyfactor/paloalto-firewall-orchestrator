@@ -1,0 +1,408 @@
+// Copyright 2026 Keyfactor
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Threading.Tasks;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
+using Keyfactor.Logging;
+using Keyfactor.Orchestrators.Common.Enums;
+using Keyfactor.Orchestrators.Extensions;
+using Keyfactor.Orchestrators.Extensions.Interfaces;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Org.BouncyCastle.X509;
+using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
+
+namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
+
+public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
+{
+    private IPaloAltoClient _client;
+    private JobProperties StoreProperties { get; set; }
+    private readonly ICertificateChainService _certificateChainService;
+
+    private const string TrustChainWarning =
+        "Enrollment completed but the certificate's trust chain could not be built. " +
+        "Please verify the intermediate and root certificates are part of your system's trust store or have publicly available AIA information.";
+
+    public Reenrollment(IPAMSecretResolver resolver) : base(resolver)
+    {
+        _certificateChainService = new CertificateChainService();
+    }
+
+    public Reenrollment(IPAMSecretResolver resolver, IPaloAltoClientFactory clientFactory,
+        IClientLoggerFactory loggerFactory, ICertificateChainService certificateChainService) : base(resolver, clientFactory, loggerFactory)
+    {
+        _certificateChainService = certificateChainService;
+    }
+    
+    public JobResult ProcessJob(ReenrollmentJobConfiguration jobConfiguration, SubmitReenrollmentCSR submitReenrollmentUpdate)
+    {
+        Logger.LogDebug($"Processing re-enrollment job with configuration for alias {jobConfiguration.Alias} (Job ID {jobConfiguration.JobId})");
+        
+        StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
+            jobConfiguration.CertificateStoreDetails.Properties,
+            new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+        
+        return ProcessReenrollment(jobConfiguration, submitReenrollmentUpdate)
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private async Task<JobResult> ProcessReenrollment(ReenrollmentJobConfiguration config,
+        SubmitReenrollmentCSR submitReenrollmentUpdate)
+    {
+        try
+        {
+            Logger.MethodEntry();
+            
+            _client = CreatePanoramaClient(config.CertificateStoreDetails, config);
+            
+            JobResult? invalidResult = ValidateReenrollment(config);
+            if (invalidResult != null)
+            {
+                return invalidResult;
+            }
+
+            string csr = await GenerateCertificateSigningRequest(config);
+            X509Certificate2 certificate = GenerateCertificateFromCsr(csr, submitReenrollmentUpdate);
+
+            var (importFailure, trustChainBuilt) = await ImportSignedCertificate(config, certificate);
+            if (importFailure != null)
+            {
+                return importFailure;
+            }
+
+            var commit = await CommitChanges(StoreProperties, config.CertificateStoreDetails, _client);
+            if (commit.HardFailure != null)
+            {
+                return new JobResult
+                {
+                    JobHistoryId = config.JobHistoryId,
+                    Result = OrchestratorJobStatusJobResult.Failure,
+                    FailureMessage = commit.HardFailure
+                };
+            }
+
+            var warnings = new List<string>();
+            if (!string.IsNullOrEmpty(commit.Warning)) warnings.Add(commit.Warning);
+            if (!trustChainBuilt) warnings.Add(TrustChainWarning);
+
+            if (warnings.Count > 0)
+            {
+                return new JobResult
+                {
+                    JobHistoryId = config.JobHistoryId,
+                    Result = OrchestratorJobStatusJobResult.Warning,
+                    FailureMessage = string.Join(" ", warnings)
+                };
+            }
+
+            return new JobResult()
+            {
+                JobHistoryId = config.JobHistoryId,
+                Result = OrchestratorJobStatusJobResult.Success,
+            };
+        }
+        catch (Exception e)
+        {
+            Logger.LogError($"Error Occurred in Reenrollment: {e.Message}. {e.StackTrace}");
+
+            return new JobResult()
+            {
+                JobHistoryId = config.JobHistoryId,
+                Result = OrchestratorJobStatusJobResult.Failure,
+                FailureMessage = $"Error occurred in Reenrollment: {e.Message}. {e.StackTrace}"
+            };
+        }
+    }
+
+    private JobResult? ValidateReenrollment(ReenrollmentJobConfiguration config)
+    {
+        Logger.MethodEntry();
+        
+        Logger.LogTrace("Validating Store Properties for Reenrollment Job");
+
+        var (valid, result) = Validators.ValidateStoreProperties(StoreProperties,
+            config.CertificateStoreDetails.StorePath, _client,
+            config.JobHistoryId);
+
+        Logger.LogTrace($"Validated Store Properties and valid={valid}");
+
+        if (!valid) return result;
+            
+        var (aliasValid, aliasResult) =
+            Validators.ValidateCertificateAlias(config.CertificateStoreDetails.StorePath,
+                config.Alias);
+
+        Logger.LogTrace($"Validated certificate alias. valid={aliasValid}");
+
+        if (!aliasValid)
+        {
+            Logger.LogCritical("Certificate alias validation failed. Returning failure result.");
+            return aliasResult;
+        }
+        
+        Logger.LogDebug($"Reenrollment configuration passed validation");
+
+        Logger.MethodExit();
+        return null;
+    }
+
+    private async Task<string> GenerateCertificateSigningRequest(ReenrollmentJobConfiguration config)
+    {
+        Logger.MethodEntry();
+
+        GenerateCertificateRequestAlgorithm algorithm = GetAlgorithm(config);
+        CertificateSubjectInformation subjectInformation = GetSubjectInformation(config);
+
+        GenerateCertificateRequestMetadata metadata = GenerateCsrMetadata(config, subjectInformation, algorithm);
+
+        await GenerateCertificateRequest(metadata);
+        
+        Logger.LogDebug($"Fetching CSR from PaloAlto client for alias {metadata.Alias}");
+        
+        string csr = await _client.GetCertificateSigningRequestByName(metadata.Alias);
+        
+        Logger.LogDebug($"Retrieved CSR from PaloAlto client for alias {metadata.Alias}, CSR: {csr}");
+        
+        Logger.LogInformation($"Successfully generated and retrieved CSR for alias {metadata.Alias}");
+        
+        Logger.MethodExit();
+
+        return csr;
+    }
+
+    private GenerateCertificateRequestAlgorithm GetAlgorithm(ReenrollmentJobConfiguration config)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Determining algorithm from config job properties: {JsonConvert.SerializeObject(config.JobProperties)}");
+
+        config.JobProperties.TryGetValue("keySize", out object keySize);
+        config.JobProperties.TryGetValue("keyType", out object keyType);
+
+        GenerateCertificateRequestAlgorithm result;
+
+        switch (keyType)
+        {
+            case "RSA":
+                result = new RsaAlgorithm($"{keySize}");
+                break;
+            case "ECC":
+            case "ECDSA":
+                result = new EcdsaAlgorithm($"{keySize}");
+                break;
+            default:
+                throw new ReenrollmentException($"Unmapped key type '{keyType}'");
+        }
+        
+        Logger.LogDebug($"Mapped algorithm. Type: {result.Algorithm}, Size: {result.Size}");
+        Logger.MethodExit();
+        
+        return result;
+    }
+
+    private CertificateSubjectInformation GetSubjectInformation(ReenrollmentJobConfiguration config)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Determining subject information from config job properties: {JsonConvert.SerializeObject(config.JobProperties)}");
+        
+        config.JobProperties.TryGetValue("subjectText", out object subjectText);
+        
+        CertificateSubjectInformation result = new CertificateSubjectInformation((string)subjectText);
+        
+        Logger.LogDebug($"Successfully mapped subject information: {JsonConvert.SerializeObject(result)}");
+        Logger.MethodExit();
+        return result;
+    }
+
+    private GenerateCertificateRequestMetadata GenerateCsrMetadata(ReenrollmentJobConfiguration config,
+        CertificateSubjectInformation information, GenerateCertificateRequestAlgorithm algorithm)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Generating CSR metadata");
+        
+        GenerateCertificateRequestMetadata metadata = new GenerateCertificateRequestMetadata()
+        {
+            Algorithm = algorithm,
+            Alias = config.Alias,
+        };
+        
+        Logger.LogDebug($"Parsing subject information to apply to CSR alias {metadata.Alias}");
+
+        metadata.CommonName = information.CommonName.First().Value;
+        metadata.Organization = information.Organization.FirstOrDefault()?.Value;
+        metadata.OrganizationUnit = information.OrganizationalUnit.FirstOrDefault()?.Value;
+        metadata.Locality = information.CityLocality.FirstOrDefault()?.Value;
+        metadata.Country = information.CountryRegion.FirstOrDefault()?.Value;
+        metadata.State = information.StateProvince.FirstOrDefault()?.Value;
+        metadata.Email = information.Email.FirstOrDefault()?.Value;
+
+        string[] dnsNames = Array.Empty<string>();
+        string[] ipAddress = Array.Empty<string>();
+        string[] emails = Array.Empty<string>();
+        
+        Logger.LogDebug($"Successfully parsed subject information to CSR metadata. Applying SANs");
+        
+        config.SANs?.TryGetValue(KeyfactorConstants.SanTypes.DnsName, out dnsNames);
+        config.SANs?.TryGetValue(KeyfactorConstants.SanTypes.IpAddress, out ipAddress);
+        config.SANs?.TryGetValue(KeyfactorConstants.SanTypes.Email, out emails);
+        
+        foreach(string dns in dnsNames ?? Array.Empty<string>())
+        {
+            metadata.DnsSans.Add(dns);
+        }
+
+        foreach (string ip in ipAddress ?? Array.Empty<string>())
+        {
+            metadata.IpSans.Add(ip);
+        }
+
+        foreach (string email in emails ?? Array.Empty<string>())
+        {
+            metadata.EmailSans.Add(email);
+        }
+        
+        Logger.LogDebug($"Successfully generated CSR Metadata: {JsonConvert.SerializeObject(metadata)}");
+        return metadata;
+    }
+
+    private async Task GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Sending CSR metadata to PaloAlto client for alias {metadata.Alias}");
+        
+        ErrorSuccessResponse response = await _client.GenerateCertificateRequest(metadata);
+        if (response.Status.Equals("error", StringComparison.InvariantCultureIgnoreCase))
+        {
+            string errorMsg = response.LineMsg != null
+                ? Validators.BuildPaloError(response)
+                : "Could not retrieve error results";
+            
+            throw new ReenrollmentException($"Unable to generate a CSR for alias {metadata.Alias}: {errorMsg}");
+        }
+        
+        Logger.LogDebug($"Successfully generated CSR.");
+        Logger.MethodExit();
+    }
+
+    private X509Certificate2 GenerateCertificateFromCsr(string csr, SubmitReenrollmentCSR submitReenrollmentUpdate)
+    {
+        Logger.MethodEntry();
+        Logger.LogDebug($"Submitting CSR to Keyfactor Command...");
+
+        X509Certificate2? certificate = submitReenrollmentUpdate.Invoke(csr);
+        if (certificate == null)
+        {
+            Logger.LogError($"CSR submission failed in Keyfactor Command. Check the Keyfactor Command server logs for failure information.");
+            throw new ReenrollmentException("CSR submission failed in Keyfactor Command. Check the Keyfactor Command server logs for failure information.");
+        }
+        
+        Logger.LogInformation($"Successfully generated a certificate from Keyfactor Command");
+        return certificate;
+    }
+
+    private async Task<(JobResult? Failure, bool TrustChainBuilt)> ImportSignedCertificate(ReenrollmentJobConfiguration config, X509Certificate2 certificate)
+    {
+        Logger.MethodEntry();
+
+        if (!(await SetPanoramaTarget(config.CertificateStoreDetails, _client)))
+        {
+            return (new JobResult
+            {
+                JobHistoryId = config.JobHistoryId,
+                Result = OrchestratorJobStatusJobResult.Failure,
+                FailureMessage = "Failed to set target for Panorama"
+            }, false);
+        }
+
+        var collection = _certificateChainService.BuildCertificateCollection(
+            new X509CertificateParser().ReadCertificate(certificate.RawData));
+        var chainCerts = collection.ChainCerts?.ToList();
+        bool trustChainBuilt = chainCerts != null && chainCerts.Count > 0;
+
+        if (!trustChainBuilt)
+        {
+            Logger.LogWarning($"Trust chain could not be built for alias {config.Alias}. Importing the end entity certificate only.");
+        }
+
+        Logger.LogDebug($"Importing signed certificate for alias {config.Alias}");
+
+        var importResult = await _client.ImportCertificate(
+            config.Alias,
+            null,
+            ToPemBytes(collection.EndEntityCert, chainCerts),
+            "no",
+            "certificate",
+            config.CertificateStoreDetails.StorePath);
+
+        if (importResult != null && importResult.Status.Equals("error", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var error = importResult.LineMsg != null
+                ? Validators.BuildPaloError(importResult)
+                : "Could not retrieve error results";
+
+            Logger.LogError($"Failed to import signed certificate for alias {config.Alias}: {error}");
+
+            return (new JobResult
+            {
+                JobHistoryId = config.JobHistoryId,
+                Result = OrchestratorJobStatusJobResult.Failure,
+                FailureMessage = $"Failed to import signed certificate: {error}"
+            }, false);
+        }
+
+        Logger.LogInformation($"Successfully imported signed certificate for alias {config.Alias}");
+        Logger.MethodExit();
+        return (null, trustChainBuilt);
+    }
+
+    /// <summary>
+    /// Encodes the end entity certificate followed by any chain certificates as concatenated PEM blocks.
+    /// Chain certificates identical to the end entity certificate are skipped.
+    /// </summary>
+    private static byte[] ToPemBytes(X509Certificate endEntity, IEnumerable<X509Certificate>? chain)
+    {
+        var certs = new List<X509Certificate> { endEntity };
+        foreach (var c in chain ?? Enumerable.Empty<X509Certificate>())
+        {
+            if (!certs.Any(existing => existing.Equals(c))) certs.Add(c);
+        }
+
+        var pem = new StringBuilder();
+        foreach (var c in certs)
+        {
+            var base64 = Convert.ToBase64String(c.GetEncoded(), Base64FormattingOptions.InsertLineBreaks);
+            pem.Append($"-----BEGIN CERTIFICATE-----\n{base64}\n-----END CERTIFICATE-----\n");
+        }
+
+        return Encoding.UTF8.GetBytes(pem.ToString());
+    }
+}
+
+public class ReenrollmentException : Exception
+{
+    public ReenrollmentException(string message) : base(message)
+    {
+    }
+}
