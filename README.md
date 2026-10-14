@@ -73,7 +73,7 @@ To use the Palo Alto Universal Orchestrator extension, you **must** create the P
 | Add          | ✅ Checked |
 | Remove       | ✅ Checked |
 | Discovery    | 🔲 Unchecked |
-| Reenrollment | 🔲 Unchecked |
+| Reenrollment | ✅ Checked |
 | Create       | 🔲 Unchecked |
 
 #### Store Type Creation
@@ -117,7 +117,7 @@ the Keyfactor Command Portal
    | Supports Add | ✅ Checked | Indicates that the Store Type supports Management Add |
    | Supports Remove | ✅ Checked | Indicates that the Store Type supports Management Remove |
    | Supports Discovery | 🔲 Unchecked | Indicates that the Store Type supports Discovery |
-   | Supports Reenrollment | 🔲 Unchecked | Indicates that the Store Type supports Reenrollment |
+   | Supports Reenrollment | ✅ Checked | Indicates that the Store Type supports Reenrollment |
    | Supports Create | 🔲 Unchecked | Indicates that the Store Type supports store creation |
    | Needs Server | ✅ Checked | Determines if a target server name is required when creating store |
    | Blueprint Allowed | 🔲 Unchecked | Determines if store type may be included in an Orchestrator blueprint |
@@ -210,61 +210,6 @@ the Keyfactor Command Portal
    ![PaloAlto Custom Field - PushFailureBehavior](docsource/images/PaloAlto-custom-field-PushFailureBehavior-validation-options-dialog.svg)
 
 
-
-   ###### Server Username
-   Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
-
-
-   > [!IMPORTANT]
-   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
-
-
-
-
-   ###### Server Password
-   Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
-
-
-   > [!IMPORTANT]
-   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
-
-
-
-
-   ###### Use SSL
-   Should be true, http is not supported.
-
-   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-dialog.png)
-   ![PaloAlto Custom Field - ServerUseSsl](docsource/images/PaloAlto-custom-field-ServerUseSsl-validation-options-dialog.png)
-
-
-
-   ###### Device Group
-   A semicolon delimited list of Device Groups that Panorama will push changes to (i.e. 'Group 1', 'Group 1;Group 2', or 'Group 1; Group 2', etc.).
-
-   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-dialog.png)
-   ![PaloAlto Custom Field - DeviceGroup](docsource/images/PaloAlto-custom-field-DeviceGroup-validation-options-dialog.png)
-
-
-
-   ###### Inventory Trusted Certs
-   If false, will not inventory default trusted certs, saves time.
-
-   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-dialog.png)
-   ![PaloAlto Custom Field - InventoryTrustedCerts](docsource/images/PaloAlto-custom-field-InventoryTrustedCerts-validation-options-dialog.png)
-
-
-
-   ###### Template Stack
-   Template stack used for device push of certificates via Template.
-
-   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-dialog.png)
-   ![PaloAlto Custom Field - TemplateStack](docsource/images/PaloAlto-custom-field-TemplateStack-validation-options-dialog.png)
-
-
-
-
-
    </details>
 
 ## Installation
@@ -275,9 +220,6 @@ the Keyfactor Command Portal
 
    | Universal Orchestrator Version | Latest .NET version installed on the Universal Orchestrator server | `rollForward` condition in `Orchestrator.runtimeconfig.json` | `paloalto-firewall-orchestrator` .NET version to download |
    | --------- | ----------- | ----------- | ----------- |
-   | Older than `11.0.0` | | | `net6.0` |
-   | Between `11.0.0` and `11.5.1` (inclusive) | `net6.0` | | `net6.0` |
-   | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `Disable` | `net6.0` |
    | Between `11.0.0` and `11.5.1` (inclusive) | `net8.0` | `LatestMajor` | `net8.0` |
    | `11.6` _and_ newer | `net8.0` | | `net8.0` |
    | `25.5` _and_ newer | `net10.0` | | `net10.0` |
@@ -405,14 +347,6 @@ If the alias length exceeds the maximum length, you will receive a job failure w
 Certificate alias 'alias' is too long, it must not be more than 31 characters. Current length: 32.
 ```
 
-## Release 2.5.1 Update on Alias Constraints
-**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
-
-If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
-```
-Certificate alias 'alias' is too long, it must not be more than 31 characters. Current length: 32.
-```
-
 ## Release 2.2 Update on Entry Params
 **Important Note** Entry params are no longer used.  This version of the extension will only update certs on existing bindings and not add a cert to a new binding location.  This was done to simplify the process since there are so many binding locations and reference issues.
 
@@ -427,7 +361,7 @@ Certificate alias 'alias' is too long, it must not be more than 31 characters. C
 
 ### Push Failure Behavior
 
-When a Panorama management job completes, the integration performs a two-phase commit:
+When a Panorama management / re-enrollment job completes, the integration performs a two-phase commit:
 
 1. **Phase 1 — Commit to Panorama**: Saves the candidate configuration changes to Panorama's running config. This phase always returns a **Failure** result if unsuccessful, regardless of any store configuration, and the job will be retried by Keyfactor.
 
@@ -438,7 +372,7 @@ The **Push Failure Behavior** store property accepts two values:
 | Value | Job Result | Retry Triggered? | When to Use |
 |---|---|---|---|
 | `Failure` *(default)* | Failure | Yes | Use in most environments. Ensures the push to managed firewalls is confirmed before the job is marked complete. If the push fails, Keyfactor will automatically retry the job. |
-| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management job would cause unintended side effects. The failure message is still recorded in the job history. |
+| `Warning` | Warning | No | Use when push failures are expected or tolerable — for example, in environments where Panorama commits are slow, device groups are intermittently unreachable, or where retrying the management / re-enrollment job would cause unintended side effects. The failure message is still recorded in the job history. |
 
 > [!IMPORTANT]
 > Setting Push Failure Behavior to `Warning` means a failed push to a device group, template, or template stack **will not trigger a retry**. The certificate will be saved in Panorama's configuration, but managed firewalls may not receive the updated certificate until the next successful push. Ensure you have a plan to verify or manually trigger delivery in these cases.
@@ -449,7 +383,7 @@ If the Push Failure Behavior property is absent or blank, the integration defaul
 
 When Panorama processes a commit asynchronously, it returns a job ID. The integration polls that job until it reaches a terminal state (success or failure). Polling uses exponential backoff, starting at 10 seconds and capping at 90 seconds between polls.
 
-If a commit job does not complete within **60 minutes**, the integration stops polling and the management job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
+If a commit job does not complete within **60 minutes**, the integration stops polling and the management / re-enrollment job returns a **Failure**. This timeout exists to prevent jobs from hanging indefinitely due to a stuck or queued Panorama job. If you observe frequent timeouts, check Panorama's job queue for backlogs or increase commit concurrency limits in your Panorama configuration.
 
 ## STORE PATH DETAILS AND API SECURITY CONSIDERATIONS
 <details>
@@ -589,6 +523,58 @@ Rest Api      |Objects/Devices,Panorama/Scheduled Config Push,Panorama/Templates
 *** 
 
 </details>
+
+## Re-Enrollment / ODKG
+
+Version 3.0.0 of this integration introduces support for re-enrollment, also known as [On-Device Key Generation (ODKG)](https://software.keyfactor.com/Core-Hosted/Current/Content/ReferenceGuide/On-Device-Key-Generation.htm). 
+
+### Supported Key Sizes / Types for ODKG
+As of writing, PAN-OS supports the following key types and sizes:
+- RSA
+    - 512
+    - 1024
+    - 2048
+    - 3072
+    - 4096
+    - **If your next-generation firewall is in FIPS-CC mode, RSA key sizes must be either 2048 or 3072 bits.**
+- ECC / ECDSA
+    - 256
+    - 384
+
+Reference: [Palo Alto Generate Certificate documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate)
+
+> [!IMPORTANT]
+> While this integration enforces the supported key types for ODKG, **this integration does not enforce key size restrictions for ODKG.** It is the responsibility of the user to ensure that the key sizes are compatible with their PAN-OS device and its configuration. PAN-OS will reject the request if the key size is not supported. Enrollment Pattern / Certificate Template configuration in Keyfactor Command can control the key size requirements for certificates issued through this integration.
+
+### Alias Length
+
+Similar to the note [2.5.1 release notes regarding alias length constraints](#release-251-update-on-alias-constraints), re-enrollment jobs also enforce the same alias length restrictions. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters.
+
+### Supported SANs
+As of writing, PAN-OS supports the following SANs:
+- DNS
+- IP
+- Email
+
+PAN-OS allows multiple SANs of each supported type to be included in a certificate. The ODKG flow in Keyfactor Command supports specifying these SANs during the re-enrollment process. SAN types other than DNS, IP and Email are not included in the CSR and will be missing from the issued certificate.
+
+### Trust Chain Building
+
+On re-enrollment, due to a technical limitation in Keyfactor Command, only the end-entity certificate is returned from the CSR enrollment process. However, standard TLS implementations expect a full certificate chain to be provided for proper validation of the end-entity certificate with a trusted root.
+
+PAN-OS presents only the certificates that were imported along with the end-entity certificate. Having the intermediate or root certificates in the device's certificate store does **not** cause PAN-OS to present them. If only the end-entity certificate is imported, clients connecting to the firewall may not be able to validate the certificate and **may not trust it**.
+
+To work around this, the integration attempts to rebuild the trust chain before importing the certificate to PAN-OS. This process involves retrieving the intermediate and root certificates via the certificate's AIA information, or by accessing the orchestrator machine's trust store. If the trust chain cannot be built, only the end-entity certificate will be sent to PAN-OS.
+
+Failure to build the trust chain will not fail the re-enrollment job, but it will return a Warning status if the rest of the job processed successfully. The message begins with:
+
+```text
+Enrollment completed but the certificate's trust chain could not be built.
+```
+
+If the job also produces a Panorama push warning (see [Push Failure Behavior](#push-failure-behavior)), both messages are returned together in the same Warning.
+
+We recommend ensuring either the intermediate and root certificates have AIA information that is reachable from the orchestrator machine, or, in the case of a private CA, that the intermediate and root certificates are available in the orchestrator machine's trust store.
 
 ## Integration Tests
 

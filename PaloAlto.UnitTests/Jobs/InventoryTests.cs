@@ -20,8 +20,6 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Moq;
 using PaloAlto.UnitTests.Builders;
 using Xunit;
@@ -35,10 +33,6 @@ public class InventoryTests : BaseUnitTest
     private readonly Mock<SubmitInventoryUpdate> _submitMock = new();
 
     private static readonly string TestPem = GenerateTestCertificatePem();
-
-    private const string FirewallStorePath = "/config/shared";
-    private const string PanoramaStorePath =
-        "/config/devices/entry[@name='panorama1']/template/entry[@name='MyTemplate']/config/shared";
     private const string PanoramaTemplateName = "MyTemplate";
 
     public InventoryTests(ITestOutputHelper output) : base(output)
@@ -467,20 +461,6 @@ public class InventoryTests : BaseUnitTest
             });
         return captured;
     }
-
-    // ── Assertion helpers ────────────────────────────────────────────────────
-
-    private static void AssertSuccess(JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
-
-    private static void AssertWarning(JobResult result)
-    {
-        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
-        Assert.NotEmpty(result.FailureMessage);
-    }
-
-    private static void AssertFailure(JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
 
     // ── Helpers for the BuildInventoryItem throw path ────────────────────────
 
