@@ -18,7 +18,7 @@ This integration has been tested and verified against the following PAN-OS versi
 Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
 
 ## Release 2.5.1 Update on Alias Constraints
-**Important Note** For management / re-enrollment jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
+**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
 
 If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
 ```
@@ -223,6 +223,10 @@ Reference: [Palo Alto Generate Certificate documentation](https://docs.paloalton
 
 > [!IMPORTANT]
 > While this integration enforces the supported key types for ODKG, **this integration does not enforce key size restrictions for ODKG.** It is the responsibility of the user to ensure that the key sizes are compatible with their PAN-OS device and its configuration. PAN-OS will reject the request if the key size is not supported. Enrollment Pattern / Certificate Template configuration in Keyfactor Command can control the key size requirements for certificates issued through this integration.
+
+### Alias Length
+
+Similar to the note [2.5.1 release notes regarding alias length constraints](#release-251-update-on-alias-constraints), re-enrollment jobs also enforce the same alias length restrictions. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters.
 
 ### Supported SANs
 As of writing, PAN-OS supports the following SANs:
