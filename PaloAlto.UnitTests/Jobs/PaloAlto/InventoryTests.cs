@@ -25,7 +25,7 @@ using PaloAlto.UnitTests.Builders;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace PaloAlto.UnitTests.Jobs;
+namespace PaloAlto.UnitTests.Jobs.PaloAlto;
 
 public class InventoryTests : BaseUnitTest
 {

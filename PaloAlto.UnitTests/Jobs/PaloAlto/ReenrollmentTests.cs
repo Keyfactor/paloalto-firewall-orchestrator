@@ -26,7 +26,7 @@ using Xunit;
 using Xunit.Abstractions;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
-namespace PaloAlto.UnitTests.Jobs;
+namespace PaloAlto.UnitTests.Jobs.PaloAlto;
 
 public class ReenrollmentTests : BaseUnitTest
 {
