@@ -23,6 +23,7 @@ using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAlto;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
@@ -30,9 +31,11 @@ using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
+// Keeping the namespace as-is to avoid breaking changes for existing users of the orchestrator.
+// ReSharper disable once CheckNamespace
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
-    public class Inventory : JobBase<Inventory>, IInventoryJobExtension
+    public class Inventory : PaloAltoStoreTypeBase<Inventory>, IInventoryJobExtension
     {
         public Inventory(IPAMSecretResolver resolver) : base(resolver)
         {

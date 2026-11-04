@@ -37,7 +37,7 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
     protected readonly IClientLoggerFactory LoggerFactory;
     protected readonly ILogger Logger;
 
-    public string ExtensionName => "PaloAlto";
+    public abstract string ExtensionName { get; }
 
     /// <summary>
     /// Default constructor called by UO framework

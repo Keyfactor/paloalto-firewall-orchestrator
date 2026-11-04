@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAlto;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -27,9 +28,11 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Org.BouncyCastle.Pkcs;
 
+// Keeping the namespace as-is to avoid breaking changes for existing users of the orchestrator.
+// ReSharper disable once CheckNamespace
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
 {
-    public class Management : JobBase<Management>, IManagementJobExtension
+    public class Management : PaloAltoStoreTypeBase<Management>, IManagementJobExtension
     {
         private readonly PemParser _pemParser;
         private IPaloAltoClient _client;
