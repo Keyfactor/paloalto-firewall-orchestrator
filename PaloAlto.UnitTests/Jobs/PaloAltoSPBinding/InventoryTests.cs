@@ -82,6 +82,10 @@ public class InventoryTests : BaseUnitTest
     public void ProcessJob_MalformedStorePath_ReturnsFailureWithoutCallingClient(string storePath)
     {
         var job = new InventoryJobBuilder().WithStorePath(storePath).Build();
+        
+        // Arrange the topology so that the path is valid in terms of existence, but still malformed in terms of structure.
+        FakeClient.PanoramaHasTemplate("MyTemplate");
+        FakeClient.PanoramaHasTemplateStacks("MyStack");
 
         var result = _sut.ProcessJob(job, _submitMock.Object);
 
@@ -536,7 +540,7 @@ public class InventoryTests : BaseUnitTest
         }
         else if (storePath.Contains("/template/"))
         {
-            FakeClient.PanoramaHasTemplate("MyTemplate");
+            FakeClient.PanoramaHasTemplate("MyTemplate", "My Template-1");
         }
     }
 

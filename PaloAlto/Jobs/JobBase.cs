@@ -27,6 +27,7 @@ using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 
@@ -66,6 +67,17 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
         Logger = loggerFactory.CreateLogger<T>();
         ClientFactory = clientFactory;
         Logger.LogTrace($"Initialized {typeof(T)} with IPAMSecretResolver, custom PaloAlto client factory and logger.");
+    }
+
+    protected JobProperties DeserializeJobProperties(CertificateStore certificateStoreDetails)
+    {
+        Logger.MethodEntry();
+        JobProperties properties = JsonConvert.DeserializeObject<JobProperties>(
+            certificateStoreDetails.Properties,
+            new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+        Logger.LogDebug($"Successfully deserialized job properties");
+        Logger.MethodExit();
+        return properties;
     }
 
     /// <summary>

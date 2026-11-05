@@ -55,9 +55,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
         public JobResult ProcessJob(ManagementJobConfiguration jobConfiguration)
         {
             Logger.LogTrace($"Processing job with configuration: {JsonConvert.SerializeObject(jobConfiguration)}");
-            StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
-                jobConfiguration.CertificateStoreDetails.Properties,
-                new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+            StoreProperties = DeserializeJobProperties(jobConfiguration.CertificateStoreDetails);
             
             return PerformManagement(jobConfiguration)
                 .GetAwaiter()

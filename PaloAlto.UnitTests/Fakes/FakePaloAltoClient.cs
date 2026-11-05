@@ -107,13 +107,13 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
 
     // ── Validation: Panorama topology ────────────────────────────────────────
 
-    public void PanoramaHasTemplate(string templateName) =>
+    public void PanoramaHasTemplate(params string[] templateNames) =>
         ClientMock.Setup(c => c.GetTemplateList())
             .ReturnsAsync(new NamedListResponse
             {
                 Result = new NamedListResult
                 {
-                    Entry = new List<NamedListEntry> { new() { Name = templateName } }
+                    Entry = templateNames.Select(n => new NamedListEntry { Name = n }).ToList()
                 }
             });
 

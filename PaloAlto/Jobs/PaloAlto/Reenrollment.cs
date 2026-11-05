@@ -63,9 +63,7 @@ public class Reenrollment : PaloAltoStoreTypeBase<Reenrollment>, IReenrollmentJo
     {
         Logger.LogDebug($"Processing re-enrollment job with configuration for alias {jobConfiguration.Alias} (Job ID {jobConfiguration.JobId})");
         
-        StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
-            jobConfiguration.CertificateStoreDetails.Properties,
-            new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+        StoreProperties = DeserializeJobProperties(jobConfiguration.CertificateStoreDetails);
         
         return ProcessReenrollment(jobConfiguration, submitReenrollmentUpdate)
             .GetAwaiter()

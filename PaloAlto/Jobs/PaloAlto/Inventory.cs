@@ -54,9 +54,7 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs
             SubmitInventoryUpdate submitInventoryUpdate)
         {
             Logger.MethodEntry(LogLevel.Debug);
-            StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
-                jobConfiguration.CertificateStoreDetails.Properties,
-                new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+            StoreProperties = DeserializeJobProperties(jobConfiguration.CertificateStoreDetails);
 
             return PerformInventory(jobConfiguration, submitInventoryUpdate)
                 .GetAwaiter()
