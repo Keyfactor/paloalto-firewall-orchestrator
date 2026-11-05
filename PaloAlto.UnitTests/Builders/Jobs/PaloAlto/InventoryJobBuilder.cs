@@ -2,7 +2,7 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto;
 using Keyfactor.Orchestrators.Extensions;
 using Newtonsoft.Json;
 
-namespace PaloAlto.UnitTests.Builders;
+namespace PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 
 public sealed class InventoryJobBuilder
 {

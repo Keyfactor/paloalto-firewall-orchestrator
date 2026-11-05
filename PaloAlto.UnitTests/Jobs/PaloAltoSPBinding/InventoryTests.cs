@@ -22,7 +22,7 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Moq;
-using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Builders.Jobs.PaloAltoSPBinding;
 using Xunit;
 using Xunit.Abstractions;
 

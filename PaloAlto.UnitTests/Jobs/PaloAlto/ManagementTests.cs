@@ -26,6 +26,7 @@ using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 using Xunit;
 using Xunit.Abstractions;
 

@@ -22,6 +22,7 @@ using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
 using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 using Xunit;
 using Xunit.Abstractions;
 
