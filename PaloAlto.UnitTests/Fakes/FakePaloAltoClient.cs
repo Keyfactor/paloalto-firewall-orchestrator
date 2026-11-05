@@ -1,3 +1,17 @@
+// Copyright 2026 Keyfactor
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
@@ -35,6 +49,33 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
             });
 
     public void WithNoCertificates() => WithCertificates();
+
+    /// <summary>
+    /// Returns the given certificates only when the certificate list is requested at exactly <paramref name="certificatePath"/>
+    /// (the full path, including the trailing <c>/certificate/entry</c>). Register after <see cref="WithNoCertificates"/>
+    /// so that any other scope returns an empty list.
+    /// </summary>
+    public void WithCertificatesAt(string certificatePath, params Entry[] entries) =>
+        ClientMock.Setup(c => c.GetCertificateList(certificatePath))
+            .ReturnsAsync(new CertificateListResponse
+            {
+                CertificateResult = new CertificateResult { Entry = entries.ToList() }
+            });
+
+    // ── Inventory: Service profiles ──────────────────────────────────────────
+
+    public void WithServiceProfiles(params ServiceProfileEntry[] entries) =>
+        ClientMock.Setup(c => c.GetServiceProfiles(It.IsAny<string>()))
+            .ReturnsAsync(new ServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ServiceProfileResult
+                {
+                    SslTlsServiceProfile = new SslTlsServiceProfile { Entries = entries.ToList() }
+                }
+            });
+
+    public void WithNoServiceProfiles() => WithServiceProfiles();
     
     public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
     

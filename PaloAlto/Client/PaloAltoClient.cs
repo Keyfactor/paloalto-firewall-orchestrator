@@ -1,4 +1,4 @@
-﻿// Copyright 2023 Keyfactor
+﻿// Copyright 2026 Keyfactor
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,18 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             ApiKey = GetAuthenticationResponse().Result?.Result?.Key;
         }
 
+        /// <summary>
+        /// Test seam: builds a client over a caller-supplied <see cref="System.Net.Http.HttpClient"/> and API key,
+        /// skipping the authentication request the public constructor makes.
+        /// </summary>
+        public PaloAltoClient(HttpClient httpClient, string apiKey)
+        {
+            _logger = LogHandler.GetClassLogger<PaloAltoClient>();
+            _jobPoller = new PanoramaJobPoller(this);
+            HttpClient = httpClient;
+            ApiKey = apiKey;
+        }
+
         private string ApiKey { get; }
 
         private string ServerPassword { get; }
@@ -70,6 +82,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateList: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ServiceProfileResponse> GetServiceProfiles(string path)
+        {
+            try
+            {
+                string uri = $"/api/?type=config&action=get&xpath={path}&key={ApiKey}";
+                ServiceProfileResponse response = await GetXmlResponseAsync<ServiceProfileResponse>(await HttpClient.GetAsync(uri));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetServiceProfiles: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SetServiceProfile(string path, string profileName, string certificateName)
+        {
+            try
+            {
+                string uri =  $"/api/?type=config&action=set&xpath={path}/entry[@name='{profileName}']&element=<certificate>{certificateName}</certificate><protocol-settings/>&key={ApiKey}";
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SetServiceProfile: {e.Message}");
                 throw;
             }
         }

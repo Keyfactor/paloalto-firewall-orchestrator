@@ -32,6 +32,33 @@ public interface IPaloAltoClient
     Task<CertificateListResponse> GetCertificateList(string path);
 
     /// <summary>
+    /// Retrieves the list of service profiles at the given XPath within the PAN-OS config tree.
+    /// </summary>
+    /// <param name="path">
+    /// The full XPath to the service profile collection, e.g.
+    /// <c>/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared/ssl-tls-service-profile</c>.
+    /// Append <c>/entry[@name='alias']</c> to filter to a single service profile by name.
+    /// </param>
+    /// <returns>A <see cref="ServiceProfileResponse"/> containing the service profiles.</returns>
+    Task<ServiceProfileResponse> GetServiceProfiles(string path);
+
+    /// <summary>
+    /// Sets the certificate for a given service profile at the specified XPath within the PAN-OS config tree.
+    /// If the service profile does not already exist, it will be created with default protocol settings enabled.
+    /// If it does exist, the certificate will be updated with no changes to the protocol settings. Changes are not applied to the running config until a subsequent commit.
+    /// If the service profile already exists but is controlled by a template, the operation will fail and return an error response. Override must be performed manually.
+    /// </summary>
+    /// <param name="path">
+    /// The full XPath to the service profile collection, e.g.
+    /// <c>/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared/ssl-tls-service-profile</c>.
+    /// Append <c>/entry[@name='alias']</c> to filter to a single service profile by name.
+    /// </param>
+    /// <param name="profileName">The name of the service profile to set the certificate for.</param>
+    /// <param name="certificateName">The name of the certificate to set for the service profile.</param>
+    /// <returns>A <see cref="ErrorSuccessResponse"/> indicating the result of the operation.</returns>
+    Task<ErrorSuccessResponse> SetServiceProfile(string path, string profileName, string certificateName);
+
+    /// <summary>
     /// Returns the names of all templates defined in Panorama.
     /// Used during store validation to confirm the template referenced in the store path exists.
     /// </summary>
