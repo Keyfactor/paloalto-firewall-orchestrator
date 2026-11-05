@@ -115,3 +115,111 @@ $Body = @'
 
 Invoke-RestMethod -Uri "https://$KeyfactorHostname/$KeyfactorApiPath/CertificateStoreTypes" -Method POST -Headers $Headers -Body $Body
 
+Write-Host "Creating store type: PASPBin"
+$Body = @'
+{
+  "Name": "PaloAltoSPBinding",
+  "ShortName": "PASPBin",
+  "Capability": "PaloAltoSPBinding",
+  "LocalStore": false,
+  "SupportedOperations": {
+    "Add": true,
+    "Create": false,
+    "Discovery": false,
+    "Enrollment": false,
+    "Remove": true
+  },
+  "Properties": [
+    {
+      "Name": "ServerUsername",
+      "DisplayName": "Server Username",
+      "Type": "Secret",
+      "DependsOn": "",
+      "DefaultValue": "",
+      "Required": false,
+      "IsPAMEligible": true,
+      "Description": "Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
+    },
+    {
+      "Name": "ServerPassword",
+      "DisplayName": "Server Password",
+      "Type": "Secret",
+      "DependsOn": "",
+      "DefaultValue": "",
+      "Required": false,
+      "IsPAMEligible": true,
+      "Description": "Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration)."
+    },
+    {
+      "Name": "ServerUseSsl",
+      "DisplayName": "Use SSL",
+      "Type": "Bool",
+      "DependsOn": "",
+      "DefaultValue": "true",
+      "Required": true,
+      "IsPAMEligible": false,
+      "Description": "Should be true, http is not supported."
+    },
+    {
+      "Name": "TemplateStack",
+      "DisplayName": "Template Stack",
+      "Type": "String",
+      "DependsOn": "",
+      "DefaultValue": "",
+      "Required": false,
+      "IsPAMEligible": false,
+      "Description": "A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.)."
+    },
+    {
+      "Name": "PushFailureBehavior",
+      "DisplayName": "Push Failure Behavior",
+      "Type": "MultipleChoice",
+      "DependsOn": "",
+      "DefaultValue": "Failure,Warning",
+      "Required": false,
+      "IsPAMEligible": false,
+      "Description": "Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed."
+    }
+  ],
+  "EntryParameters": [
+    {
+      "Name": "ServiceProfileName",
+      "DisplayName": "Service Profile Name",
+      "Type": "String",
+      "DefaultValue": "",
+      "RequiredWhen": {
+        "HasPrivateKey": false,
+        "OnAdd": true,
+        "OnRemove": true,
+        "OnODKG": false
+      }
+    },
+    {
+      "Name": "BindToManagementInterface",
+      "DisplayName": "Bind to Management Interface",
+      "Type": "Boolean",
+      "DefaultValue": "false",
+      "RequiredWhen": {
+        "HasPrivateKey": false,
+        "OnAdd": false,
+        "OnRemove": true,
+        "OnODKG": false
+      }
+    }
+  ],
+  "PasswordOptions": {
+    "EntrySupported": false,
+    "StoreRequired": false,
+    "Style": "Default"
+  },
+  "PrivateKeyAllowed": "Forbidden",
+  "JobProperties": [],
+  "ServerRequired": true,
+  "PowerShell": false,
+  "BlueprintAllowed": false,
+  "CustomAliasAllowed": "Forbidden"
+}
+'@
+
+Invoke-RestMethod -Uri "https://$KeyfactorHostname/$KeyfactorApiPath/CertificateStoreTypes" -Method POST -Headers $Headers -Body $Body
+

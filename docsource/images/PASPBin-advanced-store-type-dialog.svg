@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<svg width="700" height="455" viewBox="0 0 700 455" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+        text { font-family: 'Segoe UI', Arial, sans-serif; }
+        .title { font-size: 20px; font-weight: 600; fill: #222222; }
+        .section-header { font-size: 13px; font-weight: 600; fill: #333333; }
+        .label { font-size: 12px; fill: #555555; }
+        .value { font-size: 12px; fill: #222222; }
+        .tab-text { font-size: 12px; fill: #444444; }
+        .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="700" height="455" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
+  <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
+  <text x="16" y="32" class="title">Edit Certificate Store Type</text>
+  <g>
+    <rect x="0" y="44" width="700" height="36" fill="#ffffff" />
+    <line x1="0" y1="80" x2="700" y2="80" stroke="#d0d0d0" stroke-width="1" />
+    <text x="16" y="68" class="tab-text">Basic</text>
+    <text x="75" y="68" class="tab-active">Advanced</text>
+    <rect x="75" y="77" width="58" height="3" fill="#3355ee" />
+    <text x="155" y="68" class="tab-text">Custom Fields</text>
+    <text x="270" y="68" class="tab-text">Entry Parameters</text>
+  </g>
+  <rect x="0" y="80" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="91" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="99" x2="32" y2="99" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="105" class="section-header">Store Path Type</text>
+  <line x1="0" y1="118" x2="700" y2="118" stroke="#3355ee" stroke-width="2" />
+  <circle cx="28" cy="145" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="28" cy="145" r="4" fill="#3355ee" />
+  <text x="40" y="149" class="label">Freeform</text>
+  <circle cx="188" cy="145" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="200" y="149" class="label">Fixed</text>
+  <circle cx="348" cy="145" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="360" y="149" class="label">Multiple Choice</text>
+  <rect x="20" y="170" width="660" height="36" fill="#e0e0e0" stroke="#cccccc" rx="4" />
+  <rect x="0" y="220" width="700" height="38" fill="#f8f8f8" />
+  <rect x="20" y="231" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
+  <line x1="24" y1="239" x2="32" y2="239" stroke="#666666" stroke-width="1.5" />
+  <text x="44" y="245" class="section-header">Other Settings</text>
+  <line x1="0" y1="258" x2="700" y2="258" stroke="#3355ee" stroke-width="2" />
+  <text x="20" y="284" class="label">Supports Custom Alias</text>
+  <circle cx="28" cy="302" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="28" cy="302" r="4" fill="#3355ee" />
+  <text x="40" y="306" class="label">Forbidden</text>
+  <circle cx="168" cy="302" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="180" y="306" class="label">Optional</text>
+  <circle cx="308" cy="302" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="320" y="306" class="label">Required</text>
+  <text x="20" y="341" class="label">Private Key Handling</text>
+  <circle cx="28" cy="359" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="28" cy="359" r="4" fill="#3355ee" />
+  <text x="40" y="363" class="label">Forbidden</text>
+  <circle cx="168" cy="359" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="180" y="363" class="label">Optional</text>
+  <circle cx="308" cy="359" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="320" y="363" class="label">Required</text>
+  <text x="20" y="398" class="label">PFX Password Style</text>
+  <circle cx="28" cy="416" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="28" cy="416" r="4" fill="#3355ee" />
+  <text x="40" y="420" class="label">Default</text>
+  <circle cx="168" cy="416" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="180" y="420" class="label">Custom</text>
+</svg>

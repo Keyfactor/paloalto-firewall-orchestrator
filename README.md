@@ -35,6 +35,9 @@ The Palo Alto Orchestrator Extension is an integration that can replace and inve
 
 * PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
 
+The Palo Alto Universal Orchestrator extension implements 2 Certificate Store Types. Depending on your use case, you may elect to use one, or both of these Certificate Store Types. Descriptions of each are provided below.
+- [PaloAltoSPBinding](#PASPBin)
+
 ## Compatibility
 
 This integration is compatible with Keyfactor Universal Orchestrator version 10.4 and later.
@@ -60,9 +63,15 @@ This integration has been tested and verified against the following PAN-OS versi
 
 Compatibility with other versions is likely but not guaranteed. If you encounter issues on a different version, please open a support ticket.
 
-## PaloAlto Certificate Store Type
+## Certificate Store Types
 
-To use the Palo Alto Universal Orchestrator extension, you **must** create the PaloAlto Certificate Store Type. This only needs to happen _once_ per Keyfactor Command instance.
+To use the Palo Alto Universal Orchestrator extension, you **must** create the Certificate Store Types required for your use-case. This only needs to happen _once_ per Keyfactor Command instance.
+
+The Palo Alto Universal Orchestrator extension implements 2 Certificate Store Types. Depending on your use case, you may elect to use one, or both of these Certificate Store Types.
+
+### PaloAlto
+
+<details><summary>Click to expand details</summary>
 
 
 
@@ -211,6 +220,175 @@ the Keyfactor Command Portal
 
 
    </details>
+</details>
+
+### PASPBin
+
+<details><summary>Click to expand details</summary>
+
+TODO Overview is a required section
+
+TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
+
+#### PaloAltoSPBinding Requirements
+
+TODO Requirements is an optional section. If this section doesn't seem necessary, please delete it.
+
+#### Supported Operations
+
+| Operation    | Is Supported |
+|--------------|--------------|
+| Add          | ✅ Checked |
+| Remove       | ✅ Checked |
+| Discovery    | 🔲 Unchecked |
+| Reenrollment | 🔲 Unchecked |
+| Create       | 🔲 Unchecked |
+
+#### Store Type Creation
+
+##### Using kfutil:
+`kfutil` is a custom CLI for the Keyfactor Command API and can be used to create certificate store types.
+For more information on [kfutil](https://github.com/Keyfactor/kfutil) check out the [docs](https://github.com/Keyfactor/kfutil?tab=readme-ov-file#quickstart)
+
+   <details><summary>Click to expand PASPBin kfutil details</summary>
+
+   ##### Using online definition from GitHub:
+   This will reach out to GitHub and pull the latest store-type definition
+   ```shell
+   # PaloAltoSPBinding
+   kfutil store-types create PASPBin
+   ```
+
+   ##### Offline creation using integration-manifest file:
+   If required, it is possible to create store types from the [integration-manifest.json](./integration-manifest.json) included in this repo.
+   You would first download the [integration-manifest.json](./integration-manifest.json) and then run the following command
+   in your offline environment.
+   ```shell
+   kfutil store-types create --from-file integration-manifest.json
+   ```
+   </details>
+
+#### Manual Creation
+Below are instructions on how to create the PASPBin store type manually in
+the Keyfactor Command Portal
+
+   <details><summary>Click to expand manual PASPBin details</summary>
+
+   Create a store type called `PASPBin` with the attributes in the tables below:
+
+   ##### Basic Tab
+   | Attribute | Value | Description |
+   | --------- | ----- | ----- |
+   | Name | PaloAltoSPBinding | Display name for the store type (may be customized) |
+   | Short Name | PASPBin | Short display name for the store type |
+   | Capability | PaloAltoSPBinding | Store type name orchestrator will register with. Check the box to allow entry of value |
+   | Supports Add | ✅ Checked | Indicates that the Store Type supports Management Add |
+   | Supports Remove | ✅ Checked | Indicates that the Store Type supports Management Remove |
+   | Supports Discovery | 🔲 Unchecked | Indicates that the Store Type supports Discovery |
+   | Supports Reenrollment | 🔲 Unchecked | Indicates that the Store Type supports Reenrollment |
+   | Supports Create | 🔲 Unchecked | Indicates that the Store Type supports store creation |
+   | Needs Server | ✅ Checked | Determines if a target server name is required when creating store |
+   | Blueprint Allowed | 🔲 Unchecked | Determines if store type may be included in an Orchestrator blueprint |
+   | Uses PowerShell | 🔲 Unchecked | Determines if underlying implementation is PowerShell |
+   | Requires Store Password | 🔲 Unchecked | Enables users to optionally specify a store password when defining a Certificate Store. |
+   | Supports Entry Password | 🔲 Unchecked | Determines if an individual entry within a store can have a password. |
+
+   The Basic tab should look like this:
+
+   ![PASPBin Basic Tab](docsource/images/PASPBin-basic-store-type-dialog.svg)
+
+   ##### Advanced Tab
+   | Attribute | Value | Description |
+   | --------- | ----- | ----- |
+   | Supports Custom Alias | Forbidden | Determines if an individual entry within a store can have a custom Alias. |
+   | Private Key Handling | Forbidden | This determines if Keyfactor can send the private key associated with a certificate to the store. |
+   | PFX Password Style | Default | 'Default' - PFX password is randomly generated, 'Custom' - PFX password may be specified when the enrollment job is created (Requires the Allow Custom Password application setting to be enabled.) |
+
+   The Advanced tab should look like this:
+
+   ![PASPBin Advanced Tab](docsource/images/PASPBin-advanced-store-type-dialog.svg)
+
+   > For Keyfactor **Command versions 24.4 and later**, a Certificate Format dropdown is available with PFX and PEM options. Ensure that **PFX** is selected, as this determines the format of new and renewed certificates sent to the Orchestrator during a Management job. Currently, all Keyfactor-supported Orchestrator extensions support only PFX.
+
+   ##### Custom Fields Tab
+   Custom fields operate at the certificate store level and are used to control how the orchestrator connects to the remote target server containing the certificate store to be managed. The following custom fields should be added to the store type:
+
+   | Name | Display Name | Description | Type | Default Value/Options | Required |
+   | ---- | ------------ | ---- | --------------------- | -------- | ----------- |
+   | ServerUsername | Server Username | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
+   | ServerPassword | Server Password | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). | Secret |  | 🔲 Unchecked |
+   | ServerUseSsl | Use SSL | Should be true, http is not supported. | Bool | true | ✅ Checked |
+   | TemplateStack | Template Stack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). | String |  | 🔲 Unchecked |
+   | PushFailureBehavior | Push Failure Behavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. | MultipleChoice | Failure,Warning | 🔲 Unchecked |
+
+   The Custom Fields tab should look like this:
+
+   ![PASPBin Custom Fields Tab](docsource/images/PASPBin-custom-fields-store-type-dialog.svg)
+
+   ###### Server Username
+   Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+   ###### Server Password
+   Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration).
+
+
+   > [!IMPORTANT]
+   > This field is created by the `Needs Server` on the Basic tab, do not create this field manually.
+
+
+   ###### Use SSL
+   Should be true, http is not supported.
+
+   ![PASPBin Custom Field - ServerUseSsl](docsource/images/PASPBin-custom-field-ServerUseSsl-dialog.svg)
+   ![PASPBin Custom Field - ServerUseSsl](docsource/images/PASPBin-custom-field-ServerUseSsl-validation-options-dialog.svg)
+
+
+   ###### Template Stack
+   A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.).
+
+   ![PASPBin Custom Field - TemplateStack](docsource/images/PASPBin-custom-field-TemplateStack-dialog.svg)
+   ![PASPBin Custom Field - TemplateStack](docsource/images/PASPBin-custom-field-TemplateStack-validation-options-dialog.svg)
+
+
+   ###### Push Failure Behavior
+   Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed.
+
+   ![PASPBin Custom Field - PushFailureBehavior](docsource/images/PASPBin-custom-field-PushFailureBehavior-dialog.svg)
+   ![PASPBin Custom Field - PushFailureBehavior](docsource/images/PASPBin-custom-field-PushFailureBehavior-validation-options-dialog.svg)
+
+
+   ##### Entry Parameters Tab
+
+   | Name | Display Name | Description | Type | Default Value | Entry has a private key | Adding an entry | Removing an entry | Reenrolling an entry |
+   | ---- | ------------ | ---- | ------------- | ----------------------- | ---------------- | ----------------- | ------------------- | ----------- |
+   | ServiceProfileName | Service Profile Name |  | String |  | 🔲 Unchecked | ✅ Checked | ✅ Checked | 🔲 Unchecked |
+   | BindToManagementInterface | Bind to Management Interface |  | Boolean | false | 🔲 Unchecked | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked |
+
+   The Entry Parameters tab should look like this:
+
+   ![PASPBin Entry Parameters Tab](docsource/images/PASPBin-entry-parameters-store-type-dialog.svg)
+   ##### Service Profile Name
+   
+
+   ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName.svg)
+   ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName-validation-options.svg)
+
+
+   ##### Bind to Management Interface
+   
+
+   ![PASPBin Entry Parameter - BindToManagementInterface](docsource/images/PASPBin-entry-parameters-store-type-dialog-BindToManagementInterface.svg)
+   ![PASPBin Entry Parameter - BindToManagementInterface](docsource/images/PASPBin-entry-parameters-store-type-dialog-BindToManagementInterface-validation-options.svg)
+
+
+   </details>
+</details>
+
 
 ## Installation
 
@@ -253,6 +431,10 @@ the Keyfactor Command Portal
 > The above installation steps can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/InstallingAgents/NetCoreOrchestrator/CustomExtensions.htm?Highlight=extensions).
 
 ## Defining Certificate Stores
+
+The Palo Alto Universal Orchestrator extension implements 2 Certificate Store Types, each of which implements different functionality. Refer to the individual instructions below for each Certificate Store Type that you deemed necessary for your use case from the installation section.
+
+<details><summary>PaloAlto (PaloAlto)</summary>
 
 ### Store Creation
 
@@ -338,9 +520,106 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 
 > The content in this section can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
 
+</details>
+
+<details><summary>PaloAltoSPBinding (PASPBin)</summary>
+
+TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
+
+TODO Certificate Store Configuration is an optional section. If this section doesn't seem necessary, please delete it.
+
+### Store Creation
+
+#### Manually with the Command UI
+
+<details><summary>Click to expand details</summary>
+
+1. **Navigate to the _Certificate Stores_ page in Keyfactor Command.**
+
+    Log into Keyfactor Command, toggle the _Locations_ dropdown, and click _Certificate Stores_.
+
+2. **Add a Certificate Store.**
+
+    Click the Add button to add a new Certificate Store. Use the table below to populate the **Attributes** in the **Add** form.
+
+   | Attribute | Description |
+   | --------- | ----------- |
+   | Category | Select "PaloAltoSPBinding" or the customized certificate store name from the previous step. |
+   | Container | Optional container to associate certificate store with. |
+   | Client Machine | Either the Panorama or Palo Alto Firewall URI or IP address. |
+   | Store Path | The Store Path field should be reviewed in the store path explanation section.  It varies depending on configuration. |
+   | Orchestrator | Select an approved orchestrator capable of managing `PASPBin` certificates. Specifically, one with the `PaloAltoSPBinding` capability. |
+   | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+   | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+   | ServerUseSsl | Should be true, http is not supported. |
+   | TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
+   | PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
+
+</details>
+
+#### Using kfutil CLI
+
+<details><summary>Click to expand details</summary>
+
+1. **Generate a CSV template for the PASPBin certificate store**
+
+    ```shell
+    kfutil stores import generate-template --store-type-name PASPBin --outpath PASPBin.csv
+    ```
+2. **Populate the generated CSV file**
+
+    Open the CSV file, and reference the table below to populate parameters for each **Attribute**.
+
+   | Attribute | Description |
+   | --------- | ----------- |
+   | Category | Select "PaloAltoSPBinding" or the customized certificate store name from the previous step. |
+   | Container | Optional container to associate certificate store with. |
+   | Client Machine | Either the Panorama or Palo Alto Firewall URI or IP address. |
+   | Store Path | The Store Path field should be reviewed in the store path explanation section.  It varies depending on configuration. |
+   | Orchestrator | Select an approved orchestrator capable of managing `PASPBin` certificates. Specifically, one with the `PaloAltoSPBinding` capability. |
+   | Properties.ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+   | Properties.ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+   | Properties.ServerUseSsl | Should be true, http is not supported. |
+   | Properties.TemplateStack | A semicolon delimited list of Template Stacks used for device push of certificates via Template (i.e. `Stack 1`, `Stack 1;Stack2`, or `Stack 1; Stack 2`, etc.). |
+   | Properties.PushFailureBehavior | Controls the job result when Panorama fails to commit to a device group, template, or template stack. 'Failure' will fail the management job and trigger a retry, while 'Warning' records the failure message but marks the job as completed. |
+
+3. **Import the CSV file to create the certificate stores**
+
+    ```shell
+    kfutil stores import csv --store-type-name PASPBin --file PASPBin.csv
+    ```
+
+</details>
+
+#### PAM Provider Eligible Fields
+<details><summary>Attributes eligible for retrieval by a PAM Provider on the Universal Orchestrator</summary>
+
+If a PAM provider was installed _on the Universal Orchestrator_ in the [Installation](#Installation) section, the following parameters can be configured for retrieval _on the Universal Orchestrator_.
+
+   | Attribute | Description |
+   | --------- | ----------- |
+   | ServerUsername | Palo Alto or Panorama Api User. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+   | ServerPassword | Palo Alto or Panorama Api Password. (or valid PAM key if the username is stored in a KF Command configured PAM integration). |
+
+Please refer to the **Universal Orchestrator (remote)** usage section ([PAM providers on the Keyfactor Integration Catalog](https://keyfactor.github.io/integrations-catalog/content/pam)) for your selected PAM provider for instructions on how to load attributes orchestrator-side.
+> Any secret can be rendered by a PAM provider _installed on the Keyfactor Command server_. The above parameters are specific to attributes that can be fetched by an installed PAM provider running on the Universal Orchestrator server itself.
+
+</details>
+
+> The content in this section can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
+
+</details>
+
+## Discovering Certificate Stores with the Discovery Job
+
+### PaloAltoSPBinding Discovery Job
+
+TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
+TODO Discovery Job Configuration is an optional section. If this section doesn't seem necessary, please delete it.
+
 
 ## Release 2.5.1 Update on Alias Constraints
-**Important Note** For management / re-enrollment jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
+**Important Note** For management jobs, the alias provided for the job is validated to ensure the length of the alias is not longer than Panorama / Firewall allows. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters. Please see the [Panorama documentation](https://docs.paloaltonetworks.com/ngfw/administration/certificate-management/obtain-certificates/generate-certificate#generate-certificate-pan-os) for more information on certificate name length.
 
 If the alias length exceeds the maximum length, you will receive a job failure with the following error message:
 ```
@@ -545,6 +824,10 @@ Reference: [Palo Alto Generate Certificate documentation](https://docs.paloalton
 
 > [!IMPORTANT]
 > While this integration enforces the supported key types for ODKG, **this integration does not enforce key size restrictions for ODKG.** It is the responsibility of the user to ensure that the key sizes are compatible with their PAN-OS device and its configuration. PAN-OS will reject the request if the key size is not supported. Enrollment Pattern / Certificate Template configuration in Keyfactor Command can control the key size requirements for certificates issued through this integration.
+
+### Alias Length
+
+Similar to the note [2.5.1 release notes regarding alias length constraints](#release-251-update-on-alias-constraints), re-enrollment jobs also enforce the same alias length restrictions. For Panorama, alias length **must not** be more than 31 characters. For Firewall, alias length **must not** be more than 63 characters. If your store path points to Panorama, even if you are pushing the certificate to Firewall, you must keep alias length to at most 31 characters.
 
 ### Supported SANs
 As of writing, PAN-OS supports the following SANs:

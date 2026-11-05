@@ -4,3 +4,6 @@
 Write-Host "Creating store type: PaloAlto"
 kfutil store-types create PaloAlto
 
+Write-Host "Creating store type: PASPBin"
+kfutil store-types create PASPBin
+

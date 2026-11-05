@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<svg width="700" height="475" viewBox="0 0 700 475" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+        text { font-family: 'Segoe UI', Arial, sans-serif; }
+        .title { font-size: 20px; font-weight: 600; fill: #222222; }
+        .section-header { font-size: 13px; font-weight: 600; fill: #333333; }
+        .label { font-size: 12px; fill: #555555; }
+        .value { font-size: 12px; fill: #222222; }
+        .tab-text { font-size: 12px; fill: #444444; }
+        .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="700" height="475" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
+  <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
+  <text x="16" y="32" class="title">Edit Custom Field</text>
+  <text x="684" y="34" text-anchor="end" font-size="20" fill="#666666" font-family="'Segoe UI', Arial, sans-serif">×</text>
+  <g>
+    <rect x="0" y="44" width="700" height="36" fill="#ffffff" />
+    <line x1="0" y1="80" x2="700" y2="80" stroke="#d0d0d0" stroke-width="1" />
+    <text x="16" y="68" class="tab-active">Basic Information</text>
+    <rect x="16" y="77" width="121" height="3" fill="#3355ee" />
+    <text x="159" y="68" class="tab-text">Validation Options</text>
+  </g>
+  <text x="20" y="110" class="label">Name</text>
+  <rect x="20" y="113" width="660" height="36" fill="#e0e0e0" stroke="#cccccc" rx="4" />
+  <text x="30" y="138" class="value">ServerUseSsl</text>
+  <text x="20" y="173" class="label">Display Name</text>
+  <rect x="20" y="176" width="660" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />
+  <text x="30" y="201" class="value">Use SSL</text>
+  <text x="20" y="236" class="label">Type</text>
+  <rect x="20" y="239" width="660" height="36" fill="#e8e8e8" stroke="#cccccc" rx="4" />
+  <text x="30" y="264" class="value">Bool</text>
+  <text x="666" y="265" font-size="12" fill="#666666" font-family="'Segoe UI', Arial, sans-serif">∨</text>
+  <text x="20" y="301" class="label">Default Value</text>
+  <circle cx="28" cy="318" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="28" cy="318" r="4" fill="#3355ee" />
+  <text x="40" y="322" class="label">True</text>
+  <circle cx="108" cy="318" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="120" y="322" class="label">False</text>
+  <circle cx="188" cy="318" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <text x="200" y="322" class="label">Not Set</text>
+  <text x="20" y="360" class="label">Depends On</text>
+  <rect x="20" y="373" width="15" height="15" fill="#ffffff" stroke="#cccccc" rx="2" />
+  <rect x="43" y="363" width="637" height="36" fill="#e8e8e8" stroke="#cccccc" rx="4" />
+  <text x="53" y="388" class="value">Server Username</text>
+  <text x="666" y="389" font-size="12" fill="#666666" font-family="'Segoe UI', Arial, sans-serif">∨</text>
+  <line x1="0" y1="415" x2="700" y2="415" stroke="#e0e0e0" stroke-width="1" />
+  <rect x="500" y="427" width="90" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />
+  <text x="545" y="452" text-anchor="middle" font-size="13" font-family="'Segoe UI', Arial, sans-serif" fill="#333333">CANCEL</text>
+  <rect x="600" y="427" width="80" height="36" fill="#222222" stroke="none" rx="4" />
+  <text x="640" y="452" text-anchor="middle" font-size="13" font-family="'Segoe UI', Arial, sans-serif" fill="#ffffff">SAVE</text>
+</svg>

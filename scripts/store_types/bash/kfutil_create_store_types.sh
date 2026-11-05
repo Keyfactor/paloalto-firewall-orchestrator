@@ -7,3 +7,6 @@ set -e
 echo "Creating store type: PaloAlto"
 kfutil store-types create PaloAlto
 
+echo "Creating store type: PASPBin"
+kfutil store-types create PASPBin
+
