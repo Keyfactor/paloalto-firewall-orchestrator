@@ -216,7 +216,7 @@
             {
               "Name": "BindToManagementInterface",
               "DisplayName": "Bind to Management Interface",
-              "Type": "Boolean",
+              "Type": "Bool",
               "DefaultValue": "false",
               "RequiredWhen": {
                 "HasPrivateKey": false,

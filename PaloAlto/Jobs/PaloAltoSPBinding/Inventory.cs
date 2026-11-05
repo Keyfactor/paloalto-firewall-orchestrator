@@ -217,7 +217,7 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             Alias = profile.Name,
             Certificates = new[] { certificate.PublicKey },
             ItemStatus = OrchestratorInventoryItemStatus.Unknown,
-            PrivateKeyEntry = certificate.PrivateKey?.Length > 0,
+            PrivateKeyEntry = false, // Service profiles do not have private keys, only references to certificates
             UseChainLevel = false
         };
     }

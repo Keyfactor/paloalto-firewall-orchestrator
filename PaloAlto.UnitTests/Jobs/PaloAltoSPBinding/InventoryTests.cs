@@ -268,8 +268,11 @@ public class InventoryTests : BaseUnitTest
         Assert.False(item.UseChainLevel);
     }
 
+    /// <summary>
+    /// Service profiles do not have private keys, only references to certificates. The private key of the referenced certificate is not relevant to the profile.
+    /// </summary>
     [Fact]
-    public void ProcessJob_ResolvedCertificateWithPrivateKey_SetsPrivateKeyEntryTrue()
+    public void ProcessJob_ResolvedCertificateWithPrivateKey_SetsPrivateKeyEntryFalse()
     {
         FakeClient.WithNoCertificates();
         FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateWithPrivateKey("my-cert"));
@@ -278,7 +281,7 @@ public class InventoryTests : BaseUnitTest
 
         _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
 
-        Assert.True(Assert.Single(submitted).PrivateKeyEntry);
+        Assert.False(Assert.Single(submitted).PrivateKeyEntry);
     }
 
     [Fact]
