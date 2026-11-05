@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
@@ -218,7 +219,12 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             Certificates = new[] { certificate.PublicKey },
             ItemStatus = OrchestratorInventoryItemStatus.Unknown,
             PrivateKeyEntry = false, // Service profiles do not have private keys, only references to certificates
-            UseChainLevel = false
+            UseChainLevel = false,
+            Parameters = new Dictionary<string, object>()
+                {
+                    {EntryParameters.ServiceProfileName, profile.Name},
+                    {EntryParameters.CertificateAlias, certificateName}
+                },
         };
     }
 }

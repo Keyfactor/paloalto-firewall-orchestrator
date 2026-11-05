@@ -15,6 +15,7 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAltoSPBinding;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
@@ -266,6 +267,25 @@ public class InventoryTests : BaseUnitTest
         Assert.Equal(new[] { TestPem }, item.Certificates);
         Assert.Equal(OrchestratorInventoryItemStatus.Unknown, item.ItemStatus);
         Assert.False(item.UseChainLevel);
+    }
+    
+    [Theory]
+    [InlineData(EntryParameters.ServiceProfileName, "my-profile")]
+    [InlineData(EntryParameters.CertificateAlias, "my-cert")]
+    public void ProcessJob_ProfileWithResolvableCertificate_MapsEntryParameters(string key, string expectedValue)
+    {
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("my-cert"));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        var item = Assert.Single(submitted);
+        Assert.NotNull(item.Parameters);
+        Assert.True(item.Parameters!.ContainsKey(key));
+        Assert.Equal(expectedValue, item.Parameters[key]);
     }
 
     /// <summary>

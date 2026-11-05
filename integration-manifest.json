@@ -209,7 +209,19 @@
               "RequiredWhen": {
                 "HasPrivateKey": false,
                 "OnAdd": true,
-                "OnRemove": true,
+                "OnRemove": false,
+                "OnODKG": false
+              }
+            },
+            {
+              "Name": "CertificateAlias",
+              "DisplayName": "Certificate Alias",
+              "Type": "String",
+              "DefaultValue": "",
+              "RequiredWhen": {
+                "HasPrivateKey": false,
+                "OnAdd": false,
+                "OnRemove": false,
                 "OnODKG": false
               }
             },
