@@ -76,6 +76,16 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
             });
 
     public void WithNoServiceProfiles() => WithServiceProfiles();
+
+    // ── Management: Service profile binding ──────────────────────────────────
+
+    public void SetServiceProfileSucceeds() =>
+        ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(Ok());
+
+    public void SetServiceProfileFails(string message = "Could not set service profile") =>
+        ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(Error(message));
     
     public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
     

@@ -50,6 +50,9 @@ public sealed class ManagementJobBuilder
 
     public ManagementJobBuilder WithJobProperty(string key, object value) { _jobProperties[key] = value; return this; }
 
+    // Entry parameter from the store type definition.
+    public ManagementJobBuilder WithServiceProfileName(string name) => WithJobProperty("ServiceProfileName", name);
+
     public ManagementJobConfiguration Build() => new()
     {
         JobHistoryId = 1,
