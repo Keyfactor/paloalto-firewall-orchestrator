@@ -190,14 +190,14 @@ public class ManagementTests : BaseUnitTest
     }
 
     [Fact]
-    public void ProcessJob_Add_ProfileDoesNotExist_LooksUpOnlyThatProfile()
+    public void ProcessJob_Add_ProfileDoesNotExist_LooksUpAllProfilesOnStore()
     {
         ArrangeSuccessfulAdd("/config/shared");
 
         _sut.ProcessJob(AnAddJob("/config/shared"));
 
         FakeClient.ClientMock.Verify(
-            c => c.GetServiceProfiles("/config/shared/ssl-tls-service-profile/entry[@name='my-profile']"), Times.Once);
+            c => c.GetServiceProfiles("/config/shared/ssl-tls-service-profile"), Times.Once);
     }
 
     [Fact]

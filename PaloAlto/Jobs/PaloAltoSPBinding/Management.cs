@@ -430,7 +430,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
         Logger.MethodEntry();
         
         var response = await _client.GetServiceProfiles(
-            $"{storePath}/ssl-tls-service-profile/entry[@name='{profileName}']");
+            $"{storePath}/ssl-tls-service-profile");
 
         ServiceProfileEntry? result = response?.Result?.SslTlsServiceProfile?.Entries?.FirstOrDefault(e => e.Name == profileName);
         
