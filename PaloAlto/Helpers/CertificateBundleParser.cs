@@ -13,6 +13,9 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
@@ -39,6 +42,56 @@ public static class CertificateBundleParser
     /// <returns>false if the contents are empty or cannot be parsed as certificate(s); never throws for bad input.</returns>
     public static bool TryGetLeafCertificate(string? contents, out X509Certificate2? leaf)
     {
-        throw new NotImplementedException();
+        leaf = null;
+        if (string.IsNullOrWhiteSpace(contents)) return false;
+
+        var certificates = new List<X509Certificate2>();
+        try
+        {
+            if (contents.Contains("-----BEGIN", StringComparison.Ordinal))
+            {
+                var collection = new X509Certificate2Collection();
+                collection.ImportFromPem(contents);
+                certificates.AddRange(collection);
+            }
+            else
+            {
+                var der = Convert.FromBase64String(string.Concat(contents.Where(c => !char.IsWhiteSpace(c))));
+
+                // Only a plain certificate; PFX / PKCS#12 (which can hold a private key) must not be accepted.
+                if (X509Certificate2.GetCertContentType(der) != X509ContentType.Cert) return false;
+
+                certificates.Add(new X509Certificate2(der));
+            }
+        }
+        catch (Exception e) when (e is CryptographicException or FormatException or ArgumentException)
+        {
+            DisposeAll(certificates);
+            return false;
+        }
+
+        if (certificates.Count == 0) return false;
+
+        var selected = SelectLeaf(certificates);
+        DisposeAll(certificates.Where(c => !ReferenceEquals(c, selected)));
+        leaf = selected;
+        return true;
+    }
+
+    private static X509Certificate2 SelectLeaf(List<X509Certificate2> certificates)
+    {
+        // A certificate that issues another certificate in the bundle is not an end-entity certificate.
+        var leaves = certificates
+            .Where(candidate => !certificates.Any(other =>
+                !ReferenceEquals(other, candidate) &&
+                other.IssuerName.RawData.AsSpan().SequenceEqual(candidate.SubjectName.RawData)))
+            .ToList();
+
+        return leaves.Count == 1 ? leaves[0] : certificates[0];
+    }
+
+    private static void DisposeAll(IEnumerable<X509Certificate2> certificates)
+    {
+        foreach (var certificate in certificates) certificate.Dispose();
     }
 }

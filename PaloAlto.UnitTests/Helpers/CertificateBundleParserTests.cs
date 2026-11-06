@@ -21,7 +21,7 @@ namespace PaloAlto.UnitTests.Helpers;
 
 public class CertificateBundleParserTests
 {
-    private readonly CertificateChainFixture _chain = new();
+    private static readonly CertificateChainFixture Chain = new();
 
     private static void AssertLeaf(X509Certificate2 expected, string contents)
     {
@@ -34,18 +34,18 @@ public class CertificateBundleParserTests
 
     [Fact]
     public void TryGetLeafCertificate_SinglePem_ReturnsThatCertificate() =>
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.ToPem(_chain.Leaf));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.ToPem(Chain.Leaf));
 
     [Fact]
     public void TryGetLeafCertificate_BareBase64Der_ReturnsThatCertificate() =>
-        AssertLeaf(_chain.Leaf, Convert.ToBase64String(_chain.Leaf.RawData));
+        AssertLeaf(Chain.Leaf, Convert.ToBase64String(Chain.Leaf.RawData));
 
     [Fact]
     public void TryGetLeafCertificate_PemWithCrLfAndSurroundingWhitespace_ReturnsThatCertificate()
     {
-        var pem = "\r\n  " + CertificateChainFixture.ToPem(_chain.Leaf).Replace("\n", "\r\n") + "  \r\n";
+        var pem = "\r\n  " + CertificateChainFixture.ToPem(Chain.Leaf).Replace("\n", "\r\n") + "  \r\n";
 
-        AssertLeaf(_chain.Leaf, pem);
+        AssertLeaf(Chain.Leaf, pem);
     }
 
     [Fact]
@@ -60,23 +60,23 @@ public class CertificateBundleParserTests
 
     [Fact]
     public void TryGetLeafCertificate_LeafThenIssuer_ReturnsTheLeaf() =>
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.Bundle(_chain.Leaf, _chain.Intermediate));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.Bundle(Chain.Leaf, Chain.Intermediate));
 
     [Fact]
     public void TryGetLeafCertificate_IssuerThenLeaf_ReturnsTheLeaf() =>
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.Bundle(_chain.Intermediate, _chain.Leaf));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.Bundle(Chain.Intermediate, Chain.Leaf));
 
     [Fact]
     public void TryGetLeafCertificate_FullChainInAnyOrder_ReturnsTheLeaf()
     {
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.Bundle(_chain.Leaf, _chain.Intermediate, _chain.Root));
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.Bundle(_chain.Root, _chain.Intermediate, _chain.Leaf));
-        AssertLeaf(_chain.Leaf, CertificateChainFixture.Bundle(_chain.Intermediate, _chain.Leaf, _chain.Root));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.Bundle(Chain.Leaf, Chain.Intermediate, Chain.Root));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.Bundle(Chain.Root, Chain.Intermediate, Chain.Leaf));
+        AssertLeaf(Chain.Leaf, CertificateChainFixture.Bundle(Chain.Intermediate, Chain.Leaf, Chain.Root));
     }
 
     [Fact]
     public void TryGetLeafCertificate_BundleWithoutALeaf_ReturnsTheCertificateNotIssuingAnother() =>
-        AssertLeaf(_chain.Intermediate, CertificateChainFixture.Bundle(_chain.Root, _chain.Intermediate));
+        AssertLeaf(Chain.Intermediate, CertificateChainFixture.Bundle(Chain.Root, Chain.Intermediate));
 
     [Fact]
     public void TryGetLeafCertificate_UnrelatedCertificates_FallsBackToTheFirst()

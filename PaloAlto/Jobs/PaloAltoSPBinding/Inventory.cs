@@ -28,11 +28,13 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
     }
     
     private IPaloAltoClient _client;
+    
+    // TODO: Create a separate class for ServiceProfileBindingJobProperties to deserialize the properties into, instead of using JobProperties, which is specific to PaloAlto store type.
     private JobProperties StoreProperties { get; set; }
 
     public JobResult ProcessJob(InventoryJobConfiguration jobConfiguration, SubmitInventoryUpdate submitInventoryUpdate)
     {
-        Logger.MethodEntry(LogLevel.Debug);
+        Logger.MethodEntry();
         StoreProperties = DeserializeJobProperties(jobConfiguration.CertificateStoreDetails);
 
         return PerformInventory(jobConfiguration, submitInventoryUpdate)
@@ -45,7 +47,7 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
     {
         try
         {
-            Logger.MethodEntry(LogLevel.Debug);
+            Logger.MethodEntry();
 
             _client = CreatePanoramaClient(config.CertificateStoreDetails, config);
 
