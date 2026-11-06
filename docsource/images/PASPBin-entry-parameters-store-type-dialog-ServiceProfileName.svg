@@ -42,7 +42,7 @@
   <text x="20" y="425" class="label">Depends On</text>
   <rect x="20" y="438" width="15" height="15" fill="#ffffff" stroke="#cccccc" rx="2" />
   <rect x="43" y="428" width="637" height="36" fill="#e8e8e8" stroke="#cccccc" rx="4" />
-  <text x="53" y="453" class="value">Bind to Management Interface</text>
+  <text x="53" y="453" class="value">Certificate Alias</text>
   <text x="666" y="454" font-size="12" fill="#666666" font-family="'Segoe UI', Arial, sans-serif">∨</text>
   <line x1="0" y1="480" x2="700" y2="480" stroke="#e0e0e0" stroke-width="1" />
   <rect x="500" y="492" width="90" height="36" fill="#ffffff" stroke="#cccccc" rx="4" />

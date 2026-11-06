@@ -50,8 +50,7 @@
   <rect x="240" y="379" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
   <polyline points="243,386 246,390 252,383" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   <text x="261" y="393" class="label">Add</text>
-  <rect x="460" y="379" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
-  <polyline points="463,386 466,390 472,383" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="460" y="379" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
   <text x="481" y="393" class="label">Remove</text>
   <rect x="20" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
   <text x="41" y="429" class="label">Create</text>

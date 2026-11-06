@@ -239,7 +239,7 @@ TODO Requirements is an optional section. If this section doesn't seem necessary
 | Operation    | Is Supported |
 |--------------|--------------|
 | Add          | ✅ Checked |
-| Remove       | ✅ Checked |
+| Remove       | 🔲 Unchecked |
 | Discovery    | 🔲 Unchecked |
 | Reenrollment | 🔲 Unchecked |
 | Create       | 🔲 Unchecked |
@@ -283,7 +283,7 @@ the Keyfactor Command Portal
    | Short Name | PASPBin | Short display name for the store type |
    | Capability | PaloAltoSPBinding | Store type name orchestrator will register with. Check the box to allow entry of value |
    | Supports Add | ✅ Checked | Indicates that the Store Type supports Management Add |
-   | Supports Remove | ✅ Checked | Indicates that the Store Type supports Management Remove |
+   | Supports Remove | 🔲 Unchecked | Indicates that the Store Type supports Management Remove |
    | Supports Discovery | 🔲 Unchecked | Indicates that the Store Type supports Discovery |
    | Supports Reenrollment | 🔲 Unchecked | Indicates that the Store Type supports Reenrollment |
    | Supports Create | 🔲 Unchecked | Indicates that the Store Type supports store creation |
@@ -366,8 +366,9 @@ the Keyfactor Command Portal
 
    | Name | Display Name | Description | Type | Default Value | Entry has a private key | Adding an entry | Removing an entry | Reenrolling an entry |
    | ---- | ------------ | ---- | ------------- | ----------------------- | ---------------- | ----------------- | ------------------- | ----------- |
-   | ServiceProfileName | Service Profile Name |  | String |  | 🔲 Unchecked | ✅ Checked | ✅ Checked | 🔲 Unchecked |
-   | BindToManagementInterface | Bind to Management Interface |  | Boolean | false | 🔲 Unchecked | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked |
+   | ServiceProfileName | Service Profile Name |  | String |  | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked | 🔲 Unchecked |
+   | CertificateAlias | Certificate Alias |  | String |  | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked |
+   | BindToManagementInterface | Bind to Management Interface |  | Bool | false | 🔲 Unchecked | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked |
 
    The Entry Parameters tab should look like this:
 
@@ -377,6 +378,13 @@ the Keyfactor Command Portal
 
    ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName.svg)
    ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName-validation-options.svg)
+
+
+   ##### Certificate Alias
+   
+
+   ![PASPBin Entry Parameter - CertificateAlias](docsource/images/PASPBin-entry-parameters-store-type-dialog-CertificateAlias.svg)
+   ![PASPBin Entry Parameter - CertificateAlias](docsource/images/PASPBin-entry-parameters-store-type-dialog-CertificateAlias-validation-options.svg)
 
 
    ##### Bind to Management Interface

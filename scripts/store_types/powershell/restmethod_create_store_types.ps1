@@ -127,7 +127,7 @@ $Body = @'
     "Create": false,
     "Discovery": false,
     "Enrollment": false,
-    "Remove": true
+    "Remove": false
   },
   "Properties": [
     {
@@ -190,14 +190,26 @@ $Body = @'
       "RequiredWhen": {
         "HasPrivateKey": false,
         "OnAdd": true,
-        "OnRemove": true,
+        "OnRemove": false,
+        "OnODKG": false
+      }
+    },
+    {
+      "Name": "CertificateAlias",
+      "DisplayName": "Certificate Alias",
+      "Type": "String",
+      "DefaultValue": "",
+      "RequiredWhen": {
+        "HasPrivateKey": false,
+        "OnAdd": false,
+        "OnRemove": false,
         "OnODKG": false
       }
     },
     {
       "Name": "BindToManagementInterface",
       "DisplayName": "Bind to Management Interface",
-      "Type": "Boolean",
+      "Type": "Bool",
       "DefaultValue": "false",
       "RequiredWhen": {
         "HasPrivateKey": false,
