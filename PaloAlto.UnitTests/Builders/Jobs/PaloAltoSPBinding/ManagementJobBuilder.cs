@@ -27,6 +27,8 @@ public sealed class ManagementJobBuilder
     private string _serverPassword = "password";
     private string _alias = "my-cert";
     private string _certContents = string.Empty;
+    private string? _contentsFormat = "PEM";
+    private string? _thumbprint = null;
     private string? _privateKeyPassword = null;
     private bool _overwrite = false;
     private CertStoreOperationType _operationType = CertStoreOperationType.Add;
@@ -40,6 +42,8 @@ public sealed class ManagementJobBuilder
     public ManagementJobBuilder WithStorePath(string path) { _storePath = path; return this; }
     public ManagementJobBuilder WithAlias(string alias) { _alias = alias; return this; }
     public ManagementJobBuilder WithCertificateContents(string pfxBase64) { _certContents = pfxBase64; return this; }
+    public ManagementJobBuilder WithContentsFormat(string? format) { _contentsFormat = format; return this; }
+    public ManagementJobBuilder WithThumbprint(string? thumbprint) { _thumbprint = thumbprint; return this; }
     public ManagementJobBuilder WithPrivateKeyPassword(string password) { _privateKeyPassword = password; return this; }
     public ManagementJobBuilder WithOverwrite(bool overwrite = true) { _overwrite = overwrite; return this; }
     public ManagementJobBuilder WithTemplateStack(string stack) { _templateStack = stack; return this; }
@@ -75,6 +79,8 @@ public sealed class ManagementJobBuilder
         {
             Alias = _alias,
             Contents = _certContents,
+            ContentsFormat = _contentsFormat,
+            Thumbprint = _thumbprint,
             PrivateKeyPassword = _privateKeyPassword,
         },
         JobProperties = _jobProperties,

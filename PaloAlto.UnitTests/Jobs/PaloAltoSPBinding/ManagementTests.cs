@@ -23,6 +23,7 @@ using Keyfactor.Orchestrators.Extensions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PaloAlto.UnitTests.Builders.Jobs.PaloAltoSPBinding;
+using PaloAlto.UnitTests.Generators;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -170,7 +171,7 @@ public class ManagementTests : BaseUnitTest
         var result = _sut.ProcessJob(builder.Build());
 
         AssertFailure(result);
-        Assert.Contains("ServiceProfileName", result.FailureMessage);
+        Assert.Contains("Service Profile Name", result.FailureMessage);
         VerifyProfileNotSet();
     }
 
@@ -415,6 +416,142 @@ public class ManagementTests : BaseUnitTest
         VerifyNothingCommitted();
     }
 
+    // ── Job certificate: format and thumbprint ───────────────────────────────
+
+    [Fact]
+    public void ProcessJob_Add_ContentsAsBareBase64Der_IsAccepted()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJobFor(Convert.ToBase64String(PemToDer(TestPem)), ThumbprintOf(TestPem)));
+
+        AssertSuccess(result);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_PfxContents_ReturnsFailureBeforeQueryingTheDevice()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJobFor(TestPem, ThumbprintOf(TestPem), format: "PFX"));
+
+        AssertFailure(result);
+        Assert.Contains("PFX", result.FailureMessage);
+        FakeClient.ClientMock.Verify(c => c.GetCertificateList(It.IsAny<string>()), Times.Never);
+        VerifyProfileNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_ThumbprintOnTheJobDoesNotMatchTheContents_ReturnsFailure()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        var wrongThumbprint = ThumbprintOf(OtherTestPem);
+
+        var result = _sut.ProcessJob(AnAddJobFor(TestPem, wrongThumbprint));
+
+        AssertFailure(result);
+        Assert.Contains("thumbprint", result.FailureMessage, StringComparison.OrdinalIgnoreCase);
+        VerifyProfileNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ProcessJob_Add_NoThumbprintOnTheJob_IsDerivedFromTheContents(string? thumbprint)
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJobFor(TestPem, thumbprint));
+
+        AssertSuccess(result);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_ThumbprintCaseIsIgnored()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJobFor(TestPem, ThumbprintOf(TestPem).ToLowerInvariant()));
+
+        AssertSuccess(result);
+    }
+
+    // ── Certificate bundles ──────────────────────────────────────────────────
+    //
+    // Palo Alto returns a certificate's public-key as the leaf plus its issuers; only the leaf identifies the
+    // certificate. Job contents may likewise arrive as a bundle.
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ProcessJob_Add_DeviceBundleContainsTheLeafInEitherPosition_IsMatched(bool leafFirst)
+    {
+        var chain = new CertificateChainFixture();
+        var bundle = leafFirst
+            ? CertificateChainFixture.Bundle(chain.Leaf, chain.Intermediate, chain.Root)
+            : CertificateChainFixture.Bundle(chain.Root, chain.Intermediate, chain.Leaf);
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("chained-cert", bundle));
+
+        var result = _sut.ProcessJob(AnAddJobFor(CertificateChainFixture.ToPem(chain.Leaf), chain.Leaf.Thumbprint));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "chained-cert"), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_JobCertificateOnlyMatchesAnIssuerInADeviceBundle_IsNotAMatch()
+    {
+        var chain = new CertificateChainFixture();
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"),
+            ACertificateEntry("chained-cert", CertificateChainFixture.Bundle(chain.Leaf, chain.Intermediate)));
+
+        var result = _sut.ProcessJob(
+            AnAddJobFor(CertificateChainFixture.ToPem(chain.Intermediate), chain.Intermediate.Thumbprint));
+
+        AssertFailure(result);
+        VerifyProfileNotSet();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_JobContentsAreABundle_TheLeafIsMatched()
+    {
+        var chain = new CertificateChainFixture();
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"),
+            ACertificateEntry("leaf-only", CertificateChainFixture.ToPem(chain.Leaf)));
+
+        var result = _sut.ProcessJob(AnAddJobFor(
+            CertificateChainFixture.Bundle(chain.Intermediate, chain.Leaf), chain.Leaf.Thumbprint));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "leaf-only"), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_UnparseableDeviceCertificate_IsSkippedAndTheRestAreSearched()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"),
+            ACertificateEntry("garbled-cert", "-----BEGIN CERTIFICATE-----\n!!!\n-----END CERTIFICATE-----"),
+            ACertificateEntry("good-cert"));
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "good-cert"), Times.Once);
+    }
+
     // ── Same alias / certificate in multiple scopes ──────────────────────────
     //
     // Precedence between scopes is still unconfirmed (lab test T2). Until then the store's own scope is assumed to win
@@ -587,9 +724,21 @@ public class ManagementTests : BaseUnitTest
         new ManagementJobBuilder()
             .WithStorePath(storePath)
             .WithAlias(jobAlias)
-            .WithCertificateContents(Convert.ToBase64String(PemToDer(TestPem)))
+            .WithCertificateContents(TestPem)
+            .WithContentsFormat("PEM")
+            .WithThumbprint(ThumbprintOf(TestPem))
             .WithServiceProfileName("my-profile")
             .WithOverwrite(overwrite)
+            .Build();
+
+    /// <summary>Like <see cref="AnAddJob"/>, but for an arbitrary job certificate.</summary>
+    private static ManagementJobConfiguration AnAddJobFor(string contents, string? thumbprint, string format = "PEM") =>
+        new ManagementJobBuilder()
+            .WithStorePath("/config/shared")
+            .WithCertificateContents(contents)
+            .WithContentsFormat(format)
+            .WithThumbprint(thumbprint)
+            .WithServiceProfileName("my-profile")
             .Build();
 
     private static byte[] PemToDer(string pem) => Convert.FromBase64String(
