@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<svg width="700" height="392" viewBox="0 0 700 392" xmlns="http://www.w3.org/2000/svg">
+<svg width="700" height="354" viewBox="0 0 700 354" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
         text { font-family: 'Segoe UI', Arial, sans-serif; }
@@ -11,7 +11,7 @@
         .tab-active { font-size: 12px; fill: #111111; font-weight: 600; }
     </style>
   </defs>
-  <rect x="0" y="0" width="700" height="392" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
+  <rect x="0" y="0" width="700" height="354" fill="#ffffff" stroke="#cccccc" stroke-width="1" />
   <rect x="0" y="0" width="700" height="44" fill="#f0f0f0" />
   <line x1="0" y1="44" x2="700" y2="44" stroke="#cccccc" stroke-width="1" />
   <text x="16" y="32" class="title">Edit Certificate Store Type</text>
@@ -24,7 +24,7 @@
     <text x="270" y="68" class="tab-active">Entry Parameters</text>
     <rect x="270" y="77" width="114" height="3" fill="#3355ee" />
   </g>
-  <rect x="20" y="96" width="660" height="270" fill="#ffffff" stroke="#d0d0d0" rx="8" />
+  <rect x="20" y="96" width="660" height="232" fill="#ffffff" stroke="#d0d0d0" rx="8" />
   <rect x="21" y="97" width="658" height="8" fill="#f2f2f2" />
   <rect x="21" y="97" width="658" height="42" fill="#f2f2f2" rx="7" />
   <rect x="28" y="104" width="58" height="28" fill="#333333" stroke="#bbbbbb" rx="4" />
@@ -33,7 +33,7 @@
   <text x="123" y="124" text-anchor="middle" fill="#888888" font-size="11" font-family="'Segoe UI', Arial, sans-serif">EDIT</text>
   <rect x="160" y="104" width="70" height="28" fill="#f0f0f0" stroke="#bbbbbb" rx="4" />
   <text x="195" y="124" text-anchor="middle" fill="#888888" font-size="11" font-family="'Segoe UI', Arial, sans-serif">DELETE</text>
-  <text x="670" y="123" text-anchor="end" class="label">Total: 3</text>
+  <text x="670" y="123" text-anchor="end" class="label">Total: 2</text>
   <line x1="20" y1="140" x2="680" y2="140" stroke="#d0d0d0" stroke-width="1" />
   <rect x="21" y="140" width="658" height="32" fill="#f8f8f8" />
   <text x="72" y="162" class="label">Display Name</text>
@@ -49,7 +49,7 @@
   <line x1="284" y1="172" x2="284" y2="210" stroke="#e8e8e8" stroke-width="1" />
   <line x1="444" y1="172" x2="444" y2="210" stroke="#e8e8e8" stroke-width="1" />
   <rect x="34" y="183" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
-  <text x="72" y="198" class="value">Service Profile Name</text>
+  <text x="72" y="198" class="value">Certificate Alias</text>
   <text x="292" y="198" class="value">String</text>
   <rect x="21" y="210" width="658" height="38" fill="#f7f7f7" />
   <line x1="20" y1="248" x2="680" y2="248" stroke="#e8e8e8" stroke-width="1" />
@@ -57,15 +57,7 @@
   <line x1="284" y1="210" x2="284" y2="248" stroke="#e8e8e8" stroke-width="1" />
   <line x1="444" y1="210" x2="444" y2="248" stroke="#e8e8e8" stroke-width="1" />
   <rect x="34" y="221" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
-  <text x="72" y="236" class="value">Certificate Alias</text>
-  <text x="292" y="236" class="value">String</text>
-  <rect x="21" y="248" width="658" height="38" fill="#ffffff" />
-  <line x1="20" y1="286" x2="680" y2="286" stroke="#e8e8e8" stroke-width="1" />
-  <line x1="64" y1="248" x2="64" y2="286" stroke="#e8e8e8" stroke-width="1" />
-  <line x1="284" y1="248" x2="284" y2="286" stroke="#e8e8e8" stroke-width="1" />
-  <line x1="444" y1="248" x2="444" y2="286" stroke="#e8e8e8" stroke-width="1" />
-  <rect x="34" y="259" width="16" height="16" fill="#ffffff" stroke="#cccccc" rx="3" />
-  <text x="72" y="274" class="value">Bind to Management Interface</text>
-  <text x="292" y="274" class="value">Bool</text>
-  <text x="452" y="274" class="value">false</text>
+  <text x="72" y="236" class="value">Bind to Management Interface</text>
+  <text x="292" y="236" class="value">Bool</text>
+  <text x="452" y="236" class="value">false</text>
 </svg>

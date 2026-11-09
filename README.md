@@ -300,7 +300,7 @@ the Keyfactor Command Portal
    ##### Advanced Tab
    | Attribute | Value | Description |
    | --------- | ----- | ----- |
-   | Supports Custom Alias | Forbidden | Determines if an individual entry within a store can have a custom Alias. |
+   | Supports Custom Alias | Required | Determines if an individual entry within a store can have a custom Alias. |
    | Private Key Handling | Forbidden | This determines if Keyfactor can send the private key associated with a certificate to the store. |
    | PFX Password Style | Default | 'Default' - PFX password is randomly generated, 'Custom' - PFX password may be specified when the enrollment job is created (Requires the Allow Custom Password application setting to be enabled.) |
 
@@ -366,20 +366,12 @@ the Keyfactor Command Portal
 
    | Name | Display Name | Description | Type | Default Value | Entry has a private key | Adding an entry | Removing an entry | Reenrolling an entry |
    | ---- | ------------ | ---- | ------------- | ----------------------- | ---------------- | ----------------- | ------------------- | ----------- |
-   | ServiceProfileName | Service Profile Name |  | String |  | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked | 🔲 Unchecked |
    | CertificateAlias | Certificate Alias |  | String |  | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked |
    | BindToManagementInterface | Bind to Management Interface |  | Bool | false | 🔲 Unchecked | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked |
 
    The Entry Parameters tab should look like this:
 
    ![PASPBin Entry Parameters Tab](docsource/images/PASPBin-entry-parameters-store-type-dialog.svg)
-   ##### Service Profile Name
-   
-
-   ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName.svg)
-   ![PASPBin Entry Parameter - ServiceProfileName](docsource/images/PASPBin-entry-parameters-store-type-dialog-ServiceProfileName-validation-options.svg)
-
-
    ##### Certificate Alias
    
 

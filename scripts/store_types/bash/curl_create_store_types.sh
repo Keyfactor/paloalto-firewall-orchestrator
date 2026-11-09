@@ -183,18 +183,6 @@ curl -s -X POST "https://${KEYFACTOR_HOSTNAME}/${KEYFACTOR_API_PATH}/Certificate
   ],
   "EntryParameters": [
     {
-      "Name": "ServiceProfileName",
-      "DisplayName": "Service Profile Name",
-      "Type": "String",
-      "DefaultValue": "",
-      "RequiredWhen": {
-        "HasPrivateKey": false,
-        "OnAdd": true,
-        "OnRemove": false,
-        "OnODKG": false
-      }
-    },
-    {
       "Name": "CertificateAlias",
       "DisplayName": "Certificate Alias",
       "Type": "String",
@@ -229,6 +217,6 @@ curl -s -X POST "https://${KEYFACTOR_HOSTNAME}/${KEYFACTOR_API_PATH}/Certificate
   "ServerRequired": true,
   "PowerShell": false,
   "BlueprintAllowed": false,
-  "CustomAliasAllowed": "Forbidden"
+  "CustomAliasAllowed": "Required"
 }'
 

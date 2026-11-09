@@ -183,18 +183,6 @@ $Body = @'
   ],
   "EntryParameters": [
     {
-      "Name": "ServiceProfileName",
-      "DisplayName": "Service Profile Name",
-      "Type": "String",
-      "DefaultValue": "",
-      "RequiredWhen": {
-        "HasPrivateKey": false,
-        "OnAdd": true,
-        "OnRemove": false,
-        "OnODKG": false
-      }
-    },
-    {
       "Name": "CertificateAlias",
       "DisplayName": "Certificate Alias",
       "Type": "String",
@@ -229,7 +217,7 @@ $Body = @'
   "ServerRequired": true,
   "PowerShell": false,
   "BlueprintAllowed": false,
-  "CustomAliasAllowed": "Forbidden"
+  "CustomAliasAllowed": "Required"
 }
 '@
 

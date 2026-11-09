@@ -43,12 +43,12 @@
   <text x="44" y="245" class="section-header">Other Settings</text>
   <line x1="0" y1="258" x2="700" y2="258" stroke="#3355ee" stroke-width="2" />
   <text x="20" y="284" class="label">Supports Custom Alias</text>
-  <circle cx="28" cy="302" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
-  <circle cx="28" cy="302" r="4" fill="#3355ee" />
+  <circle cx="28" cy="302" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
   <text x="40" y="306" class="label">Forbidden</text>
   <circle cx="168" cy="302" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
   <text x="180" y="306" class="label">Optional</text>
-  <circle cx="308" cy="302" r="7" fill="#ffffff" stroke="#999999" stroke-width="1" />
+  <circle cx="308" cy="302" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
+  <circle cx="308" cy="302" r="4" fill="#3355ee" />
   <text x="320" y="306" class="label">Required</text>
   <text x="20" y="341" class="label">Private Key Handling</text>
   <circle cx="28" cy="359" r="7" fill="#e8eeff" stroke="#3355ee" stroke-width="1.5" />
