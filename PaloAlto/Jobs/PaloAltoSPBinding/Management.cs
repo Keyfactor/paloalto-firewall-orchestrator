@@ -18,6 +18,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAltoSPBinding;
 
+/// <summary>
+/// Binds a certificate that already exists on the device to an SSL/TLS service profile. The job's alias is the name of
+/// the service profile (created if it does not exist); the certificate is identified by its content, not by the alias.
+/// Only Add is supported.
+/// </summary>
 public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManagementJobExtension
 {
     public Management(IPAMSecretResolver resolver) : base(resolver)
@@ -68,26 +73,26 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                 return failure;
             }
 
-            if (!config.JobProperties.TryGetValue(EntryParameters.ServiceProfileName, out object property) ||
-                string.IsNullOrWhiteSpace(property?.ToString()))
+            if (string.IsNullOrWhiteSpace(config.JobCertificate.Alias))
             {
-                Logger.LogError($"Service Profile Name is missing in Job Properties for Management Job. Store Path: {storePath}");
-                return Failure(config.JobHistoryId, "Service Profile Name is required in Job Properties.");
+                Logger.LogError($"Alias is missing from the job configuration. Unable to bind certificate to a service profile. Store Path: {storePath}");
+                return Fail(config.JobHistoryId, "An alias is required: it is used as the name of the service profile the certificate is bound to.");
             }
 
-            var serviceProfileName = property.ToString().Trim();
-            Logger.LogDebug($"Received Service Profile Name: {serviceProfileName} for Management Job. Store Path: {storePath}");
+            // The job's alias is the name of the service profile to bind to.
+            var serviceProfileName = config.JobCertificate.Alias.Trim();
+            Logger.LogDebug($"Received alias {serviceProfileName}, used as the Service Profile Name, for Management Job. Store Path: {storePath}");
 
             // The profile name is placed into an XPath predicate, so only PAN-OS name characters are accepted.
             if (!ValidProfileName.IsMatch(serviceProfileName))
             {
-                Logger.LogError($"Service Profile Name {serviceProfileName} contains unsupported characters.");
-                return Failure(config.JobHistoryId,
-                    "Service Profile Name may only contain letters, numbers, spaces, hyphens, underscores and periods.");
+                Logger.LogError($"Alias {serviceProfileName} contains characters that are not supported in a service profile name.");
+                return Fail(config.JobHistoryId,
+                    "The alias is used as the service profile name and may only contain letters, numbers, spaces, hyphens, underscores and periods.");
             }
 
-            // The job's alias is never trusted: the certificate is identified by its content, and the alias is
-            // whatever name it has on the device.
+            // The job's alias is not the certificate's name: the certificate is identified by its content, and the name
+            // it has on the device is the alias that gets bound to the profile.
             if (!TryGetJobCertificate(config, out var jobCertificate, out var certificateFailure))
             {
                 return certificateFailure;

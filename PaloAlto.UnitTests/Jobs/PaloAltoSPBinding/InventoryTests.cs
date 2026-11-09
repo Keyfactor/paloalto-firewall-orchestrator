@@ -269,10 +269,9 @@ public class InventoryTests : BaseUnitTest
         Assert.False(item.UseChainLevel);
     }
     
-    [Theory]
-    [InlineData(EntryParameters.ServiceProfileName, "my-profile")]
-    [InlineData(EntryParameters.CertificateAlias, "my-cert")]
-    public void ProcessJob_ProfileWithResolvableCertificate_MapsEntryParameters(string key, string expectedValue)
+    // The profile name is the inventory item's alias, so it is not repeated as an entry parameter.
+    [Fact]
+    public void ProcessJob_ProfileWithResolvableCertificate_MapsOnlyTheCertificateAliasEntryParameter()
     {
         FakeClient.WithNoCertificates();
         FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("my-cert"));
@@ -284,8 +283,9 @@ public class InventoryTests : BaseUnitTest
         AssertSuccess(result);
         var item = Assert.Single(submitted);
         Assert.NotNull(item.Parameters);
-        Assert.True(item.Parameters!.ContainsKey(key));
-        Assert.Equal(expectedValue, item.Parameters[key]);
+        var parameter = Assert.Single(item.Parameters!);
+        Assert.Equal(EntryParameters.CertificateAlias, parameter.Key);
+        Assert.Equal("my-cert", parameter.Value);
     }
 
     /// <summary>

@@ -25,7 +25,8 @@ public sealed class ManagementJobBuilder
     private string _clientMachine = "firewall.example.com";
     private string _serverUsername = "admin";
     private string _serverPassword = "password";
-    private string _alias = "my-cert";
+    // The alias is the name of the service profile to bind to.
+    private string? _alias = "my-profile";
     private string _certContents = string.Empty;
     private string? _contentsFormat = "PEM";
     private string? _thumbprint = null;
@@ -40,7 +41,7 @@ public sealed class ManagementJobBuilder
     public ManagementJobBuilder AsRemove() { _operationType = CertStoreOperationType.Remove; return this; }
     public ManagementJobBuilder WithOperation(CertStoreOperationType operationType) { _operationType = operationType; return this; }
     public ManagementJobBuilder WithStorePath(string path) { _storePath = path; return this; }
-    public ManagementJobBuilder WithAlias(string alias) { _alias = alias; return this; }
+    public ManagementJobBuilder WithAlias(string? alias) { _alias = alias; return this; }
     public ManagementJobBuilder WithCertificateContents(string pfxBase64) { _certContents = pfxBase64; return this; }
     public ManagementJobBuilder WithContentsFormat(string? format) { _contentsFormat = format; return this; }
     public ManagementJobBuilder WithThumbprint(string? thumbprint) { _thumbprint = thumbprint; return this; }
@@ -53,9 +54,6 @@ public sealed class ManagementJobBuilder
     public ManagementJobBuilder WithPushFailureBehavior(string? value) { _pushFailureBehavior = value; return this; }
 
     public ManagementJobBuilder WithJobProperty(string key, object value) { _jobProperties[key] = value; return this; }
-
-    // Entry parameter from the store type definition.
-    public ManagementJobBuilder WithServiceProfileName(string name) => WithJobProperty("ServiceProfileName", name);
 
     public ManagementJobConfiguration Build() => new()
     {

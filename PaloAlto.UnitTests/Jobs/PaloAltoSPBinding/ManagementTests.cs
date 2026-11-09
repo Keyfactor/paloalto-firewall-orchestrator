@@ -156,23 +156,84 @@ public class ManagementTests : BaseUnitTest
         Assert.Contains("Unsupported job operation", result.FailureMessage);
     }
     
-    // ── Service profile name ─────────────────────────────────────────────────
+    // ── Alias = Service Profile Name ─────────────────────────────────────────
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void ProcessJob_Add_ServiceProfileNameMissing_ReturnsFailureWithoutBinding(string? profileName)
+    public void ProcessJob_Add_AliasMissing_ReturnsFailureWithoutBinding(string? alias)
     {
         ArrangeSuccessfulAdd("/config/shared");
-        var builder = new ManagementJobBuilder();
-        if (profileName != null) builder.WithServiceProfileName(profileName);
+        var job = AnAddJob("/config/shared", jobAlias: alias);
 
-        var result = _sut.ProcessJob(builder.Build());
+        var result = _sut.ProcessJob(job);
 
         AssertFailure(result);
-        Assert.Contains("Service Profile Name", result.FailureMessage);
+        Assert.Contains("alias is required", result.FailureMessage);
         VerifyProfileNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Theory]
+    [InlineData("my profile")]
+    [InlineData("My_Profile-1.0")]
+    public void ProcessJob_Add_AliasWithSupportedCharacters_IsUsedAsTheServiceProfileName(string alias)
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: alias));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile("/config/shared/ssl-tls-service-profile", alias, "my-cert"), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("my'profile")]
+    [InlineData("my-profile']/../entry[@name='other")]
+    [InlineData("my&profile")]
+    [InlineData("my<profile>")]
+    [InlineData("my/profile")]
+    public void ProcessJob_Add_AliasWithUnsupportedCharacters_ReturnsFailureWithoutBinding(string alias)
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: alias));
+
+        AssertFailure(result);
+        Assert.Contains("alias", result.FailureMessage, StringComparison.OrdinalIgnoreCase);
+        FakeClient.ClientMock.Verify(c => c.GetServiceProfiles(It.IsAny<string>()), Times.Never);
+        VerifyProfileNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_AliasWithSurroundingWhitespace_IsTrimmedToFormTheServiceProfileName()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: "  my-profile  "));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile("/config/shared/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
+    }
+
+    // The alias names the profile, not the certificate: a device certificate that happens to share the alias's name is
+    // only bound if its content matches the job's certificate.
+    [Fact]
+    public void ProcessJob_Add_AliasMatchesADeviceCertificateNameOfADifferentCertificate_BindsTheCertificateWithTheMatchingContent()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"),
+            ACertificateEntry("my-profile", OtherTestPem), ACertificateEntry("my-cert"));
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: "my-profile"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "my-cert"), Times.Once);
     }
 
     // ── Service profile creation ─────────────────────────────────────────────
@@ -339,8 +400,8 @@ public class ManagementTests : BaseUnitTest
         Assert.Equal(expectedScopes.OrderBy(p => p), CertificateListPaths().OrderBy(p => p));
     }
 
-    // The alias is never taken from the job: the job's certificate is matched by content against the certificates on
-    // the device, and the device entry's name is the alias that gets bound.
+    // The alias on the job is the service profile's name. The job's certificate is matched by content against the
+    // certificates on the device, and the device entry's name is the certificate alias that gets bound to the profile.
 
     [Fact]
     public void ProcessJob_Add_BindsTheAliasOfTheDeviceCertificateWhoseContentMatchesTheJob()
@@ -356,21 +417,8 @@ public class ManagementTests : BaseUnitTest
             c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "device-name"), Times.Once);
     }
 
-    [Fact]
-    public void ProcessJob_Add_JobCertificateAliasIsIgnored()
-    {
-        ArrangeSuccessfulAdd("/config/shared", certificateName: "device-name");
-
-        var result = _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: "alias-from-the-job"));
-
-        AssertSuccess(result);
-        FakeClient.ClientMock.Verify(
-            c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), "device-name"), Times.Once);
-        FakeClient.ClientMock.Verify(
-            c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), "alias-from-the-job"), Times.Never);
-    }
-
-    // Not trusting the job's alias: a device certificate that merely has the job's alias as its name is not a match.
+    // The job's alias is the profile name, not a certificate name: a device certificate that merely has the job's alias
+    // as its name is not a match.
     [Fact]
     public void ProcessJob_Add_DeviceCertificateWithTheJobAliasButDifferentContent_IsNotAMatch()
     {
@@ -405,7 +453,7 @@ public class ManagementTests : BaseUnitTest
     {
         ArrangeSuccessfulAdd("/config/shared");
         var job = new ManagementJobBuilder()
-            .WithServiceProfileName("my-profile")
+            .WithAlias("my-profile")
             .WithCertificateContents(contents)
             .Build();
 
@@ -556,9 +604,11 @@ public class ManagementTests : BaseUnitTest
     //
     // Precedence between scopes is still unconfirmed (lab test T2). Until then the store's own scope is assumed to win
     // over the shared scope it inherits, and any ambiguity is surfaced as a warning in the log.
+    // "Alias" in this section means the certificate's name on the device, not the job's alias (the profile name).
     // TODO: revisit once T2 is known; a shadowed match may need to fail the job instead of warning.
 
-    // Same alias, different certificates: the profile is bound by name, so the name must resolve to the job's cert.
+    // Same certificate name (on the device), different certificates: the profile is bound by certificate name, so the
+    // name must resolve to the job's certificate.
     [Fact]
     public void ProcessJob_Add_SameAliasWithDifferentCertificatesInMultipleScopes_LogsAWarningAndProceeds()
     {
@@ -573,7 +623,7 @@ public class ManagementTests : BaseUnitTest
             c => c.SetServiceProfile($"{storePath}/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
     }
 
-    // The job's certificate is only in the shared scope, but a different certificate shadows its alias in the vsys.
+    // The job's certificate is only in the shared scope, but a different certificate shadows its name in the vsys.
     [Fact]
     public void ProcessJob_Add_MatchingCertificateAliasIsReusedByADifferentCertificateInAnotherScope_LogsAWarning()
     {
@@ -584,7 +634,7 @@ public class ManagementTests : BaseUnitTest
         _sut.ProcessJob(AnAddJob(storePath));
     }
 
-    // The same certificate is stored under different aliases in two scopes: which alias gets bound is ambiguous.
+    // The same certificate is stored under different names in two scopes: which certificate name gets bound is ambiguous.
     [Fact]
     public void ProcessJob_Add_SameCertificateUnderDifferentAliasesInMultipleScopes_LogsAWarningAndBindsTheStoreScopeAlias()
     {
@@ -716,18 +766,17 @@ public class ManagementTests : BaseUnitTest
         new() { Name = name, PublicKey = pem, Issuer = $"CN={name}", PrivateKey = null };
 
     /// <summary>
-    /// An Add job that binds the certificate <see cref="TestPem"/> to service profile "my-profile". The alias on the job
-    /// is deliberately not the device's alias for the certificate ("my-cert"): the job's alias must never be used.
+    /// An Add job that binds the certificate <see cref="TestPem"/> to the service profile named by the job's alias
+    /// (default "my-profile"). The alias is deliberately not the certificate's name on the device ("my-cert").
     /// </summary>
     private static ManagementJobConfiguration AnAddJob(string storePath, bool overwrite = false,
-        string jobAlias = "job-alias-never-used") =>
+        string? jobAlias = "my-profile") =>
         new ManagementJobBuilder()
             .WithStorePath(storePath)
-            .WithAlias(jobAlias)
             .WithCertificateContents(TestPem)
             .WithContentsFormat("PEM")
             .WithThumbprint(ThumbprintOf(TestPem))
-            .WithServiceProfileName("my-profile")
+            .WithAlias(jobAlias)
             .WithOverwrite(overwrite)
             .Build();
 
@@ -738,7 +787,7 @@ public class ManagementTests : BaseUnitTest
             .WithCertificateContents(contents)
             .WithContentsFormat(format)
             .WithThumbprint(thumbprint)
-            .WithServiceProfileName("my-profile")
+            .WithAlias("my-profile")
             .Build();
 
     private static byte[] PemToDer(string pem) => Convert.FromBase64String(

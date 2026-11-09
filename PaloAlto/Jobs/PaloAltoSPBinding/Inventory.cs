@@ -224,7 +224,6 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             UseChainLevel = false,
             Parameters = new Dictionary<string, object>()
                 {
-                    {EntryParameters.ServiceProfileName, profile.Name},
                     {EntryParameters.CertificateAlias, certificateName}
                 },
         };
