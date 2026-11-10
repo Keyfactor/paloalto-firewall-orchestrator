@@ -33,9 +33,11 @@
 
 The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
 
-* PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
+* PaloAlto - Manages the certificates themselves: inventory, deploy, renew, re-enroll, and remove. See [Test Cases](#test-cases) For Specific Use Cases that are supported.
+* PASPBin (Palo Alto Service Profile Binding) - Manages SSL/TLS Service Profiles: creates a profile, binds a certificate that is already on the device to it, and optionally binds the profile to the management interface. Use it in addition to PaloAlto when the service profile and management interface assignment should be automated too.
 
 The Palo Alto Universal Orchestrator extension implements 2 Certificate Store Types. Depending on your use case, you may elect to use one, or both of these Certificate Store Types. Descriptions of each are provided below.
+- [PaloAlto](#PaloAlto)
 - [PaloAltoSPBinding](#PASPBin)
 
 ## Compatibility
@@ -73,7 +75,23 @@ The Palo Alto Universal Orchestrator extension implements 2 Certificate Store Ty
 
 <details><summary>Click to expand details</summary>
 
+The **PaloAlto** (`PaloAlto`) store type manages **certificate objects** on a Palo Alto Firewall or on Panorama. It is the store type to use when you want Keyfactor Command to inventory, deploy, renew, re-enroll, or remove the certificates themselves.
 
+| Operation | What it does |
+|---|---|
+| Inventory | Reports the certificates stored at the store path, with or without private keys. Trusted root certificates are included only if `Inventory Trusted Certs` is enabled. |
+| Management Add | Imports a certificate, with or without its private key, under the alias supplied on the job. On Panorama, the change is committed and pushed to the configured template, template stack, and device groups. |
+| Management Remove | Deletes the certificate object with the given alias. |
+| Reenrollment (ODKG) | Generates the key pair on the device and enrolls the resulting CSR. |
+
+**Use this store type when** the goal is to get a certificate onto a device and keep it current: first-time deployment, renewal, replacement, or removal.
+
+**This store type does not create SSL/TLS Service Profiles and does not assign them to anything, including the management interface.** It only deploys the certificate object (and, where a binding already exists, replaces the certificate behind it; see [Release 2.2 Update on Entry Params](#release-22-update-on-entry-params)). If you need Keyfactor Command to create an SSL/TLS Service Profile that references a certificate, or to bind a profile to the management interface, use the **PASPBin** (Palo Alto Service Profile Binding) store type **in addition to** this one:
+
+1. Use a **PaloAlto** store to deploy or renew the certificate on the device.
+2. Then use a **PASPBin** store to bind that certificate to a service profile (and, optionally, the management interface).
+
+The two store types are independent. Command does not run the PASPBin job automatically after the PaloAlto job, so the certificate must already exist on the device, with its private key, before the PASPBin Management Add job runs.
 
 #### Supported Operations
 
@@ -226,13 +244,37 @@ the Keyfactor Command Portal
 
 <details><summary>Click to expand details</summary>
 
-TODO Overview is a required section
+The **PASPBin** (Palo Alto Service Profile Binding, `PaloAltoSPBinding`) store type manages **SSL/TLS Service Profiles** on a Palo Alto Firewall or on Panorama. A service profile is the PAN-OS object that tells a service which certificate to present and which TLS protocol settings to use. This store type lets Keyfactor Command do three things:
 
-TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
+- **Create** a service profile that references a certificate, if the profile does not exist yet.
+- **Bind** a certificate to an existing service profile, replacing the certificate it references.
+- Optionally **bind the service profile to the management interface** (Device > Setup > Management > General Settings > SSL/TLS Service Profile), so the device's HTTPS management connections present that certificate.
+
+**Use this store type when** you want the whole lifecycle of a certificate to be automated, including the service profile and the management interface assignment. These steps otherwise require a one-time manual configuration by a PAN-OS administrator.
+
+**Use the PaloAlto store type for the certificate itself.** PASPBin does not import, generate, or delete certificates. It binds a certificate that is **already on the device**. A complete workflow uses both store types, in this order:
+
+1. A **PaloAlto** store deploys (or renews) the certificate object, including its private key, on the device.
+2. A **PASPBin** store binds that certificate to a service profile, and optionally to the management interface.
+
+Command does not sequence the two jobs for you. The PASPBin Management Add job must run after the PaloAlto job has deployed the certificate; if the certificate cannot be found on the device, the PASPBin job fails with a message saying so.
+
+#### How it works
+
+| Operation | Supported | Behavior |
+|---|---|---|
+| Inventory | Yes | Reports one inventory item per service profile in the store. See [Inventory](#inventory). |
+| Management Add | Yes | Binds the certificate on the job to the service profile named by the job's alias, creating the profile if necessary. See [Management Add](#management-add). |
+| Management Remove | **No** | PAN-OS does not allow a service profile to have no certificate, so a certificate cannot be removed from a profile. To retire a profile, delete it in PAN-OS. |
+| Create, Discovery, Reenrollment | No | |
 
 #### PaloAltoSPBinding Requirements
 
-TODO Requirements is an optional section. If this section doesn't seem necessary, please delete it.
+- **The certificate must already be on the device, with its private key.** Deploy it with a PaloAlto store first.
+- **The job must supply the certificate in PEM format, without a private key.** The integration does not accept a PFX. This store type is configured with `Private Key Handling` set to `Forbidden`.
+- **The API user** needs the same permissions as the PaloAlto store type. See _API User Setup Permissions in Panorama or Firewall Required_ in the [Store Path Details](#store-path-details-and-api-security-considerations) section.
+- **Panorama stores** use the `Template Stack` and `Push Failure Behavior` store properties the same way the PaloAlto store type does. See [Commit Behavior](#commit-behavior).
+- **Template-controlled service profiles cannot be overwritten through the API.** See [Troubleshooting](#troubleshooting).
 
 #### Supported Operations
 
@@ -523,9 +565,140 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 
 <details><summary>PaloAltoSPBinding (PASPBin)</summary>
 
-TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
+### Store Path
 
-TODO Certificate Store Configuration is an optional section. If this section doesn't seem necessary, please delete it.
+The store path points at the place in the PAN-OS configuration where the service profiles live. **The client machine is the Firewall or Panorama address, so the store path is what makes each store unique in Command.** The following seven formats are supported. `localhost.localdomain` is a constant; do not substitute another value.
+
+| # | Platform | Scope | Store path | Management interface binding |
+|---|---|---|---|---|
+| 1 | Firewall | Shared | `/config/shared` | **Yes**: binds the firewall's own management interface |
+| 2 | Firewall | vsys | `/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | No |
+| 3 | Panorama | Panorama | `/config/panorama` | **Yes**: binds Panorama's own management interface |
+| 4 | Panorama | Template, shared | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared` | No |
+| 5 | Panorama | Template, vsys | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | No |
+| 6 | Panorama | Template stack, shared | `/config/devices/entry[@name='localhost.localdomain']/template-stack/entry[@name='MyStack']/config/shared` | No |
+| 7 | Panorama | Template stack, vsys | `/config/devices/entry[@name='localhost.localdomain']/template-stack/entry[@name='MyStack']/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | No |
+
+Note that the template vsys format here includes the device name in each `entry` (`entry[@name='localhost.localdomain']`), unlike the PaloAlto store type's Panorama vsys path.
+
+#### When to use each path
+
+| # | Use it when |
+|---|---|
+| 1 | You manage a standalone firewall and want a device-wide service profile. **This is the path to use to automate the firewall's management interface certificate.** |
+| 2 | You manage a firewall with multiple virtual systems and the profile serves a single vsys (for example a GlobalProtect portal or gateway, or Authentication Portal, in that vsys). The management interface is device-level, so it cannot be bound from this path. |
+| 3 | You want a profile used by Panorama itself. **This is the path to use to automate Panorama's own management interface certificate.** It is not pushed to the firewalls Panorama manages. |
+| 4 | You want a profile defined in a Panorama template at shared scope and pushed to the firewalls that use the template. |
+| 5 | Same as 4, but for a single vsys in the template. |
+| 6 | You want a profile defined on a template stack at shared scope, applying to all of the stack's firewalls. |
+| 7 | Same as 6, but for a single vsys on the stack. |
+
+#### Which certificates can be bound
+
+A service profile can reference only certificates visible from its own scope. The integration finds the certificate on the device by comparing the certificate content on the job to the certificates at these locations (in the order shown) and binds the matching certificate's name.
+
+| Store path | Certificates searched |
+|---|---|
+| 1. Firewall shared | `/config/shared` |
+| 2. Firewall vsys | The vsys, then `/config/shared` |
+| 3. Panorama | `/config/panorama` |
+| 4. Template shared | The template's shared scope |
+| 5. Template vsys | The template's vsys, then the template's shared scope |
+| 6. Template stack shared | The template stack's shared scope |
+| 7. Template stack vsys | The template stack's vsys, then the template stack's shared scope |
+
+The searched locations are the same ones a PaloAlto store type reaches for the equivalent firewall, template, and Panorama paths. A PaloAlto store type has no template stack path, so a certificate searched for under rows 6 and 7 must already exist at the stack level; certificates that live only in one of the stack's member templates are **not** searched.
+
+### Entry Parameters
+
+| Name | Type | Default | Used by | Description |
+|---|---|---|---|---|
+| `BindToManagementInterface` | Bool | `false` | Management Add and Inventory | Bind-only flag. When `true` on a Management Add job, the service profile is also bound to the management interface (see [Binding the management interface](#binding-the-management-interface)). On Inventory it is reported as `true` for the profile currently bound to the management interface. |
+| `CertificateAlias` | String | | Inventory only | The name of the certificate object on the device that the profile references. It is informational: it shows which certificate each service profile points to. **The Management Add job never reads it.** |
+
+### The alias is the service profile name
+
+On a Management Add job, **the alias identifies the service profile**, not the certificate. The alias is the name of the service profile the certificate is bound to.
+
+- The alias is required. It may contain letters, numbers, spaces, hyphens, underscores, and periods. Leading and trailing whitespace is removed.
+- You do not supply the certificate's name on the device. The integration identifies the certificate automatically by matching the certificate content on the job to the certificates on the device, and binds the name it finds. If the thumbprint on the job does not match the content, the job fails.
+- If the same certificate is stored under more than one name, the first match in the search order above is used and a warning is logged.
+
+### Management Add
+
+The job proceeds as follows:
+
+1. The store path is validated. On Panorama, the template or template stack named in the path must exist.
+2. The certificate on the job is matched to a certificate on the device. If it is not found, the job fails and names the locations searched.
+3. The service profile named by the alias is looked up:
+   - **It does not exist:** it is **created**, referencing the certificate, with all protocol settings enabled.
+   - **It exists without a certificate:** the certificate is bound to it.
+   - **It exists and already references this certificate:** no change is needed to the profile.
+   - **It exists and references a different certificate:** the job fails unless the job's **Overwrite** flag is set, in which case the certificate is replaced. The profile's protocol settings are not changed.
+4. If `BindToManagementInterface` is `true`, the management interface is bound (see below).
+5. The changes are committed, and on Panorama pushed to the configured template, template stack, and device groups, following the same [commit behavior](#commit-behavior) as the PaloAlto store type. If nothing changed, nothing is committed.
+
+If any step fails, the job fails and is retried by Command, unless noted below.
+
+### Binding the management interface
+
+`BindToManagementInterface` is a **bind-only** flag:
+
+- `true` binds the service profile to the management interface.
+- `false`, or not supplied, **never changes the management interface**. In particular, `false` does not unbind it, even when the profile named by the alias is the one currently bound. This is intentional, to avoid unintentionally unbinding the management interface. **Unbinding must be done manually** in PAN-OS.
+
+Binding replaces whichever profile is currently bound. If the profile is already bound, the API call is skipped.
+
+| Store path | `BindToManagementInterface` = `true` |
+|---|---|
+| `/config/shared`, `/config/panorama` | The profile is bound to the device's management interface. If the bind is rejected by PAN-OS, the job **fails** (and is retried) without committing. |
+| Any other store path | **No effect.** The service profile is still created or updated and committed, but it is not bound, and the job returns a **Warning**. The store path cannot be changed by a retry, so a Warning is returned instead of a failure. |
+
+> **Warning: binding an invalid or weak certificate to the management interface can make the instance inaccessible.** Recovery is manual and requires access to the device's CLI (console or SSH). Use **extreme caution**, and test on a non-production device first. Committing a management interface change can also briefly interrupt connections to the device; the device may refuse connections for a short time while the change is applied.
+>
+> To recover, log in to the PAN-OS CLI and run:
+>
+> ```bash
+> # enter PAN-OS configuration mode
+> configure
+>
+> # view current system configuration
+> show deviceconfig system
+>
+> # set management interface TLS Service Profile to alternate profile
+> set deviceconfig system ssl-tls-service-profile <profile-name>
+>
+> # or, remove a TLS Service Profile binding
+> delete deviceconfig system ssl-tls-service-profile
+>
+> # save changes to device
+> commit
+>
+> # exit configuration mode
+> exit
+> ```
+>
+> Run `commit` before `exit` if you want the change kept; `exit` on its own abandons uncommitted changes.
+
+### Inventory
+
+Inventory reports **one item per service profile** at the store path:
+
+- The item's **alias is the service profile name**.
+- The item's certificate is the certificate the profile references, found by searching the locations in [Which certificates can be bound](#which-certificates-can-be-bound). Because a service profile references a certificate rather than holding one, the item never has a private key.
+- The `CertificateAlias` entry parameter is the certificate's name on the device.
+- The `BindToManagementInterface` entry parameter is `true` for the profile currently bound to the management interface, and `false` for all others. This is checked only on `/config/shared` and `/config/panorama`; on every other store path it is always `false`.
+
+A service profile whose certificate cannot be found (or that references no certificate) is skipped and reported in a warning. The remaining profiles are still inventoried.
+
+### Troubleshooting
+
+| Symptom | Cause and resolution |
+|---|---|
+| `set failed, may need to override template object <name> first` | A Panorama **template controls** the service profile, and PAN-OS will not let the integration overwrite it. This cannot be done through the API. In the Panorama UI, open the service profile and click the **Override** button, then re-run the job. |
+| The job returns a Warning that the service profile was not bound to the management interface | `BindToManagementInterface` was enabled on a store path that does not support it. Use `/config/shared` (firewall) or `/config/panorama` (Panorama), or bind the profile manually. |
+| The job fails saying it could not find a certificate with the job's thumbprint | The certificate is not on the device, or is in a scope this store cannot see. Deploy it with a PaloAlto store first, and check the [searched locations](#which-certificates-can-be-bound) for the store path. |
+| The job fails saying the profile is already bound to a different certificate | Re-run the job with **Overwrite** to replace the certificate. |
 
 ### Store Creation
 
@@ -608,13 +781,6 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 > The content in this section can be supplemented by the [official Command documentation](https://software.keyfactor.com/Core-OnPrem/Current/Content/ReferenceGuide/Certificate%20Stores.htm?Highlight=certificate%20store).
 
 </details>
-
-## Discovering Certificate Stores with the Discovery Job
-
-### PaloAltoSPBinding Discovery Job
-
-TODO Global Store Type Section is an optional section. If this section doesn't seem necessary, please delete it.
-TODO Discovery Job Configuration is an optional section. If this section doesn't seem necessary, please delete it.
 
 
 ## Release 2.5.1 Update on Alias Constraints
