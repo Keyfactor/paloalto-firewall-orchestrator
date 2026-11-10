@@ -269,13 +269,15 @@ public class InventoryTests : BaseUnitTest
         Assert.False(item.UseChainLevel);
     }
     
-    // The profile name is the inventory item's alias, so it is not repeated as an entry parameter.
+    // The profile name is the inventory item's alias, so it is not repeated as an entry parameter. The only entry
+    // parameters are the certificate's name on the device and whether the profile is bound to the management interface.
     [Fact]
-    public void ProcessJob_ProfileWithResolvableCertificate_MapsOnlyTheCertificateAliasEntryParameter()
+    public void ProcessJob_ProfileWithResolvableCertificate_MapsTheCertificateAliasAndBindToManagementInterfaceEntryParameters()
     {
         FakeClient.WithNoCertificates();
         FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("my-cert"));
         FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+        FakeClient.ManagementInterfaceHasNoProfile();
         var submitted = CaptureSubmittedItems();
 
         var result = _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
@@ -283,9 +285,10 @@ public class InventoryTests : BaseUnitTest
         AssertSuccess(result);
         var item = Assert.Single(submitted);
         Assert.NotNull(item.Parameters);
-        var parameter = Assert.Single(item.Parameters!);
-        Assert.Equal(EntryParameters.CertificateAlias, parameter.Key);
-        Assert.Equal("my-cert", parameter.Value);
+        Assert.Equal(
+            new[] { EntryParameters.BindToManagementInterface, EntryParameters.CertificateAlias }.OrderBy(k => k),
+            item.Parameters!.Keys.OrderBy(k => k));
+        Assert.Equal("my-cert", item.Parameters[EntryParameters.CertificateAlias]);
     }
 
     /// <summary>
@@ -462,6 +465,147 @@ public class InventoryTests : BaseUnitTest
         Assert.Empty(submitted);
     }
 
+    // ── Management interface binding ─────────────────────────────────────────
+    //
+    // Only /config/shared and /config/panorama can be bound to a management interface. On those paths the profile that
+    // is currently bound is reported with BindToManagementInterface = true. Every other item is reported as false
+    // explicitly, so a stale value in Command is cleared.
+
+    [Theory]
+    [MemberData(nameof(StorePathsThatSupportManagementInterfaceBinding))]
+    public void ProcessJob_SupportedPath_ReportsTheBoundProfileAsBoundAndTheRestAsNot(string storePath)
+    {
+        ArrangeProfiles(storePath, AProfile("profile-a", "cert-a"), AProfile("profile-b", "cert-b"));
+        FakeClient.ManagementInterfaceIsBoundTo("profile-b");
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.False(BoundFlagOf(submitted.Single(i => i.Alias == "profile-a")));
+        Assert.True(BoundFlagOf(submitted.Single(i => i.Alias == "profile-b")));
+    }
+
+    [Theory]
+    [MemberData(nameof(StorePathsThatSupportManagementInterfaceBinding))]
+    public void ProcessJob_SupportedPath_ManagementInterfaceHasNoProfile_ReportsEveryProfileAsNotBound(string storePath)
+    {
+        ArrangeProfiles(storePath, AProfile("profile-a", "cert-a"), AProfile("profile-b", "cert-b"));
+        FakeClient.ManagementInterfaceHasNoProfile();
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.Equal(2, submitted.Count);
+        Assert.All(submitted, item => Assert.False(BoundFlagOf(item)));
+    }
+
+    // PAN-OS may also answer with no <result> at all.
+    [Fact]
+    public void ProcessJob_SupportedPath_ManagementInterfaceResponseIsNull_ReportsEveryProfileAsNotBound()
+    {
+        ArrangeProfiles("/config/shared", AProfile("profile-a", "cert-a"));
+        FakeClient.ClientMock.Setup(c => c.GetManagementInterfaceServiceProfile())
+            .ReturnsAsync((ManagementInterfaceServiceProfileResponse)null!);
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.False(BoundFlagOf(Assert.Single(submitted)));
+    }
+
+    [Fact]
+    public void ProcessJob_SupportedPath_QueriesTheManagementInterfaceOncePerJobNotOncePerProfile()
+    {
+        ArrangeProfiles("/config/shared",
+            AProfile("profile-a", "cert-a"), AProfile("profile-b", "cert-b"), AProfile("profile-c", "cert-c"));
+        FakeClient.ManagementInterfaceIsBoundTo("profile-a");
+
+        _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        FakeClient.ClientMock.Verify(c => c.GetManagementInterfaceServiceProfile(), Times.Once);
+    }
+
+    // A profile can be bound to the management interface without living in this store (for example it is defined in
+    // another scope). It is simply not reported: nothing in this store is bound, and that is not a problem.
+    [Fact]
+    public void ProcessJob_SupportedPath_BoundProfileIsNotInTheStore_ReportsEveryProfileAsNotBoundWithoutAWarning()
+    {
+        ArrangeProfiles("/config/shared", AProfile("profile-a", "cert-a"));
+        FakeClient.ManagementInterfaceIsBoundTo("profile-elsewhere");
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.False(BoundFlagOf(Assert.Single(submitted)));
+    }
+
+    // Profile names are case-sensitive in PAN-OS.
+    [Fact]
+    public void ProcessJob_SupportedPath_BoundProfileNameDiffersOnlyByCase_IsNotReportedAsBound()
+    {
+        ArrangeProfiles("/config/shared", AProfile("my-profile", "cert-a"));
+        FakeClient.ManagementInterfaceIsBoundTo("My-Profile");
+        var submitted = CaptureSubmittedItems();
+
+        _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        Assert.False(BoundFlagOf(Assert.Single(submitted)));
+    }
+
+    // The bound profile's certificate cannot be resolved, so the profile is skipped like any other unresolvable
+    // profile; the remaining profiles are still reported.
+    [Fact]
+    public void ProcessJob_SupportedPath_BoundProfileIsUnresolvable_WarnsAndStillReportsTheOthers()
+    {
+        ArrangeProfiles("/config/shared", AProfile("profile-a", "cert-a"), AProfile("orphan", "missing-cert"));
+        // "missing-cert" is not on the device: only cert-a is.
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("cert-a"));
+        FakeClient.ManagementInterfaceIsBoundTo("orphan");
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().Build(), _submitMock.Object);
+
+        AssertWarning(result);
+        Assert.Contains("orphan", result.FailureMessage);
+        var item = Assert.Single(submitted);
+        Assert.Equal("profile-a", item.Alias);
+        Assert.False(BoundFlagOf(item));
+    }
+
+    // Template, vsys and template stack paths cannot be bound, so the management interface is never queried. (It would
+    // return the device's own binding, which says nothing about a profile in that scope.)
+    [Theory]
+    [MemberData(nameof(StorePathsThatDoNotSupportManagementInterfaceBinding))]
+    public void ProcessJob_UnsupportedPath_NeverQueriesTheManagementInterface(string storePath)
+    {
+        ArrangeProfiles(storePath, AProfile("profile-a", "cert-a"));
+        FakeClient.ManagementInterfaceIsBoundTo("profile-a");
+
+        _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        FakeClient.ClientMock.Verify(c => c.GetManagementInterfaceServiceProfile(), Times.Never);
+    }
+
+    // The device's binding is ignored on unsupported paths even when the profile name collides with the bound one.
+    [Theory]
+    [MemberData(nameof(StorePathsThatDoNotSupportManagementInterfaceBinding))]
+    public void ProcessJob_UnsupportedPath_ReportsEveryProfileAsNotBoundEvenIfTheNameMatchesTheBoundProfile(string storePath)
+    {
+        ArrangeProfiles(storePath, AProfile("profile-a", "cert-a"), AProfile("profile-b", "cert-b"));
+        FakeClient.ManagementInterfaceIsBoundTo("profile-a");
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.Equal(2, submitted.Count);
+        Assert.All(submitted, item => Assert.False(BoundFlagOf(item)));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private const string Device = "/config/devices/entry[@name='localhost.localdomain']";
@@ -509,6 +653,45 @@ public class InventoryTests : BaseUnitTest
     }
 
     private static string CertEntries(string scope) => $"{scope}/certificate/entry";
+
+    // Command may carry the flag as a bool or as its string form, so it is read through its string representation.
+    private static bool BoundFlagOf(CurrentInventoryItem item)
+    {
+        Assert.NotNull(item.Parameters);
+        Assert.True(item.Parameters!.ContainsKey(EntryParameters.BindToManagementInterface),
+            $"Item {item.Alias} has no {EntryParameters.BindToManagementInterface} entry parameter.");
+        return bool.Parse(item.Parameters[EntryParameters.BindToManagementInterface].ToString()!);
+    }
+
+    // (store path) lists: only the firewall's own and Panorama's own management interface can be bound.
+    public static IEnumerable<object[]> StorePathsThatSupportManagementInterfaceBinding() => new[]
+    {
+        new object[] { "/config/shared" },
+        new object[] { "/config/panorama" },
+    };
+
+    public static IEnumerable<object[]> StorePathsThatDoNotSupportManagementInterfaceBinding() => new[]
+    {
+        new object[] { FirewallVsysPath("vsys1") },
+        new object[] { TemplateSharedPath("MyTemplate") },
+        new object[] { TemplateVsysPath("MyTemplate", "vsys1") },
+        new object[] { StackSharedPath("MyStack") },
+        new object[] { StackVsysPath("MyStack", "vsys1") },
+    };
+
+    /// <summary>
+    /// Arranges a store whose profiles all resolve: each profile "profile-x" references the certificate "cert-x",
+    /// which lives in the store's own scope.
+    /// </summary>
+    private void ArrangeProfiles(string storePath, params ServiceProfileEntry[] profiles)
+    {
+        ArrangeTopologyFor(storePath);
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries(storePath),
+            profiles.Select(p => p.Certificate!.Value).Distinct().Select(ACertificateEntry).ToArray());
+        FakeClient.WithServiceProfiles(profiles);
+        FakeClient.ManagementInterfaceHasNoProfile();
+    }
 
     public static IEnumerable<object[]> ValidStorePaths() => new[]
     {

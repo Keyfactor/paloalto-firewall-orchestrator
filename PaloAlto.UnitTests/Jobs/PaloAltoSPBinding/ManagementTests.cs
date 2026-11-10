@@ -15,6 +15,7 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAltoSPBinding;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
@@ -726,6 +727,319 @@ public class ManagementTests : BaseUnitTest
         VerifyNothingCommitted();
     }
 
+    // ── Management interface binding ─────────────────────────────────────────
+    //
+    // BindToManagementInterface is bind-only: true binds the profile, false (or absent) never touches the binding,
+    // so a job can never unbind the management interface. Only /config/shared and /config/panorama support binding.
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagAbsent_NeverQueriesOrSetsTheManagementInterface()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared"));
+
+        AssertSuccess(result);
+        VerifyManagementInterfaceNotQueriedOrSet();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData("false")]
+    [InlineData("False")]
+    public void ProcessJob_Add_BindFlagFalse_NeverQueriesOrSetsTheManagementInterface(object flag)
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: flag));
+
+        AssertSuccess(result);
+        VerifyManagementInterfaceNotQueriedOrSet();
+    }
+
+    // A false flag must never unbind, even when the target profile is the one currently bound.
+    [Fact]
+    public void ProcessJob_Add_BindFlagFalse_ProfileCurrentlyBoundToTheManagementInterface_LeavesTheBindingAlone()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ManagementInterfaceIsBoundTo("my-profile");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: false));
+
+        AssertSuccess(result);
+        VerifyManagementInterfaceNotSet();
+    }
+
+    [Theory]
+    [MemberData(nameof(StorePathsThatSupportManagementInterfaceBinding))]
+    public void ProcessJob_Add_BindFlagTrue_SupportedPath_BindsTheProfileToTheManagementInterface(string storePath)
+    {
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData("true")]
+    [InlineData("True")]
+    public void ProcessJob_Add_BindFlagTrueInAnyRepresentation_BindsTheProfile(object flag)
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: flag));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_BindsTheProfileNameNotTheCertificateName()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+
+        _sut.ProcessJob(AnAddJob("/config/shared", jobAlias: "mgmt-profile", bindToManagementInterface: true));
+
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("mgmt-profile"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-cert"), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_SetsTheProfileThenBindsThenCommitsOnce()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        var calls = new List<string>();
+        FakeClient.ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Callback(() => calls.Add("profile"))
+            .ReturnsAsync(new ErrorSuccessResponse { Status = "ok" });
+        FakeClient.ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .Callback(() => calls.Add("bind"))
+            .ReturnsAsync(new ErrorSuccessResponse { Status = "ok" });
+        FakeClient.ClientMock.Setup(c => c.GetCommitResponse())
+            .Callback(() => calls.Add("commit"))
+            .ReturnsAsync(new CommitResponse { Status = "success" });
+
+        AssertSuccess(_sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true)));
+
+        Assert.Equal(new[] { "profile", "bind", "commit" }, calls);
+    }
+
+    // The unsupported-path case is a store setup problem a retry cannot fix, so the profile is still created and
+    // committed, and the job ends with a Warning (not a Failure, which would be retried).
+    [Theory]
+    [MemberData(nameof(StorePathsThatDoNotSupportManagementInterfaceBinding))]
+    public void ProcessJob_Add_BindFlagTrue_UnsupportedPath_CommitsTheProfileAndReturnsAWarning(string storePath)
+    {
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, bindToManagementInterface: true));
+
+        AssertWarning(result);
+        Assert.Contains("management interface", result.FailureMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(storePath, result.FailureMessage);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile($"{storePath}/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
+        VerifyManagementInterfaceNotQueriedOrSet();
+    }
+
+    [Theory]
+    [MemberData(nameof(StorePathsThatDoNotSupportManagementInterfaceBinding))]
+    public void ProcessJob_Add_BindFlagFalse_UnsupportedPath_DoesNotWarn(string storePath)
+    {
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, bindToManagementInterface: false));
+
+        AssertSuccess(result);
+    }
+
+    // An unsupported-path warning must not hide a commit failure.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_UnsupportedPath_CommitFails_ReturnsFailure()
+    {
+        var storePath = FirewallVsysPath("vsys1");
+        ArrangeSuccessfulAdd(storePath);
+        FakeClient.CommitFails("commit rejected");
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, bindToManagementInterface: true));
+
+        AssertFailure(result);
+        Assert.Contains("commit rejected", result.FailureMessage);
+    }
+
+    // ── Management interface: already bound ──────────────────────────────────
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_ProfileAlreadyBoundToTheManagementInterface_SkipsTheBindCall()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ManagementInterfaceIsBoundTo("my-profile");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        VerifyManagementInterfaceNotSet();
+        // The profile itself was newly created, so it still has to be committed.
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
+    }
+
+    // The binding is to the profile, so a renewal that only changes the certificate behind an already bound profile
+    // is a no-op for the binding but still has to be committed.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_BoundProfileGetsANewCertificate_SkipsTheBindCallButCommits()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "old-cert"));
+        FakeClient.ManagementInterfaceIsBoundTo("my-profile");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", overwrite: true, bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile("/config/shared/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
+        VerifyManagementInterfaceNotSet();
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
+    }
+
+    // Nothing at all to change: the profile has the certificate and the management interface has the profile.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_EverythingAlreadyInPlace_IsANoOpWithoutCommitting()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+        FakeClient.ManagementInterfaceIsBoundTo("my-profile");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        VerifyProfileNotSet();
+        VerifyManagementInterfaceNotSet();
+        VerifyNothingCommitted();
+    }
+
+    // The profile already has the certificate (so the profile step is a no-op), but the binding was asked for and is
+    // missing: it must still be bound and committed. The early "no changes required" exit must not skip it.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_ProfileAlreadyHasTheCertificateButIsNotBound_BindsAndCommits()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        VerifyProfileNotSet();
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
+    }
+
+    // Binding replaces whichever profile is currently bound; that is the feature, not an error.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_ADifferentProfileIsBound_ReplacesTheBindingWithoutAWarning()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ManagementInterfaceIsBoundTo("some-other-profile");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_NoProfileIsBound_BindsTheProfile()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ManagementInterfaceHasNoProfile();
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+    }
+
+    // Profile names are case-sensitive in PAN-OS, so "My-Profile" being bound does not mean "my-profile" is.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_ProfileNamesDifferOnlyByCase_StillBinds()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ManagementInterfaceIsBoundTo("My-Profile");
+
+        _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile("my-profile"), Times.Once);
+    }
+
+    // ── Management interface: failures ───────────────────────────────────────
+
+    // A rejected bind on a supported path is a failure the retry can address (the binding was expected to happen).
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_BindIsRejected_ReturnsFailureWithPaloAltoMessage()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.SetManagementInterfaceServiceProfileFails("profile has no certificate");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertFailure(result);
+        Assert.Contains("profile has no certificate", result.FailureMessage);
+        Assert.Contains("my-profile", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_BindIsRejected_DoesNotCommit()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.SetManagementInterfaceServiceProfileFails();
+
+        _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_BindReturnsNoResponse_ReturnsFailure()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .ReturnsAsync((ErrorSuccessResponse)null!);
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertFailure(result);
+        VerifyNothingCommitted();
+    }
+
+    // The management interface is only bound after the profile itself is in place.
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_SettingTheProfileFails_DoesNotBind()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.SetServiceProfileFails("profile is controlled by a template");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertFailure(result);
+        VerifyManagementInterfaceNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_BindFlagTrue_CommitFailsAfterBinding_ReturnsFailure()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.CommitFails("commit rejected");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared", bindToManagementInterface: true));
+
+        AssertFailure(result);
+        Assert.Contains("commit rejected", result.FailureMessage);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private const string Device = "/config/devices/entry[@name='localhost.localdomain']";
@@ -770,15 +1084,23 @@ public class ManagementTests : BaseUnitTest
     /// (default "my-profile"). The alias is deliberately not the certificate's name on the device ("my-cert").
     /// </summary>
     private static ManagementJobConfiguration AnAddJob(string storePath, bool overwrite = false,
-        string? jobAlias = "my-profile") =>
-        new ManagementJobBuilder()
+        string? jobAlias = "my-profile", object? bindToManagementInterface = null)
+    {
+        var builder = new ManagementJobBuilder()
             .WithStorePath(storePath)
             .WithCertificateContents(TestPem)
             .WithContentsFormat("PEM")
             .WithThumbprint(ThumbprintOf(TestPem))
             .WithAlias(jobAlias)
-            .WithOverwrite(overwrite)
-            .Build();
+            .WithOverwrite(overwrite);
+
+        if (bindToManagementInterface != null)
+        {
+            builder.WithJobProperty(EntryParameters.BindToManagementInterface, bindToManagementInterface);
+        }
+
+        return builder.Build();
+    }
 
     /// <summary>Like <see cref="AnAddJob"/>, but for an arbitrary job certificate.</summary>
     private static ManagementJobConfiguration AnAddJobFor(string contents, string? thumbprint, string format = "PEM") =>
@@ -809,6 +1131,8 @@ public class ManagementTests : BaseUnitTest
         FakeClient.WithCertificatesAt(CertEntries(certificateScope ?? storePath), ACertificateEntry(certificateName));
         FakeClient.WithNoServiceProfiles();
         FakeClient.SetServiceProfileSucceeds();
+        FakeClient.ManagementInterfaceHasNoProfile();
+        FakeClient.SetManagementInterfaceServiceProfileSucceeds();
         FakeClient.SetPanoramaTargetSucceeds();
         FakeClient.CommitSucceeds();
         FakeClient.CommitTemplateSucceeds();
@@ -819,6 +1143,15 @@ public class ManagementTests : BaseUnitTest
     private void VerifyProfileNotSet() =>
         FakeClient.ClientMock.Verify(
             c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+
+    private void VerifyManagementInterfaceNotQueriedOrSet()
+    {
+        FakeClient.ClientMock.Verify(c => c.GetManagementInterfaceServiceProfile(), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()), Times.Never);
+    }
+
+    private void VerifyManagementInterfaceNotSet() =>
+        FakeClient.ClientMock.Verify(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()), Times.Never);
 
     private void VerifyNothingCommitted()
     {
@@ -854,6 +1187,22 @@ public class ManagementTests : BaseUnitTest
     };
 
     private static string CertEntries(string scope) => $"{scope}/certificate/entry";
+
+    // Only the firewall's own and Panorama's own management interface can be bound.
+    public static IEnumerable<object[]> StorePathsThatSupportManagementInterfaceBinding() => new[]
+    {
+        new object[] { "/config/shared" },
+        new object[] { "/config/panorama" },
+    };
+
+    public static IEnumerable<object[]> StorePathsThatDoNotSupportManagementInterfaceBinding() => new[]
+    {
+        new object[] { FirewallVsysPath("vsys1") },
+        new object[] { TemplateSharedPath("MyTemplate") },
+        new object[] { TemplateVsysPath("MyTemplate", "vsys1") },
+        new object[] { StackSharedPath("MyStack") },
+        new object[] { StackVsysPath("MyStack", "vsys1") },
+    };
 
     public static IEnumerable<object[]> ValidStorePaths() => new[]
     {

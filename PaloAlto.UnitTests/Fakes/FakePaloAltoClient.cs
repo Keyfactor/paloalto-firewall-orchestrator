@@ -87,6 +87,35 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
         ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(Error(message));
     
+    // ── Management interface service profile ─────────────────────────────────
+
+    /// <summary>The management interface is bound to the named service profile.</summary>
+    public void ManagementInterfaceIsBoundTo(string profileName) =>
+        ClientMock.Setup(c => c.GetManagementInterfaceServiceProfile())
+            .ReturnsAsync(new ManagementInterfaceServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ManagementInterfaceServiceProfileResult
+                    { SslTlsServiceProfile = profileName, Count = 1, TotalCount = 1 }
+            });
+
+    /// <summary>PAN-OS answers with an empty &lt;result/&gt; when no profile is bound to the management interface.</summary>
+    public void ManagementInterfaceHasNoProfile() =>
+        ClientMock.Setup(c => c.GetManagementInterfaceServiceProfile())
+            .ReturnsAsync(new ManagementInterfaceServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ManagementInterfaceServiceProfileResult()
+            });
+
+    public void SetManagementInterfaceServiceProfileSucceeds() =>
+        ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .ReturnsAsync(Ok());
+
+    public void SetManagementInterfaceServiceProfileFails(string message = "Could not set the management interface service profile") =>
+        ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .ReturnsAsync(Error(message));
+
     public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
     
     /// <summary>
