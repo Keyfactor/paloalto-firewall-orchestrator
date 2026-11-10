@@ -67,12 +67,14 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             var profiles = await GetServiceProfiles(storePath);
             var certificatesByScope = await GetCertificatesByScope(parsedPath);
 
+            var boundProfileName = await GetManagementInterfaceProfileName(parsedPath);
+
             var warnings = new StringBuilder();
             var inventoryItems = new List<CurrentInventoryItem>();
 
             foreach (var profile in profiles)
             {
-                var item = BuildInventoryItem(profile, certificatesByScope, warnings);
+                var item = BuildInventoryItem(profile, certificatesByScope, boundProfileName, warnings);
                 if (item != null) inventoryItems.Add(item);
             }
 
@@ -144,6 +146,25 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
         FailureMessage = $"The store setup is not valid. {message}"
     };
 
+    /// <summary>
+    /// The name of the service profile bound to the management interface, or null if none is bound or the store path
+    /// cannot be bound (the management interface API would then describe the device, not the profiles in this store).
+    /// </summary>
+    private async Task<string> GetManagementInterfaceProfileName(ServiceProfileStorePath path)
+    {
+        if (!path.SupportsManagementInterfaceBinding)
+        {
+            Logger.LogDebug($"Store path {path.Path} does not support management interface binding; skipping the lookup.");
+            return null;
+        }
+
+        var response = await _client.GetManagementInterfaceServiceProfile();
+        var name = response?.Result?.SslTlsServiceProfile;
+        Logger.LogDebug($"Service profile bound to the management interface: {(string.IsNullOrWhiteSpace(name) ? "(none)" : name)}");
+
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
+
     private async Task<List<ServiceProfileEntry>> GetServiceProfiles(string storePath)
     {
         var response = await _client.GetServiceProfiles($"{storePath}/ssl-tls-service-profile");
@@ -183,7 +204,8 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
     /// resolved.
     /// </summary>
     private CurrentInventoryItem BuildInventoryItem(ServiceProfileEntry profile,
-        List<(string scope, Dictionary<string, Entry> certificates)> certificatesByScope, StringBuilder warnings)
+        List<(string scope, Dictionary<string, Entry> certificates)> certificatesByScope, string boundProfileName,
+        StringBuilder warnings)
     {
         var certificateName = profile.Certificate?.Value;
         if (string.IsNullOrWhiteSpace(certificateName))
@@ -224,7 +246,10 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             UseChainLevel = false,
             Parameters = new Dictionary<string, object>()
                 {
-                    {EntryParameters.CertificateAlias, certificateName}
+                    {EntryParameters.CertificateAlias, certificateName},
+                    // Always reported (false when not bound) so a stale value in Command is cleared.
+                    {EntryParameters.BindToManagementInterface,
+                        boundProfileName != null && string.Equals(profile.Name, boundProfileName, StringComparison.Ordinal)}
                 },
         };
     }

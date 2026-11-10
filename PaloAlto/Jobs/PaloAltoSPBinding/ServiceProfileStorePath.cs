@@ -63,6 +63,14 @@ public sealed class ServiceProfileStorePath
     /// <summary>The template stack the path refers to, or null if the path does not target a template stack.</summary>
     public string TemplateStackName { get; }
 
+    /// <summary>
+    /// Only the firewall's own and Panorama's own management interface can be bound to a service profile. The
+    /// management interface API addresses the device it talks to, so template, template stack and vsys scopes
+    /// cannot be bound.
+    /// </summary>
+    public bool SupportsManagementInterfaceBinding =>
+        Kind == ServiceProfileStoreKind.FirewallShared || Kind == ServiceProfileStoreKind.Panorama;
+
     public static bool TryParse(string path, out ServiceProfileStorePath parsed)
     {
         parsed = null;

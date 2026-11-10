@@ -121,47 +121,104 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
 
                 var certificateAlias = ChooseAlias(matches, certificatesByScope, jobCertificate);
 
+                var bindToManagementInterface = IsBindToManagementInterfaceRequested(config);
+                Logger.LogDebug($"Bind to management interface requested? {bindToManagementInterface}");
+
                 var existingProfile = await GetServiceProfile(storePath, serviceProfileName);
                 var existingCertificateName = existingProfile?.Certificate?.Value;
                 
                 Logger.LogDebug($"Found existing service profile? {existingProfile != null}, Certificate Name: {existingCertificateName}");
 
+                var profileChanged = true;
+
                 if (!string.IsNullOrWhiteSpace(existingCertificateName))
                 {
                     if (existingCertificateName == certificateAlias)
                     {
-                        Logger.LogInformation($"Service profile {serviceProfileName} is already bound to certificate {certificateAlias}. No changes are required.");
-                        return Success(config.JobHistoryId);
+                        Logger.LogInformation($"Service profile {serviceProfileName} is already bound to certificate {certificateAlias}. No changes are required to the service profile.");
+                        profileChanged = false;
                     }
-
-                    if (!config.Overwrite)
+                    else if (!config.Overwrite)
                     {
                         Logger.LogError($"Service profile {serviceProfileName} is already bound to certificate {existingCertificateName} and overwrite was not specified.");
                         return Fail(config.JobHistoryId,
                             $"Service profile {serviceProfileName} is already bound to certificate {existingCertificateName}. " +
                             $"To bind it to {certificateAlias}, use the overwrite flag.");
                     }
-
-                    Logger.LogInformation($"Overwriting the certificate of service profile {serviceProfileName}: replacing {existingCertificateName} with {certificateAlias}.");
+                    else
+                    {
+                        Logger.LogInformation($"Overwriting the certificate of service profile {serviceProfileName}: replacing {existingCertificateName} with {certificateAlias}.");
+                    }
                 }
 
-                var setResponse = await _client.SetServiceProfile($"{storePath}/ssl-tls-service-profile",
-                    serviceProfileName, certificateAlias);
-                if (setResponse == null || setResponse.Status?.Equals("error", StringComparison.OrdinalIgnoreCase) == true)
+                if (profileChanged)
                 {
-                    var error = setResponse?.LineMsg != null
-                        ? Validators.BuildPaloError(setResponse)
-                        : "Palo Alto did not return a response";
-                    Logger.LogError($"Could not bind certificate {certificateAlias} to service profile {serviceProfileName}: {error}");
-                    return Fail(config.JobHistoryId,
-                        $"Could not bind certificate {certificateAlias} to service profile {serviceProfileName}: {error}");
+                    var setResponse = await _client.SetServiceProfile($"{storePath}/ssl-tls-service-profile",
+                        serviceProfileName, certificateAlias);
+                    if (setResponse == null || setResponse.Status?.Equals("error", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var error = setResponse?.LineMsg != null
+                            ? Validators.BuildPaloError(setResponse)
+                            : "Palo Alto did not return a response";
+                        Logger.LogError($"Could not bind certificate {certificateAlias} to service profile {serviceProfileName}: {error}");
+                        return Fail(config.JobHistoryId,
+                            $"Could not bind certificate {certificateAlias} to service profile {serviceProfileName}: {error}");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(existingCertificateName))
+                    {
+                        Logger.LogInformation(existingProfile == null
+                            ? $"Created service profile {serviceProfileName} bound to certificate {certificateAlias}."
+                            : $"Bound certificate {certificateAlias} to existing service profile {serviceProfileName}.");
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(existingCertificateName))
+                // Binding the management interface is bind-only: it never unbinds, and it is only attempted when asked for.
+                var managementInterfaceChanged = false;
+                string bindWarning = null;
+
+                if (bindToManagementInterface)
                 {
-                    Logger.LogInformation(existingProfile == null
-                        ? $"Created service profile {serviceProfileName} bound to certificate {certificateAlias}."
-                        : $"Bound certificate {certificateAlias} to existing service profile {serviceProfileName}.");
+                    if (!parsedPath.SupportsManagementInterfaceBinding)
+                    {
+                        // A store path problem a retry cannot fix, so the job is not failed: the profile is still committed.
+                        bindWarning =
+                            $"Service profile {serviceProfileName} was not bound to the management interface: store path {storePath} does not support management interface binding. " +
+                            $"Only {SharedStorePath} and {PanoramaStorePath} can be bound. Bind the service profile to the management interface manually.";
+                        Logger.LogWarning(bindWarning);
+                    }
+                    else
+                    {
+                        var currentProfile = (await _client.GetManagementInterfaceServiceProfile())?.Result?.SslTlsServiceProfile;
+
+                        if (string.Equals(currentProfile, serviceProfileName, StringComparison.Ordinal))
+                        {
+                            Logger.LogInformation($"Service profile {serviceProfileName} is already bound to the management interface. Skipping.");
+                        }
+                        else
+                        {
+                            Logger.LogInformation($"Binding service profile {serviceProfileName} to the management interface (currently: {(string.IsNullOrWhiteSpace(currentProfile) ? "none" : currentProfile)}).");
+
+                            var bindResponse = await _client.SetManagementInterfaceServiceProfile(serviceProfileName);
+                            if (bindResponse == null || bindResponse.Status?.Equals("error", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                var error = bindResponse?.LineMsg != null
+                                    ? Validators.BuildPaloError(bindResponse)
+                                    : "Palo Alto did not return a response";
+                                Logger.LogError($"Could not bind service profile {serviceProfileName} to the management interface: {error}");
+                                return Fail(config.JobHistoryId,
+                                    $"Could not bind service profile {serviceProfileName} to the management interface: {error}");
+                            }
+
+                            managementInterfaceChanged = true;
+                        }
+                    }
+                }
+
+                if (!profileChanged && !managementInterfaceChanged)
+                {
+                    Logger.LogInformation("No changes are required. Nothing to commit.");
+                    return bindWarning == null ? Success(config.JobHistoryId) : Warn(config.JobHistoryId, bindWarning);
                 }
 
                 var commit = await CommitChanges(StoreProperties, config.CertificateStoreDetails, _client);
@@ -171,17 +228,10 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                     return Fail(config.JobHistoryId, commit.HardFailure);
                 }
 
-                if (commit.Warning != null)
-                {
-                    return new JobResult
-                    {
-                        Result = OrchestratorJobStatusJobResult.Warning,
-                        JobHistoryId = config.JobHistoryId,
-                        FailureMessage = commit.Warning
-                    };
-                }
+                var warnings = string.Join(Environment.NewLine,
+                    new[] { commit.Warning, bindWarning }.Where(w => !string.IsNullOrWhiteSpace(w)));
 
-                return Success(config.JobHistoryId);
+                return warnings.Length > 0 ? Warn(config.JobHistoryId, warnings) : Success(config.JobHistoryId);
             }
         }
         catch (Exception e)
@@ -257,6 +307,32 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
         Result = OrchestratorJobStatusJobResult.Success,
         JobHistoryId = jobHistoryId
     };
+
+    private static JobResult Warn(long jobHistoryId, string message) => new()
+    {
+        Result = OrchestratorJobStatusJobResult.Warning,
+        JobHistoryId = jobHistoryId,
+        FailureMessage = message
+    };
+
+    private const string SharedStorePath = "/config/shared";
+    private const string PanoramaStorePath = "/config/panorama";
+
+    /// <summary>
+    /// Reads the BindToManagementInterface entry parameter. Command may deliver it as a bool or as its string form;
+    /// anything that is not true (including absent) means "leave the management interface alone".
+    /// </summary>
+    private static bool IsBindToManagementInterfaceRequested(ManagementJobConfiguration config)
+    {
+        if (config.JobProperties == null ||
+            !config.JobProperties.TryGetValue(EntryParameters.BindToManagementInterface, out var value) ||
+            value == null)
+        {
+            return false;
+        }
+
+        return bool.TryParse(Convert.ToString(value), out var bind) && bind;
+    }
 
     private static JobResult Fail(long jobHistoryId, string message) => new()
     {
