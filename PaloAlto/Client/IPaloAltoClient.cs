@@ -59,6 +59,19 @@ public interface IPaloAltoClient
     Task<ErrorSuccessResponse> SetServiceProfile(string path, string profileName, string certificateName);
 
     /// <summary>
+    /// Retrieves the service profile for the management interface of the firewall. This is a special case of <see cref="GetServiceProfiles"/> that targets the management interface rather than a user-defined service profile.
+    /// </summary>
+    /// <returns>A <see cref="ManagementInterfaceServiceProfileResponse"/> containing the management interface service profile.</returns>
+    Task<ManagementInterfaceServiceProfileResponse> GetManagementInterfaceServiceProfile();
+
+    /// <summary>
+    /// Sets the management interface service profile on the firewall. This is a special case of <see cref="SetServiceProfile"/> that targets the management interface rather than a user-defined service profile.
+    /// </summary>
+    /// <param name="profileName">The name of the service profile to set for the management interface.</param>
+    /// <returns>A <see cref="ErrorSuccessResponse"/> indicating the result of the operation.</returns>
+    Task<ErrorSuccessResponse> SetManagementInterfaceServiceProfile(string profileName);
+
+    /// <summary>
     /// Returns the names of all templates defined in Panorama.
     /// Used during store validation to confirm the template referenced in the store path exists.
     /// </summary>

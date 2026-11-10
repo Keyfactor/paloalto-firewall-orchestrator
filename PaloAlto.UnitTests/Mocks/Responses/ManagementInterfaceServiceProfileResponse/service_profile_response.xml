@@ -1,0 +1,5 @@
+<response status="success" code="19">
+    <result total-count="1" count="1">
+        <ssl-tls-service-profile admin="testuser" dirtyId="2" time="2026/11/10 06:44:41">TestBindings</ssl-tls-service-profile>
+    </result>
+</response>

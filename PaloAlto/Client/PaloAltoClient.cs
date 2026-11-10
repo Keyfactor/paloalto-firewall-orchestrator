@@ -115,6 +115,35 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<ManagementInterfaceServiceProfileResponse> GetManagementInterfaceServiceProfile()
+        {
+            try
+            {
+                string uri = $"/api/?type=config&action=get&xpath=/config/devices/entry[@name='localhost.localdomain']/deviceconfig/system/ssl-tls-service-profile&key={ApiKey}";
+                return await GetXmlResponseAsync<ManagementInterfaceServiceProfileResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetManagementInterfaceServiceProfile: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> SetManagementInterfaceServiceProfile(string profileName)
+        {
+            try
+            {
+                string uri =
+                    $"/api/?type=config&action=set&xpath=/config/devices/entry[@name='localhost.localdomain']/deviceconfig/system&element=<ssl-tls-service-profile>{profileName}</ssl-tls-service-profile>&key={ApiKey}";
+                return await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.SetManagementInterfaceServiceProfile: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task<NamedListResponse> GetTemplateList()
         {
             try

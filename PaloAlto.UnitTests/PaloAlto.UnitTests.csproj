@@ -30,6 +30,12 @@
       <None Update="Mocks\Responses\JobStatusResponse\finished_job_response.xml">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="Mocks\Responses\ManagementInterfaceServiceProfileResponse\empty_result.xml">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Mocks\Responses\ManagementInterfaceServiceProfileResponse\service_profile_response.xml">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

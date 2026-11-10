@@ -13,24 +13,17 @@
 // limitations under the License.
 
 using System.Net;
-using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
-using PaloAlto.UnitTests.Mocks;
 using Xunit;
 
 namespace PaloAlto.UnitTests.Client;
 
-// TODO: This test class pattern is useful to test the deserialization of responses from the Palo Alto API.
-// TODO: Consider creating a base test class for this pattern to reduce duplication across test classes, and cover other API endpoints in the future.
-public class PaloAltoClientServiceProfileTests
+public class PaloAltoClientTestServiceProfileTests : PaloAltoClientTestBase
 {
-    private const string ApiKey = "test-api-key";
     private const string ServiceProfilePath =
         "/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared/ssl-tls-service-profile";
 
     private static readonly string ServiceProfilesXml = File.ReadAllText(
         Path.Combine("Mocks", "Responses", "ServiceProfileResponse", "service_profiles_response.xml"));
-
-    private const string SuccessXml = "<response status=\"success\" code=\"20\"><msg>command succeeded</msg></response>";
 
     // ── GetServiceProfiles ───────────────────────────────────────────────────
 
@@ -171,15 +164,5 @@ public class PaloAltoClientServiceProfileTests
         var response = await sut.SetServiceProfile(ServiceProfilePath, "MyProfile", "my-cert");
 
         Assert.Equal("success", response.Status);
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private static (PaloAltoClient Client, StubHttpMessageHandler Handler) CreateClient(
-        string responseContent, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
-        var handler = new StubHttpMessageHandler(responseContent, statusCode);
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://firewall.example.com") };
-        return (new PaloAltoClient(httpClient, ApiKey), handler);
     }
 }
