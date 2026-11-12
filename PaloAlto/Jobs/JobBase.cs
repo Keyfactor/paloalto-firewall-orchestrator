@@ -173,23 +173,19 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
     protected record CommitResult(string? HardFailure = null, string? Warning = null);
 
     /// <summary>
-    /// Commits changes to Palo Alto Panorama / Firewall. If the commit is asynchronous, the jobs will be awaited for completion and checked for success result.
-    /// If committing to a Panorama certificate store path, the job will run through and commit changes to the associated firewalls, if any.
+    /// Commits the device's (or Panorama's) own configuration and, if Palo Alto processes the commit asynchronously,
+    /// waits for it to finish. Does not push to templates, template stacks or device groups.
     /// </summary>
-    /// <param name="storeProperties"></param>
-    /// <param name="certificateStore"></param>
-    /// <param name="client"></param>
-    /// <returns></returns>
-    protected async Task<CommitResult> CommitChanges(JobProperties storeProperties, CertificateStore certificateStore, IPaloAltoClient client)
+    /// <returns>null on success, otherwise the failure message.</returns>
+    protected async Task<string?> CommitLocalConfiguration(IPaloAltoClient client)
     {
-        Logger.MethodEntry();
         var commitResponse = await client.GetCommitResponse();
         Logger.LogTrace("Got client commit response, attempting to log it");
         LogResponse(commitResponse);
 
         if (commitResponse.Status != "success")
         {
-            return new CommitResult($"The commit to the device failed. Failure: {commitResponse.Text}", null);
+            return $"The commit to the device failed. Failure: {commitResponse.Text}";
         }
 
         Logger.LogTrace("Commit response shows success");
@@ -205,9 +201,28 @@ public abstract class JobBase<T> where T : class, IOrchestratorJobExtension
 
             if (completionResult.Result == OrchestratorJobStatusJobResult.Failure)
             {
-                return new CommitResult($"The commit to the device failed. Failure: {completionResult.FailureMessage}",
-                    null);
+                return $"The commit to the device failed. Failure: {completionResult.FailureMessage}";
             }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Commits changes to Palo Alto Panorama / Firewall. If the commit is asynchronous, the jobs will be awaited for completion and checked for success result.
+    /// If committing to a Panorama certificate store path, the job will run through and commit changes to the associated firewalls, if any.
+    /// </summary>
+    /// <param name="storeProperties"></param>
+    /// <param name="certificateStore"></param>
+    /// <param name="client"></param>
+    /// <returns></returns>
+    protected async Task<CommitResult> CommitChanges(JobProperties storeProperties, CertificateStore certificateStore, IPaloAltoClient client)
+    {
+        Logger.MethodEntry();
+        var localFailure = await CommitLocalConfiguration(client);
+        if (localFailure != null)
+        {
+            return new CommitResult(localFailure, null);
         }
 
         //Check to see if it is a Panorama instance (not "/" or empty store path) if Panorama, push to corresponding firewall devices

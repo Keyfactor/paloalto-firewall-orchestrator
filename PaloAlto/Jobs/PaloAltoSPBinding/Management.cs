@@ -235,7 +235,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                     return bindWarning == null ? Success(config.JobHistoryId) : Warn(config.JobHistoryId, bindWarning);
                 }
 
-                var commit = await CommitChanges(StoreProperties, config.CertificateStoreDetails, _client);
+                var commit = await CommitServiceProfileChanges(StoreProperties, parsedPath, _client);
                 if (commit.HardFailure != null)
                 {
                     Logger.LogError($"Commit failed after binding service profile {serviceProfileName}: {commit.HardFailure}");

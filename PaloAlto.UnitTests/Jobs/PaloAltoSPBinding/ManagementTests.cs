@@ -725,6 +725,146 @@ public class ManagementTests : BaseUnitTest
         FakeClient.ClientMock.Verify(c => c.CommitTemplate(storePath), Times.Once);
     }
 
+    // The Panorama push must follow the store path's own template / stack. These guard against reusing the legacy
+    // PaloAlto store type's path validators (Validators.IsValidPanoramaFormat / IsValidPanoramaVsysFormat), which do
+    // not recognise template vsys paths with a named device entry or any template stack path.
+
+    [Fact]
+    public void ProcessJob_Add_TemplateVsysPath_CommitsToTheTemplate()
+    {
+        var storePath = TemplateVsysPath("MyTemplate", "vsys1");
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(storePath), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack(It.IsAny<string>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("shared")]
+    [InlineData("vsys")]
+    public void ProcessJob_Add_TemplateStackPath_CommitsToTheStackNamedInThePath(string scope)
+    {
+        var storePath = scope == "shared" ? StackSharedPath("MyStack") : StackVsysPath("MyStack", "vsys1");
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("MyStack"), Times.Once);
+        // CommitTemplate derives the template from the path, and a stack path has no template segment.
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_PanoramaPath_CommitsLocallyWithoutPushing()
+    {
+        ArrangeSuccessfulAdd("/config/panorama");
+
+        var result = _sut.ProcessJob(AnAddJob("/config/panorama"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack(It.IsAny<string>()), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.CommitDeviceGroup(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_TemplateVsysPath_PushFails_ReturnsFailureByDefault()
+    {
+        var storePath = TemplateVsysPath("MyTemplate", "vsys1");
+        ArrangeSuccessfulAdd(storePath);
+        FakeClient.CommitTemplateFails("push rejected");
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        AssertFailure(result);
+        Assert.Contains("push rejected", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_TemplateStackPath_PushFails_ReturnsFailureByDefault()
+    {
+        var storePath = StackSharedPath("MyStack");
+        ArrangeSuccessfulAdd(storePath);
+        FakeClient.CommitTemplateStackFails("push rejected");
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        AssertFailure(result);
+        Assert.Contains("push rejected", result.FailureMessage);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_TemplateVsysPath_ProfileAndBindingUnchanged_DoesNotPush()
+    {
+        var storePath = TemplateVsysPath("MyTemplate", "vsys1");
+        ArrangeSuccessfulAdd(storePath);
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+
+        AssertSuccess(_sut.ProcessJob(AnAddJob(storePath)));
+
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_TemplatePath_AlsoCommitsToTheStacksInTheStoreProperty()
+    {
+        var storePath = TemplateSharedPath("MyTemplate");
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, templateStack: "StackA; StackB"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(storePath), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("StackA"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("StackB"), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_StackPath_CommitsEachStackOnce_WhenThePropertyRepeatsThePathStack()
+    {
+        var storePath = StackSharedPath("MyStack");
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, templateStack: "MyStack;OtherStack"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("MyStack"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("OtherStack"), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("/config/shared")]
+    [InlineData("/config/panorama")]
+    public void ProcessJob_Add_FirewallOrPanoramaPath_IgnoresTheStacksInTheStoreProperty(string storePath)
+    {
+        ArrangeSuccessfulAdd(storePath);
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, templateStack: "StackA"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack(It.IsAny<string>()), Times.Never);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplate(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_PushFails_PushFailureBehaviorWarning_ReturnsWarningAndStillTriesTheOtherPushes()
+    {
+        var storePath = TemplateSharedPath("MyTemplate");
+        ArrangeSuccessfulAdd(storePath);
+        FakeClient.CommitTemplateFails("template push rejected");
+
+        var result = _sut.ProcessJob(AnAddJob(storePath, templateStack: "StackA", pushFailureBehavior: "Warning"));
+
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        Assert.Contains("template push rejected", result.FailureMessage);
+        FakeClient.ClientMock.Verify(c => c.CommitTemplateStack("StackA"), Times.Once);
+    }
+
     [Fact]
     public void ProcessJob_Add_TemplateVsysPath_SetsPanoramaTargetBeforeBinding()
     {
@@ -1118,7 +1258,8 @@ public class ManagementTests : BaseUnitTest
     /// (default "my-profile"). The alias is deliberately not the certificate's name on the device ("my-cert").
     /// </summary>
     private static ManagementJobConfiguration AnAddJob(string storePath, bool overwrite = false,
-        string? jobAlias = "my-profile", object? bindToManagementInterface = null)
+        string? jobAlias = "my-profile", object? bindToManagementInterface = null,
+        string? templateStack = null, string? pushFailureBehavior = null)
     {
         var builder = new ManagementJobBuilder()
             .WithStorePath(storePath)
@@ -1126,7 +1267,10 @@ public class ManagementTests : BaseUnitTest
             .WithContentsFormat("PEM")
             .WithThumbprint(ThumbprintOf(TestPem))
             .WithAlias(jobAlias)
-            .WithOverwrite(overwrite);
+            .WithOverwrite(overwrite)
+            .WithPushFailureBehavior(pushFailureBehavior);
+
+        if (templateStack != null) builder.WithTemplateStack(templateStack);
 
         if (bindToManagementInterface != null)
         {
