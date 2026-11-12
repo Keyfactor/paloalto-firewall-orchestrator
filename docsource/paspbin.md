@@ -29,7 +29,7 @@ Command does not sequence the two jobs for you. The PASPBin Management Add job m
 - **The certificate must already be on the device, with its private key.** Deploy it with a PaloAlto store first.
 - **The job must supply the certificate in PEM format, without a private key.** The integration does not accept a PFX. This store type is configured with `Private Key Handling` set to `Forbidden`.
 - **The API user** needs the same permissions as the PaloAlto store type. See _API User Setup Permissions in Panorama or Firewall Required_ in the [Store Path Details](#store-path-details-and-api-security-considerations) section.
-- **Panorama stores** use the `Template Stack` and `Push Failure Behavior` store properties the same way the PaloAlto store type does. See [Commit Behavior](#commit-behavior).
+- **Panorama template stores** use the `Template Stack` and `Push Failure Behavior` store properties to push to firewalls. See [Pushing to firewalls](#pushing-to-firewalls). Device groups are not used by this store type.
 - **Template-controlled service profiles cannot be overwritten through the API.** See [Troubleshooting](#troubleshooting).
 
 ## Certificate Store Configuration
@@ -99,9 +99,18 @@ The job proceeds as follows:
    - **It exists and already references this certificate:** no change is needed to the profile.
    - **It exists and references a different certificate:** the job fails unless the job's **Overwrite** flag is set, in which case the certificate is replaced. The profile's protocol settings are not changed.
 4. If `BindToManagementInterface` is `true`, the management interface is bound (see below).
-5. The changes are committed, and on Panorama pushed to the configured template, template stack, and device groups, following the same [commit behavior](#commit-behavior) as the PaloAlto store type. If nothing changed, nothing is committed.
+5. The changes are committed. For template store paths, the change is also committed to the template and pushed to the template stacks listed in the store's `Template Stack` property. See [Pushing to firewalls](#pushing-to-firewalls). If nothing changed, nothing is committed.
 
 If any step fails, the job fails and is retried by Command, unless noted below.
+
+### Pushing to firewalls
+
+For the template store paths (4 and 5), a service profile saved in a Panorama template reaches the managed firewalls **only through the Template Stacks that contain that template**. **To push the service profile to the associated firewalls, list those stacks in the `Template Stack` store property** (semicolon delimited). After each Management Add that changes the profile, the integration commits to the template and then pushes to every stack listed there.
+
+- A stack that is not listed is not pushed, so firewalls that use the template only through that stack do not receive the change until it is pushed another way.
+- Panorama must have the template in each listed stack, and the stack must exist, or the push fails.
+- `Push Failure Behavior` decides whether a failed push returns a Failure (retried, the default) or a Warning (not retried). See [Push Failure Behavior](#push-failure-behavior).
+- Device groups are not used by this store type, and the `Template Stack` property is ignored for firewall paths (1, 2) and the Panorama path (3), which are committed on the device itself and not pushed.
 
 ### Binding the management interface
 
