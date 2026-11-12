@@ -567,7 +567,7 @@ Please refer to the **Universal Orchestrator (remote)** usage section ([PAM prov
 
 ### Store Path
 
-The store path points at the place in the PAN-OS configuration where the service profiles live. **The client machine is the Firewall or Panorama address, so the store path is what makes each store unique in Command.** The following seven formats are supported. `localhost.localdomain` is a constant; do not substitute another value.
+The store path points at the place in the PAN-OS configuration where the service profiles live. **The client machine is the Firewall or Panorama address, so the store path is what makes each store unique in Command.** The following five formats are supported. `localhost.localdomain` is a constant; do not substitute another value.
 
 | # | Platform | Scope | Store path | Management interface binding |
 |---|---|---|---|---|
@@ -576,8 +576,6 @@ The store path points at the place in the PAN-OS configuration where the service
 | 3 | Panorama | Panorama | `/config/panorama` | **Yes**: binds Panorama's own management interface |
 | 4 | Panorama | Template, shared | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/shared` | No |
 | 5 | Panorama | Template, vsys | `/config/devices/entry[@name='localhost.localdomain']/template/entry[@name='MyTemplate']/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | No |
-| 6 | Panorama | Template stack, shared | `/config/devices/entry[@name='localhost.localdomain']/template-stack/entry[@name='MyStack']/config/shared` | No |
-| 7 | Panorama | Template stack, vsys | `/config/devices/entry[@name='localhost.localdomain']/template-stack/entry[@name='MyStack']/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']` | No |
 
 Note that the template vsys format here includes the device name in each `entry` (`entry[@name='localhost.localdomain']`), unlike the PaloAlto store type's Panorama vsys path.
 
@@ -590,8 +588,6 @@ Note that the template vsys format here includes the device name in each `entry`
 | 3 | You want a profile used by Panorama itself. **This is the path to use to automate Panorama's own management interface certificate.** It is not pushed to the firewalls Panorama manages. |
 | 4 | You want a profile defined in a Panorama template at shared scope and pushed to the firewalls that use the template. |
 | 5 | Same as 4, but for a single vsys in the template. |
-| 6 | You want a profile defined on a template stack at shared scope, applying to all of the stack's firewalls. |
-| 7 | Same as 6, but for a single vsys on the stack. |
 
 #### Which certificates can be bound
 
@@ -604,10 +600,8 @@ A service profile can reference only certificates visible from its own scope. Th
 | 3. Panorama | `/config/panorama` |
 | 4. Template shared | The template's shared scope |
 | 5. Template vsys | The template's vsys, then the template's shared scope |
-| 6. Template stack shared | The template stack's shared scope |
-| 7. Template stack vsys | The template stack's vsys, then the template stack's shared scope |
 
-The searched locations are the same ones a PaloAlto store type reaches for the equivalent firewall, template, and Panorama paths. A PaloAlto store type has no template stack path, so a certificate searched for under rows 6 and 7 must already exist at the stack level; certificates that live only in one of the stack's member templates are **not** searched.
+The searched locations are the same ones a PaloAlto store type reaches for the equivalent firewall, template, and Panorama paths.
 
 ### Entry Parameters
 
@@ -628,7 +622,7 @@ On a Management Add job, **the alias identifies the service profile**, not the c
 
 The job proceeds as follows:
 
-1. The store path is validated. On Panorama, the template or template stack named in the path must exist.
+1. The store path is validated. On Panorama, the template named in the path must exist.
 2. The certificate on the job is matched to a certificate on the device. If it is not found, the job fails and names the locations searched.
 3. The service profile named by the alias is looked up:
    - **It does not exist:** it is **created**, referencing the certificate, with all protocol settings enabled.
