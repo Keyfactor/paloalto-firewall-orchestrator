@@ -119,6 +119,20 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                         $"Searched: {string.Join(", ", parsedPath.CertificateScopes())}");
                 }
 
+                // A profile can only reference a certificate that has a private key. PAN-OS otherwise rejects the profile
+                // with an unhelpful "is not a valid reference" error, so fail here with a clear message instead.
+                var usableMatches = matches.Where(m => m.HasPrivateKey).ToList();
+                if (!usableMatches.Any())
+                {
+                    var names = string.Join(", ", matches.Select(m => $"{m.Alias} (scope {m.Scope})"));
+                    Logger.LogError($"Certificate with thumbprint {jobCertificate.Thumbprint} was found on the device as {names}, but it has no private key and cannot be bound to a service profile.");
+                    return Fail(config.JobHistoryId,
+                        $"The certificate with thumbprint {jobCertificate.Thumbprint} exists in Palo Alto as {names}, but it has no private key. " +
+                        "A service profile can only use a certificate with a private key. Import the certificate with its private key (PaloAlto store job) and retry.");
+                }
+
+                matches = usableMatches;
+
                 var certificateAlias = ChooseAlias(matches, certificatesByScope, jobCertificate);
 
                 var bindToManagementInterface = IsBindToManagementInterfaceRequested(config);
@@ -398,7 +412,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
     private static string NormalizeThumbprint(string thumbprint) =>
         new((thumbprint ?? string.Empty).Where(c => !char.IsWhiteSpace(c) && c != ':').ToArray());
 
-    private record CertificateMatch(string Scope, string Alias);
+    private record CertificateMatch(string Scope, string Alias, bool HasPrivateKey);
 
     /// <summary>
     /// Finds every device certificate (in search order) whose end-entity certificate is the job's certificate.
@@ -426,7 +440,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                 {
                     if (deviceCertificate!.RawData.AsSpan().SequenceEqual(jobCertificate.RawData))
                     {
-                        matches.Add(new CertificateMatch(scope, name));
+                        matches.Add(new CertificateMatch(scope, name, !string.IsNullOrEmpty(entry.PrivateKey)));
                     }
                 }
             }

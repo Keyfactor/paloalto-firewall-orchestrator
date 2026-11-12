@@ -388,6 +388,36 @@ public class ManagementTests : BaseUnitTest
         VerifyProfileNotSet();
     }
 
+    [Fact]
+    public void ProcessJob_Add_MatchingCertificateHasNoPrivateKey_ReturnsFailureNamingTheCertificateAndDoesNotBind()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateWithoutPrivateKey("public-only"));
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared"));
+
+        AssertFailure(result);
+        Assert.Contains("public-only", result.FailureMessage);
+        Assert.Contains("no private key", result.FailureMessage, StringComparison.OrdinalIgnoreCase);
+        VerifyProfileNotSet();
+        VerifyNothingCommitted();
+    }
+
+    [Fact]
+    public void ProcessJob_Add_SameCertificateWithAndWithoutPrivateKey_BindsTheOneWithAPrivateKey()
+    {
+        ArrangeSuccessfulAdd("/config/shared");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"),
+            ACertificateWithoutPrivateKey("public-only"), ACertificateWithPrivateKey("with-key"));
+
+        var result = _sut.ProcessJob(AnAddJob("/config/shared"));
+
+        AssertSuccess(result);
+        FakeClient.ClientMock.Verify(c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "with-key"), Times.Once);
+    }
+
     [Theory]
     [MemberData(nameof(ExactCertificateScopes))]
     public void ProcessJob_Add_QueriesExactlyTheDerivedCertificateScopes(string storePath, string[] expectedScopes)
@@ -1063,11 +1093,15 @@ public class ManagementTests : BaseUnitTest
     private static ServiceProfileEntry AProfile(string name, string certificateName) =>
         new() { Name = name, Certificate = new TemplateValue { Value = certificateName } };
 
+    // Device certificates default to having a private key: a profile can only bind such a certificate.
     private static Entry ACertificateEntry(string name) =>
-        new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = null };
+        new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = "key-data" };
 
     private static Entry ACertificateWithPrivateKey(string name) =>
         new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = "key-data" };
+
+    private static Entry ACertificateWithoutPrivateKey(string name) =>
+        new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = null };
 
     private static Entry ACertificateWithoutPublicKey(string name) =>
         new() { Name = name, PublicKey = null };
@@ -1077,7 +1111,7 @@ public class ManagementTests : BaseUnitTest
     private static readonly string OtherTestPem = GenerateTestCertificatePem();
 
     private static Entry ACertificateEntry(string name, string pem) =>
-        new() { Name = name, PublicKey = pem, Issuer = $"CN={name}", PrivateKey = null };
+        new() { Name = name, PublicKey = pem, Issuer = $"CN={name}", PrivateKey = "key-data" };
 
     /// <summary>
     /// An Add job that binds the certificate <see cref="TestPem"/> to the service profile named by the job's alias
