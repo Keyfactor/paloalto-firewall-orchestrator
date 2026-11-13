@@ -133,7 +133,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
 
                 matches = usableMatches;
 
-                var certificateAlias = ChooseAlias(matches, certificatesByScope, jobCertificate);
+                var certificateAlias = ChooseAlias(matches, certificatesByScope, out var precedenceWarning);
 
                 var bindToManagementInterface = IsBindToManagementInterfaceRequested(config);
                 Logger.LogDebug($"Bind to management interface requested? {bindToManagementInterface}");
@@ -232,7 +232,8 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                 if (!profileChanged && !managementInterfaceChanged)
                 {
                     Logger.LogInformation("No changes are required. Nothing to commit.");
-                    return bindWarning == null ? Success(config.JobHistoryId) : Warn(config.JobHistoryId, bindWarning);
+                    var noChangeWarnings = JoinWarnings(precedenceWarning, bindWarning);
+                    return noChangeWarnings.Length == 0 ? Success(config.JobHistoryId) : Warn(config.JobHistoryId, noChangeWarnings);
                 }
 
                 var commit = await CommitServiceProfileChanges(StoreProperties, parsedPath, _client);
@@ -242,8 +243,7 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
                     return Fail(config.JobHistoryId, commit.HardFailure);
                 }
 
-                var warnings = string.Join(Environment.NewLine,
-                    new[] { commit.Warning, bindWarning }.Where(w => !string.IsNullOrWhiteSpace(w)));
+                var warnings = JoinWarnings(commit.Warning, precedenceWarning, bindWarning);
 
                 return warnings.Length > 0 ? Warn(config.JobHistoryId, warnings) : Success(config.JobHistoryId);
             }
@@ -412,6 +412,9 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
     private static string NormalizeThumbprint(string thumbprint) =>
         new((thumbprint ?? string.Empty).Where(c => !char.IsWhiteSpace(c) && c != ':').ToArray());
 
+    private static string JoinWarnings(params string[] warnings) =>
+        string.Join(Environment.NewLine, warnings.Where(w => !string.IsNullOrWhiteSpace(w)));
+
     private record CertificateMatch(string Scope, string Alias, bool HasPrivateKey);
 
     /// <summary>
@@ -456,11 +459,15 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
     /// <summary>
     /// Picks the alias to bind. The store's own scope is assumed to take precedence over the shared scope it inherits
     /// (the first match). A profile binds by name, so ambiguity is logged as a warning.
-    /// TODO: precedence between scopes is unconfirmed (lab test T2); a shadowed match may need to fail the job.
+    /// Precedence between scopes could not be verified on the platform (lab test T2). A name shared with a different
+    /// certificate in another searched scope is reported through <paramref name="precedenceWarning"/>, which the job
+    /// returns as a Warning (not a Failure: a retry cannot resolve it, and the binding may be correct).
     /// </summary>
     private string ChooseAlias(List<CertificateMatch> matches,
-        List<(string scope, Dictionary<string, Entry> certificates)> certificatesByScope, X509Certificate2 jobCertificate)
+        List<(string scope, Dictionary<string, Entry> certificates)> certificatesByScope, out string precedenceWarning)
     {
+        precedenceWarning = null;
+        var shadowingScopes = new List<string>();
         Logger.MethodEntry();
         
         var chosen = matches[0];
@@ -480,6 +487,15 @@ public class Management : ServiceProfileBindingStoreTypeBase<Management>, IManag
             }
 
             Logger.LogWarning($"A different certificate is also named {chosen.Alias} in scope {scope}. The service profile binds by name, so it may resolve to that certificate instead.");
+            shadowingScopes.Add(scope);
+        }
+
+        if (shadowingScopes.Count > 0)
+        {
+            precedenceWarning =
+                $"A different certificate is also named {chosen.Alias} in scope {string.Join(", ", shadowingScopes)}. A service profile references a certificate by name, " +
+                $"and which scope Palo Alto resolves first has not been verified, so the profile may use that certificate instead of the one on the job. " +
+                $"Verify the certificate used by the service profile in PAN-OS, or give the certificates unique names.";
         }
         
         Logger.LogDebug($"Choosing alias {chosen.Alias}.");

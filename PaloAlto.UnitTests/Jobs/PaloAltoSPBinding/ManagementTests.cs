@@ -633,15 +633,16 @@ public class ManagementTests : BaseUnitTest
 
     // ── Same alias / certificate in multiple scopes ──────────────────────────
     //
-    // Precedence between scopes is still unconfirmed (lab test T2). Until then the store's own scope is assumed to win
-    // over the shared scope it inherits, and any ambiguity is surfaced as a warning in the log.
+    // Precedence between scopes could not be verified on the platform (lab test T2). The store's own scope is assumed to
+    // win over the shared scope it inherits. Because a profile binds by certificate name, a name that is used by a
+    // different certificate in another searched scope is ambiguous, so the job still binds but returns a Warning
+    // (a failure would be retried for something a retry cannot fix, and the binding could be applied manually anyway).
     // "Alias" in this section means the certificate's name on the device, not the job's alias (the profile name).
-    // TODO: revisit once T2 is known; a shadowed match may need to fail the job instead of warning.
 
     // Same certificate name (on the device), different certificates: the profile is bound by certificate name, so the
     // name must resolve to the job's certificate.
     [Fact]
-    public void ProcessJob_Add_SameAliasWithDifferentCertificatesInMultipleScopes_LogsAWarningAndProceeds()
+    public void ProcessJob_Add_SameAliasWithDifferentCertificatesInMultipleScopes_BindsAndReturnsAWarning()
     {
         var storePath = FirewallVsysPath("vsys1");
         ArrangeSuccessfulAdd(storePath, FirewallVsysPath("vsys1"));
@@ -649,20 +650,56 @@ public class ManagementTests : BaseUnitTest
 
         var result = _sut.ProcessJob(AnAddJob(storePath));
 
-        AssertSuccess(result);
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        Assert.Contains("my-cert", result.FailureMessage);
+        Assert.Contains("not been verified", result.FailureMessage);
         FakeClient.ClientMock.Verify(
             c => c.SetServiceProfile($"{storePath}/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
+        FakeClient.ClientMock.Verify(c => c.GetCommitResponse(), Times.Once);
     }
 
     // The job's certificate is only in the shared scope, but a different certificate shadows its name in the vsys.
     [Fact]
-    public void ProcessJob_Add_MatchingCertificateAliasIsReusedByADifferentCertificateInAnotherScope_LogsAWarning()
+    public void ProcessJob_Add_MatchingCertificateAliasIsReusedByADifferentCertificateInAnotherScope_BindsAndReturnsAWarning()
     {
         var storePath = FirewallVsysPath("vsys1");
         ArrangeSuccessfulAdd(storePath, "/config/shared");
         FakeClient.WithCertificatesAt(CertEntries(FirewallVsysPath("vsys1")), ACertificateEntry("my-cert", OtherTestPem));
 
-        _sut.ProcessJob(AnAddJob(storePath));
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        Assert.Contains("my-cert", result.FailureMessage);
+        FakeClient.ClientMock.Verify(
+            c => c.SetServiceProfile($"{storePath}/ssl-tls-service-profile", "my-profile", "my-cert"), Times.Once);
+    }
+
+    // The warning must survive the "nothing changed" path: the profile may already be bound (e.g. manually) and every
+    // later Add would otherwise return Success.
+    [Fact]
+    public void ProcessJob_Add_AmbiguousAliasAndProfileAlreadyBound_StillReturnsAWarning()
+    {
+        var storePath = FirewallVsysPath("vsys1");
+        ArrangeSuccessfulAdd(storePath, FirewallVsysPath("vsys1"));
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("my-cert", OtherTestPem));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "my-cert"));
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        FakeClient.ClientMock.Verify(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void ProcessJob_Add_SameNameInAnotherScopeIsTheSameCertificate_DoesNotWarn()
+    {
+        var storePath = FirewallVsysPath("vsys1");
+        ArrangeSuccessfulAdd(storePath, FirewallVsysPath("vsys1"));
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("my-cert"));
+
+        var result = _sut.ProcessJob(AnAddJob(storePath));
+
+        AssertSuccess(result);
     }
 
     // The same certificate is stored under different names in two scopes: which certificate name gets bound is ambiguous.
@@ -678,13 +715,6 @@ public class ManagementTests : BaseUnitTest
         AssertSuccess(result);
         FakeClient.ClientMock.Verify(
             c => c.SetServiceProfile(It.IsAny<string>(), "my-profile", "vsys-alias"), Times.Once);
-    }
-
-    [Fact(Skip = "Blocked on lab test T2: which scope wins when a name exists in both the vsys and shared scope")]
-    public void ProcessJob_Add_CertificateNameInMultipleScopes_ResolvesAccordingToPrecedence()
-    {
-        // TODO: once the precedence is confirmed, assert the winning scope (e.g. via the warning's content) and
-        // revisit the assumed order (store scope first, then the shared scope it inherits).
     }
 
     // ── Panorama target and commit ───────────────────────────────────────────

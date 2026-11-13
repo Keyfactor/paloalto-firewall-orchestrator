@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.SupportingObjects;
 using Keyfactor.Logging;
@@ -216,9 +217,11 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
         }
 
         Entry certificate = null;
+        string resolvedScope = null;
         foreach (var (scope, certificates) in certificatesByScope)
         {
             if (!certificates.TryGetValue(certificateName, out certificate)) continue;
+            resolvedScope = scope;
             Logger.LogTrace($"Resolved certificate {certificateName} for profile {profile.Name} in scope {scope}");
             break;
         }
@@ -237,6 +240,8 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
             return null;
         }
 
+        WarnIfNameIsAmbiguous(profile, certificateName, certificate, resolvedScope, certificatesByScope, warnings);
+
         return new CurrentInventoryItem
         {
             Alias = profile.Name,
@@ -252,5 +257,51 @@ public class Inventory : ServiceProfileBindingStoreTypeBase<Inventory>, IInvento
                         boundProfileName != null && string.Equals(profile.Name, boundProfileName, StringComparison.Ordinal)}
                 },
         };
+    }
+
+    /// <summary>
+    /// A profile references its certificate by name. If a different certificate has the same name in another searched
+    /// scope, which one PAN-OS resolves has not been verified (lab test T2; the store's own scope is assumed to win),
+    /// so the profile is still inventoried but a warning is recorded.
+    /// </summary>
+    private void WarnIfNameIsAmbiguous(ServiceProfileEntry profile, string certificateName, Entry resolved,
+        string resolvedScope, List<(string scope, Dictionary<string, Entry> certificates)> certificatesByScope,
+        StringBuilder warnings)
+    {
+        var otherScopes = certificatesByScope
+            .Where(c => c.scope != resolvedScope
+                        && c.certificates.TryGetValue(certificateName, out var other)
+                        && !string.IsNullOrEmpty(other.PublicKey)
+                        && !IsSameCertificate(resolved.PublicKey, other.PublicKey))
+            .Select(c => c.scope)
+            .ToList();
+
+        if (otherScopes.Count == 0) return;
+
+        var message =
+            $"Service profile {profile.Name} references certificate {certificateName}, but a different certificate has the same name in scope {string.Join(", ", otherScopes)}. " +
+            $"The certificate reported was found in scope {resolvedScope}. Which scope Palo Alto resolves first has not been verified, so the profile may use the other certificate. " +
+            "Give the certificates unique names to remove the ambiguity.";
+        Logger.LogWarning(message);
+        warnings.AppendLine(message);
+    }
+
+    private static bool IsSameCertificate(string first, string second)
+    {
+        if (CertificateBundleParser.TryGetLeafCertificate(first, out var a))
+        {
+            using (a)
+            {
+                if (CertificateBundleParser.TryGetLeafCertificate(second, out var b))
+                {
+                    using (b)
+                    {
+                        return a!.RawData.AsSpan().SequenceEqual(b!.RawData);
+                    }
+                }
+            }
+        }
+
+        return string.Equals(first?.Trim(), second?.Trim(), StringComparison.Ordinal);
     }
 }

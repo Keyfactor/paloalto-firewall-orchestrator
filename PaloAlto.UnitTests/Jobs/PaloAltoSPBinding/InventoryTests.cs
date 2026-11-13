@@ -414,11 +414,6 @@ public class InventoryTests : BaseUnitTest
         Assert.Empty(submitted);
     }
 
-    [Fact(Skip = "Blocked on lab test T2: which scope wins when a name exists in both the vsys and shared scope")]
-    public void ProcessJob_CertificateNameInMultipleScopes_ResolvesAccordingToPrecedence()
-    {
-    }
-
     // ── Unresolvable profiles ────────────────────────────────────────────────
 
     [Fact]
@@ -463,6 +458,87 @@ public class InventoryTests : BaseUnitTest
         AssertWarning(result);
         Assert.Contains("bare-profile", result.FailureMessage);
         Assert.Empty(submitted);
+    }
+
+    // ── Ambiguous certificate names ──────────────────────────────────────────
+    //
+    // A profile references its certificate by name. Which scope PAN-OS resolves first when a vsys (or template vsys) and
+    // its shared scope both hold that name could not be verified, so the store's own scope is assumed to win. When the
+    // name is used by a different certificate in another searched scope, the profile is still inventoried but the job
+    // returns a Warning, so the reported certificate is not silently trusted.
+
+    [Fact]
+    public void ProcessJob_SameNameWithADifferentCertificateInAnotherScope_InventoriesTheProfileAndWarns()
+    {
+        var storePath = FirewallVsysPath("vsys1");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries(storePath), ACertificateEntry("dup-cert"));
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("dup-cert", OtherTestPem));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "dup-cert"));
+        FakeClient.ManagementInterfaceHasNoProfile();
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertWarning(result);
+        Assert.Contains("my-profile", result.FailureMessage);
+        Assert.Contains("dup-cert", result.FailureMessage);
+        Assert.Contains("not been verified", result.FailureMessage);
+        var item = Assert.Single(submitted);
+        Assert.Equal("my-profile", item.Alias);
+        Assert.Equal(new[] { TestPem }, item.Certificates);
+    }
+
+    [Fact]
+    public void ProcessJob_TemplateVsysPath_SameNameWithADifferentCertificateInTheTemplateSharedScope_Warns()
+    {
+        var storePath = TemplateVsysPath("MyTemplate", "vsys1");
+        ArrangeTopologyFor(storePath);
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries(storePath), ACertificateEntry("dup-cert"));
+        FakeClient.WithCertificatesAt(CertEntries(TemplateSharedPath("MyTemplate")), ACertificateEntry("dup-cert", OtherTestPem));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "dup-cert"));
+        FakeClient.ManagementInterfaceHasNoProfile();
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertWarning(result);
+        Assert.Single(submitted);
+    }
+
+    [Fact]
+    public void ProcessJob_SameNameWithTheSameCertificateInAnotherScope_DoesNotWarn()
+    {
+        var storePath = FirewallVsysPath("vsys1");
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries(storePath), ACertificateEntry("dup-cert"));
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("dup-cert"));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "dup-cert"));
+        FakeClient.ManagementInterfaceHasNoProfile();
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath(storePath).Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.Single(submitted);
+    }
+
+    [Fact]
+    public void ProcessJob_ADifferentCertificateWithTheSameNameInAScopeTheStoreCannotSee_DoesNotWarn()
+    {
+        // A shared profile cannot see vsys certificates, so a vsys certificate with the same name is not a conflict.
+        FakeClient.WithNoCertificates();
+        FakeClient.WithCertificatesAt(CertEntries("/config/shared"), ACertificateEntry("dup-cert"));
+        FakeClient.WithCertificatesAt(CertEntries(FirewallVsysPath("vsys1")), ACertificateEntry("dup-cert", OtherTestPem));
+        FakeClient.WithServiceProfiles(AProfile("my-profile", "dup-cert"));
+        FakeClient.ManagementInterfaceHasNoProfile();
+        var submitted = CaptureSubmittedItems();
+
+        var result = _sut.ProcessJob(new InventoryJobBuilder().WithStorePath("/config/shared").Build(), _submitMock.Object);
+
+        AssertSuccess(result);
+        Assert.Single(submitted);
     }
 
     // ── Management interface binding ─────────────────────────────────────────
@@ -631,6 +707,11 @@ public class InventoryTests : BaseUnitTest
 
     private static Entry ACertificateEntry(string name) =>
         new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = null };
+
+    private static readonly string OtherTestPem = GenerateTestCertificatePem();
+
+    private static Entry ACertificateEntry(string name, string pem) =>
+        new() { Name = name, PublicKey = pem, Issuer = $"CN={name}", PrivateKey = "key-data" };
 
     private static Entry ACertificateWithPrivateKey(string name) =>
         new() { Name = name, PublicKey = TestPem, Issuer = $"CN={name}", PrivateKey = "key-data" };

@@ -72,6 +72,9 @@ A service profile can reference only certificates visible from its own scope. Th
 
 The searched locations are the same ones a PaloAlto store type reaches for the equivalent firewall, template, and Panorama paths.
 
+> [!NOTE]
+> **Precedence between scopes is assumed, not verified.** When a certificate name exists in both a vsys (or template vsys) and its shared scope, the integration assumes the vsys certificate takes precedence, as the order above shows. This could not be confirmed on the platform, because it requires a firewall with a data interface. To avoid depending on the assumption, give certificates unique names across the vsys and shared scopes. If the certificate being bound shares its name with a *different* certificate in another searched scope, the job still binds the name but returns a **Warning**, and the details are logged. Check in PAN-OS which certificate the service profile actually uses.
+
 ### Entry Parameters
 
 | Name | Type | Default | Used by | Description |
@@ -86,6 +89,7 @@ On a Management Add job, **the alias identifies the service profile**, not the c
 - The alias is required. It may contain letters, numbers, spaces, hyphens, underscores, and periods. Leading and trailing whitespace is removed.
 - You do not supply the certificate's name on the device. The integration identifies the certificate automatically by matching the certificate content on the job to the certificates on the device, and binds the name it finds. If the thumbprint on the job does not match the content, the job fails.
 - If the same certificate is stored under more than one name, the first match in the search order above is used and a warning is logged.
+- If a *different* certificate has the same name in another searched scope, the job binds the name but returns a **Warning** (see the note under [Which certificates can be bound](#which-certificates-can-be-bound)). The Warning is returned on every run while the ambiguity exists, even when the profile is already bound.
 
 ### Management Add
 
@@ -163,11 +167,14 @@ Inventory reports **one item per service profile** at the store path:
 
 A service profile whose certificate cannot be found (or that references no certificate) is skipped and reported in a warning. The remaining profiles are still inventoried.
 
+If a profile's certificate name is also used by a *different* certificate in another searched scope (for example in both a vsys and the shared scope), the profile is still inventoried using the certificate found first in the [search order](#which-certificates-can-be-bound), but the job returns a **Warning** naming the profile, the certificate, and the scope of the conflict. Which scope PAN-OS resolves first is not verified, so the reported certificate may not be the one the profile uses.
+
 ### Troubleshooting
 
 | Symptom | Cause and resolution |
 |---|---|
 | `set failed, may need to override template object <name> first` | A Panorama **template controls** the service profile, and PAN-OS will not let the integration overwrite it. This cannot be done through the API. In the Panorama UI, open the service profile and click the **Override** button, then re-run the job. |
+| The job returns a Warning that a different certificate is also named `<name>` in another scope | On a Management Add or an Inventory job: the service profile references a certificate by name, and which scope PAN-OS resolves first is not verified. Check which certificate the profile uses in PAN-OS, and rename one of the certificates so names are unique across the scopes. |
 | The job returns a Warning that the service profile was not bound to the management interface | `BindToManagementInterface` was enabled on a store path that does not support it. Use `/config/shared` (firewall) or `/config/panorama` (Panorama), or bind the profile manually. |
 | The job fails saying it could not find a certificate with the job's thumbprint | The certificate is not on the device, or is in a scope this store cannot see. Deploy it with a PaloAlto store first, and check the [searched locations](#which-certificates-can-be-bound) for the store path. |
 | The job fails saying the profile is already bound to a different certificate | Re-run the job with **Overwrite** to replace the certificate. |
