@@ -12,6 +12,14 @@
 			"CertStores.PaloAlto.Reenrollment": {
 				"assemblypath": "PaloAlto.dll",
 				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.Reenrollment"
+			},
+			"CertStores.PaloAltoSPBinding.Inventory": {
+				"assemblypath": "PaloAlto.dll",
+				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAltoSPBinding.Inventory"
+			},
+			"CertStores.PaloAltoSPBinding.Management": {
+				"assemblypath": "PaloAlto.dll",
+				"TypeFullName": "Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAltoSPBinding.Management"
 			}
 		}
 	}
