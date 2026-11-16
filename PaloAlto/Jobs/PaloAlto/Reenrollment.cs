@@ -22,6 +22,7 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Constants;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs.PaloAlto;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
@@ -33,9 +34,11 @@ using Newtonsoft.Json;
 using Org.BouncyCastle.X509;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
+// Keeping the namespace as-is to avoid breaking changes for existing users of the orchestrator.
+// ReSharper disable once CheckNamespace
 namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 
-public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
+public class Reenrollment : PaloAltoStoreTypeBase<Reenrollment>, IReenrollmentJobExtension
 {
     private IPaloAltoClient _client;
     private JobProperties StoreProperties { get; set; }
@@ -60,9 +63,7 @@ public class Reenrollment : JobBase<Reenrollment>, IReenrollmentJobExtension
     {
         Logger.LogDebug($"Processing re-enrollment job with configuration for alias {jobConfiguration.Alias} (Job ID {jobConfiguration.JobId})");
         
-        StoreProperties = JsonConvert.DeserializeObject<JobProperties>(
-            jobConfiguration.CertificateStoreDetails.Properties,
-            new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Populate });
+        StoreProperties = DeserializeJobProperties(jobConfiguration.CertificateStoreDetails);
         
         return ProcessReenrollment(jobConfiguration, submitReenrollmentUpdate)
             .GetAwaiter()
