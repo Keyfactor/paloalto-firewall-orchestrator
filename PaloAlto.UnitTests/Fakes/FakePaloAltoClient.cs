@@ -49,6 +49,13 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
             });
 
     public void WithNoCertificates() => WithCertificates();
+    
+    public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
+    
+    /// <summary>
+    /// Fakes the Palo Alto client to return a static CSR
+    /// </summary>
+    public void HasCsr() => WithCsr(FakeCsr);
 
     /// <summary>
     /// Returns the given certificates only when the certificate list is requested at exactly <paramref name="certificatePath"/>
