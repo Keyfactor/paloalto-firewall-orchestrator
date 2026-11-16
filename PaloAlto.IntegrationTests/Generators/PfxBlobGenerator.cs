@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Math;
@@ -19,6 +20,7 @@ using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto.Operators;
 
 public static class PfxGenerator
 {
@@ -58,7 +60,9 @@ public static class PfxGenerator
         certificateGenerator.SetNotBefore(DateTime.UtcNow.AddDays(-1));
         certificateGenerator.SetNotAfter(DateTime.UtcNow.AddDays(365));
         certificateGenerator.SetPublicKey(keyPair.Public);
-        certificateGenerator.SetSignatureAlgorithm("SHA256withRSA");
+
+        var signatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
+            keyPair.Private, new SecureRandom());
 
         // Add extensions
         certificateGenerator.AddExtension(X509Extensions.BasicConstraints, false, new BasicConstraints(false));
@@ -66,7 +70,7 @@ public static class PfxGenerator
             new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment));
 
         // Sign the certificate
-        var certificate = certificateGenerator.Generate(keyPair.Private);
+        var certificate = certificateGenerator.Generate(signatureFactory);
 
         if (includeChain)
         {
@@ -105,11 +109,12 @@ public static class PfxGenerator
     {
         // Create root CA
         var rootKeyPair = new RsaKeyPairGenerator();
+        var random = new SecureRandom();
         rootKeyPair.Init(new KeyGenerationParameters(new SecureRandom(), 2048));
         var rootKeys = rootKeyPair.GenerateKeyPair();
 
         var rootCertGen = new X509V3CertificateGenerator();
-        rootCertGen.SetSignatureAlgorithm("SHA256withRSA");
+        var rootSignatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(), rootKeys.Private, random);
         rootCertGen.SetSerialNumber(BigInteger.ProbablePrime(120, new Random()));
         rootCertGen.SetSubjectDN(new X509Name($"CN=Root-{alias}"));
         rootCertGen.SetIssuerDN(new X509Name($"CN=Root-{alias}"));
@@ -117,7 +122,7 @@ public static class PfxGenerator
         rootCertGen.SetNotAfter(DateTime.UtcNow.AddDays(3650));
         rootCertGen.SetPublicKey(rootKeys.Public);
         rootCertGen.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
-        var rootCert = rootCertGen.Generate(rootKeys.Private);
+        var rootCert = rootCertGen.Generate(rootSignatureFactory);
 
         // Create intermediate CA
         var intKeyPair = new RsaKeyPairGenerator();
@@ -125,7 +130,7 @@ public static class PfxGenerator
         var intKeys = intKeyPair.GenerateKeyPair();
 
         var intCertGen = new X509V3CertificateGenerator();
-        intCertGen.SetSignatureAlgorithm("SHA256withRSA");
+        var certSignatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(), rootKeys.Private, random);
         intCertGen.SetSerialNumber(BigInteger.ProbablePrime(120, new Random()));
         intCertGen.SetSubjectDN(new X509Name($"CN=Intermediate-{alias}"));
         intCertGen.SetIssuerDN(new X509Name($"CN=Root-{alias}"));
@@ -133,11 +138,11 @@ public static class PfxGenerator
         intCertGen.SetNotAfter(DateTime.UtcNow.AddDays(1825));
         intCertGen.SetPublicKey(intKeys.Public);
         intCertGen.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
-        var intCert = intCertGen.Generate(rootKeys.Private);
+        var intCert = intCertGen.Generate(certSignatureFactory);
 
         // Update end entity to be signed by intermediate
         var endCertGen = new X509V3CertificateGenerator();
-        endCertGen.SetSignatureAlgorithm("SHA256withRSA");
+        var endSignatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(), intKeys.Private, random);
         endCertGen.SetSerialNumber(BigInteger.ProbablePrime(120, new Random()));
         endCertGen.SetSubjectDN(new X509Name($"CN={alias}.example.com,C=US"));
         endCertGen.SetIssuerDN(new X509Name($"CN=Intermediate-{alias}"));
@@ -145,7 +150,7 @@ public static class PfxGenerator
         endCertGen.SetNotAfter(DateTime.UtcNow.AddDays(365));
         endCertGen.SetPublicKey(endEntityKeyPair.Public);
         endCertGen.AddExtension(X509Extensions.BasicConstraints, false, new BasicConstraints(false));
-        var finalEndCert = endCertGen.Generate(intKeys.Private);
+        var finalEndCert = endCertGen.Generate(endSignatureFactory);
 
         // Create PKCS12 store with chain
         var store = new Pkcs12StoreBuilder().Build();
@@ -183,7 +188,8 @@ public static class PfxGenerator
         
         // Load existing PFX into BouncyCastle store
         using var inputStream = new MemoryStream(pfxBytes);
-        var store = new Pkcs12Store(inputStream, currentPassword.ToCharArray());
+        var store = new Pkcs12StoreBuilder().Build();
+        store.Load(inputStream, currentPassword.ToCharArray());
         
         // Create new store with proper alias
         var newStore = new Pkcs12StoreBuilder().Build();

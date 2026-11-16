@@ -2,8 +2,8 @@
   "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
   "integration_type": "orchestrator",
   "name": "Palo Alto Orchestrator",
-  "update_catalog": true,
   "link_github": true,
+  "update_catalog": true,
   "status": "production",
   "support_level": "kf-supported",
   "release_project": "PaloAlto/PaloAlto.csproj",
@@ -43,7 +43,7 @@
             "Add": true,
             "Create": false,
             "Discovery": false,
-            "Enrollment": false,
+            "Enrollment": true,
             "Remove": true
           },
           "Properties": [

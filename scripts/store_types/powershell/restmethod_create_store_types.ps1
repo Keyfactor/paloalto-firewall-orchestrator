@@ -23,7 +23,7 @@ $Body = @'
     "Add": true,
     "Create": false,
     "Discovery": false,
-    "Enrollment": false,
+    "Enrollment": true,
     "Remove": true
   },
   "Properties": [

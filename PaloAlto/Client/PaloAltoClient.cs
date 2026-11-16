@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Helpers;
+using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Logging;
 using Keyfactor.Orchestrators.Common.Enums;
@@ -276,6 +277,20 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             }
         }
 
+        public async Task<string> GetCertificateSigningRequestByName(string name)
+        {
+            try
+            {
+                var uri = $"/api/?type=export&category=certificate&certificate-name={name}&include-key=no&format=pkcs10&key={ApiKey}";
+                return await GetResponseAsync(await HttpClient.GetAsync(uri));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occured in PaloAltoClient.GetCertificateSigningRequestByName: {e.Message}");
+                throw;
+            }
+        }
+
 
         public async Task<ErrorSuccessResponse> SubmitDeleteCertificate(string name, string storePath)
         {
@@ -369,6 +384,22 @@ namespace Keyfactor.Extensions.Orchestrator.PaloAlto.Client
             catch (Exception e)
             {
                 _logger.LogError($"Error Occured in PaloAltoClient.ImportCertificate: {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ErrorSuccessResponse> GenerateCertificateRequest(GenerateCertificateRequestMetadata metadata)
+        {
+            try
+            {
+                string uri = $"/api/?type=op&cmd={metadata.GetCommand()}";
+                _logger.LogDebug($"GenerateCertificateRequest URI: {uri}");
+                ErrorSuccessResponse response = await GetXmlResponseAsync<ErrorSuccessResponse>(await HttpClient.GetAsync($"{uri}&key={ApiKey}"));
+                return response;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Error Occurred in PaloAltoClient.GenerateCertificateRequest: {e.Message}");
                 throw;
             }
         }

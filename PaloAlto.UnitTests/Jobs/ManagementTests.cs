@@ -16,9 +16,11 @@ using Keyfactor.Extensions.Orchestrator.PaloAlto.Jobs;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
 using Keyfactor.Orchestrators.Common.Enums;
 using Moq;
+using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
@@ -32,12 +34,7 @@ namespace PaloAlto.UnitTests.Jobs;
 public class ManagementTests : BaseUnitTest
 {
     private readonly Management _sut;
-
-    private const string FirewallStorePath = "/config/shared";
-    private const string PanoramaStorePath =
-        "/config/devices/entry[@name='panorama1']/template/entry[@name='MyTemplate']/config/shared";
-    private const string PanoramaVsysStorePath =
-        "/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']";
+    
     private const string PanoramaTemplateName = "MyTemplate";
     private const string TestAlias = "my-cert";
     private const string TestPfxPassword = "test-password";
@@ -989,20 +986,34 @@ public class ManagementTests : BaseUnitTest
     }
 
     #endregion
+    
+    // ── PAM resolution ───────────────────────────────────────────────────────
 
-    // ── Assertion helpers ────────────────────────────────────────────────────
-
-    private static void AssertSuccess(Keyfactor.Orchestrators.Extensions.JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
-
-    private static void AssertWarning(Keyfactor.Orchestrators.Extensions.JobResult result)
+    [Fact]
+    public void ProcessJob_PamResolverCalledForServerPasswordAndUsername()
     {
-        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
-        Assert.NotEmpty(result.FailureMessage);
-    }
+        FakeClient.PanoramaHasTemplate(PanoramaTemplateName);
+        FakeClient.PanoramaHasTemplateStacks("Stack1");
+        FakeClient.NoDuplicateExists();
+        FakeClient.ImportSucceeds();
+        FakeClient.CommitSucceeds();
+        FakeClient.CommitTemplateSucceeds();
+        
+        var job = new ManagementJobBuilder()
+            .AsAdd()
+            .WithStorePath(PanoramaStorePath)
+            .WithAlias(TestAlias)
+            .WithCertificateContents(TestPfxBase64)
+            .WithTemplateStack("Stack1")
+            .WithCredentials("raw-username", "raw-password")
+            .WithPrivateKeyPassword(TestPfxPassword)
+            .Build();
 
-    private static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result) =>
-        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        _sut.ProcessJob(job);
+
+        PamResolverMock.Verify(r => r.Resolve("raw-password"), Times.Once);
+        PamResolverMock.Verify(r => r.Resolve("raw-username"), Times.Once);
+    }
 
     // ── PFX generation ───────────────────────────────────────────────────────
 
@@ -1017,7 +1028,8 @@ public class ManagementTests : BaseUnitTest
         var rootKeys = rootKeyGen.GenerateKeyPair();
 
         var rootCertGen = new X509V3CertificateGenerator();
-        rootCertGen.SetSignatureAlgorithm("SHA256withRSA");
+        var rootSignatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
+            rootKeys.Private, random);
         rootCertGen.SetSerialNumber(BigInteger.ProbablePrime(120, random));
         rootCertGen.SetSubjectDN(new X509Name("CN=TestRootCA"));
         rootCertGen.SetIssuerDN(new X509Name("CN=TestRootCA"));
@@ -1025,14 +1037,15 @@ public class ManagementTests : BaseUnitTest
         rootCertGen.SetNotAfter(DateTime.UtcNow.AddYears(10));
         rootCertGen.SetPublicKey(rootKeys.Public);
         rootCertGen.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
-        var rootCert = rootCertGen.Generate(rootKeys.Private);
+        var rootCert = rootCertGen.Generate(rootSignatureFactory);
 
         var eeKeyGen = new RsaKeyPairGenerator();
         eeKeyGen.Init(new KeyGenerationParameters(random, 2048));
         var eeKeys = eeKeyGen.GenerateKeyPair();
 
         var eeCertGen = new X509V3CertificateGenerator();
-        eeCertGen.SetSignatureAlgorithm("SHA256withRSA");
+        var eeSignatureFactory = new Asn1SignatureFactory(PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
+            rootKeys.Private, random);
         eeCertGen.SetSerialNumber(BigInteger.ProbablePrime(120, random));
         eeCertGen.SetSubjectDN(new X509Name("CN=TestEndEntity"));
         eeCertGen.SetIssuerDN(new X509Name("CN=TestRootCA"));
@@ -1040,7 +1053,7 @@ public class ManagementTests : BaseUnitTest
         eeCertGen.SetNotAfter(DateTime.UtcNow.AddYears(1));
         eeCertGen.SetPublicKey(eeKeys.Public);
         eeCertGen.AddExtension(X509Extensions.BasicConstraints, false, new BasicConstraints(false));
-        var eeCert = eeCertGen.Generate(rootKeys.Private);
+        var eeCert = eeCertGen.Generate(eeSignatureFactory);
 
         var store = new Pkcs12StoreBuilder().Build();
         var eeCertEntry = new X509CertificateEntry(eeCert);

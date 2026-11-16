@@ -29,7 +29,8 @@ public class PemParser
 
         var pfxBytes = Convert.FromBase64String(contents);
         using var stream = new MemoryStream(pfxBytes);
-        var store = new Pkcs12Store(stream, password?.ToCharArray() ?? Array.Empty<char>());
+        var store = new Pkcs12StoreBuilder().Build();
+        store.Load(stream, password?.ToCharArray() ?? Array.Empty<char>());
 
         _logger.LogTrace($"Loaded Pkcs12Store. Alias '{certAlias}' present: {store.ContainsAlias(certAlias)}");
 
