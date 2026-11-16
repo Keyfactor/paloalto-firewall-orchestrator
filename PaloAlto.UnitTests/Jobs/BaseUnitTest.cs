@@ -13,12 +13,14 @@
 // limitations under the License.
 
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Factories;
+using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using MartinCostello.Logging.XUnit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PaloAlto.UnitTests.Fakes;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace PaloAlto.UnitTests.Jobs;
@@ -29,13 +31,20 @@ public abstract class BaseUnitTest
     protected readonly Mock<IPaloAltoClientFactory> ClientFactoryMock = new();
     protected readonly IClientLoggerFactory LoggerFactory;
     protected readonly Mock<IPAMSecretResolver> PamResolverMock = new ();
+
+    protected const string TestClientMachine = "https://example-firewall-url.com";
+    protected const string FirewallStorePath = "/config/shared";
+    protected const string PanoramaStorePath =
+        "/config/devices/entry[@name='panorama1']/template/entry[@name='MyTemplate']/config/shared";
+    protected const string PanoramaVsysStorePath =
+        "/config/devices/entry/template/entry[@name='MyTemplate']/config/devices/entry/vsys/entry[@name='vsys1']";
     
     protected BaseUnitTest(ITestOutputHelper output)
     {
         var services = new ServiceCollection()
             .AddLogging(b => b
                 .AddProvider(new XUnitLoggerProvider(output, new XUnitLoggerOptions()))
-                .SetMinimumLevel(LogLevel.Debug))
+                .SetMinimumLevel(LogLevel.Trace))
             .BuildServiceProvider();
 
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
@@ -56,4 +65,27 @@ public abstract class BaseUnitTest
         
         LoggerFactory = loggerFactoryMock.Object;
     }
+    
+    // ── Assertion helpers ────────────────────────────────────────────────────
+
+    protected static void AssertSuccess(Keyfactor.Orchestrators.Extensions.JobResult result) =>
+        Assert.Equal(OrchestratorJobStatusJobResult.Success, result.Result);
+
+    protected static void AssertWarning(Keyfactor.Orchestrators.Extensions.JobResult result)
+    {
+        Assert.Equal(OrchestratorJobStatusJobResult.Warning, result.Result);
+        Assert.NotEmpty(result.FailureMessage);
+    }
+
+    protected static void AssertFailure(Keyfactor.Orchestrators.Extensions.JobResult result,
+        string? expectedMessage = null)
+    {
+        Assert.Equal(OrchestratorJobStatusJobResult.Failure, result.Result);
+        
+        if (expectedMessage != null)
+        {
+            Assert.Contains(expectedMessage, result.FailureMessage);
+        }
+    }
+        
 }

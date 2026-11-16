@@ -57,7 +57,8 @@
   <text x="41" y="429" class="label">Create</text>
   <rect x="240" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
   <text x="261" y="429" class="label">Discovery</text>
-  <rect x="460" y="415" width="15" height="15" fill="#ffffff" stroke="#cccccc" stroke-width="1" rx="2" />
+  <rect x="460" y="415" width="15" height="15" fill="#ffffff" stroke="#444444" stroke-width="1.5" rx="2" />
+  <polyline points="463,422 466,426 472,419" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   <text x="481" y="429" class="label">ODKG</text>
   <rect x="0" y="455" width="700" height="38" fill="#f8f8f8" />
   <rect x="20" y="466" width="16" height="16" fill="none" stroke="#666666" stroke-width="1" rx="2" />
