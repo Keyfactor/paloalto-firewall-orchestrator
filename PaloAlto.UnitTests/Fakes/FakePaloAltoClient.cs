@@ -1,3 +1,17 @@
+// Copyright 2026 Keyfactor
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Client;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Certificates;
 using Keyfactor.Extensions.Orchestrator.PaloAlto.Models.Responses;
@@ -35,7 +49,73 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
             });
 
     public void WithNoCertificates() => WithCertificates();
+
+    /// <summary>
+    /// Returns the given certificates only when the certificate list is requested at exactly <paramref name="certificatePath"/>
+    /// (the full path, including the trailing <c>/certificate/entry</c>). Register after <see cref="WithNoCertificates"/>
+    /// so that any other scope returns an empty list.
+    /// </summary>
+    public void WithCertificatesAt(string certificatePath, params Entry[] entries) =>
+        ClientMock.Setup(c => c.GetCertificateList(certificatePath))
+            .ReturnsAsync(new CertificateListResponse
+            {
+                CertificateResult = new CertificateResult { Entry = entries.ToList() }
+            });
+
+    // ── Inventory: Service profiles ──────────────────────────────────────────
+
+    public void WithServiceProfiles(params ServiceProfileEntry[] entries) =>
+        ClientMock.Setup(c => c.GetServiceProfiles(It.IsAny<string>()))
+            .ReturnsAsync(new ServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ServiceProfileResult
+                {
+                    SslTlsServiceProfile = new SslTlsServiceProfile { Entries = entries.ToList() }
+                }
+            });
+
+    public void WithNoServiceProfiles() => WithServiceProfiles();
+
+    // ── Management: Service profile binding ──────────────────────────────────
+
+    public void SetServiceProfileSucceeds() =>
+        ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(Ok());
+
+    public void SetServiceProfileFails(string message = "Could not set service profile") =>
+        ClientMock.Setup(c => c.SetServiceProfile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(Error(message));
     
+    // ── Management interface service profile ─────────────────────────────────
+
+    /// <summary>The management interface is bound to the named service profile.</summary>
+    public void ManagementInterfaceIsBoundTo(string profileName) =>
+        ClientMock.Setup(c => c.GetManagementInterfaceServiceProfile())
+            .ReturnsAsync(new ManagementInterfaceServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ManagementInterfaceServiceProfileResult
+                    { SslTlsServiceProfile = profileName, Count = 1, TotalCount = 1 }
+            });
+
+    /// <summary>PAN-OS answers with an empty &lt;result/&gt; when no profile is bound to the management interface.</summary>
+    public void ManagementInterfaceHasNoProfile() =>
+        ClientMock.Setup(c => c.GetManagementInterfaceServiceProfile())
+            .ReturnsAsync(new ManagementInterfaceServiceProfileResponse
+            {
+                Status = "success",
+                Result = new ManagementInterfaceServiceProfileResult()
+            });
+
+    public void SetManagementInterfaceServiceProfileSucceeds() =>
+        ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .ReturnsAsync(Ok());
+
+    public void SetManagementInterfaceServiceProfileFails(string message = "Could not set the management interface service profile") =>
+        ClientMock.Setup(c => c.SetManagementInterfaceServiceProfile(It.IsAny<string>()))
+            .ReturnsAsync(Error(message));
+
     public void WithCsr(string csr) => ClientMock.Setup(c => c.GetCertificateSigningRequestByName(It.IsAny<string>())).ReturnsAsync(csr);
     
     /// <summary>
@@ -66,13 +146,13 @@ iTjSmuGmUt9rIFC8DZ4gVcK0taYuexwTFSYQY3tQ
 
     // ── Validation: Panorama topology ────────────────────────────────────────
 
-    public void PanoramaHasTemplate(string templateName) =>
+    public void PanoramaHasTemplate(params string[] templateNames) =>
         ClientMock.Setup(c => c.GetTemplateList())
             .ReturnsAsync(new NamedListResponse
             {
                 Result = new NamedListResult
                 {
-                    Entry = new List<NamedListEntry> { new() { Name = templateName } }
+                    Entry = templateNames.Select(n => new NamedListEntry { Name = n }).ToList()
                 }
             });
 

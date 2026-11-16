@@ -22,10 +22,11 @@ using Keyfactor.Orchestrators.Extensions;
 using Keyfactor.Orchestrators.Extensions.Interfaces;
 using Moq;
 using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace PaloAlto.UnitTests.Jobs;
+namespace PaloAlto.UnitTests.Jobs.PaloAlto;
 
 public class InventoryTests : BaseUnitTest
 {

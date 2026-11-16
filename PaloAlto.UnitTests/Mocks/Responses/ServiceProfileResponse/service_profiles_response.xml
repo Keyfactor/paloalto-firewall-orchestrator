@@ -1,0 +1,64 @@
+<response status="success" code="19">
+    <result total-count="1" count="1">
+        <ssl-tls-service-profile ptpl="CertificatesTemplate" src="tpl">
+            <entry name="TestBindings" ptpl="CertificatesTemplate" src="tpl">
+                <protocol-settings ptpl="CertificatesTemplate" src="tpl">
+                    <min-version ptpl="CertificatesTemplate" src="tpl">tls1-2</min-version>
+                    <max-version ptpl="CertificatesTemplate" src="tpl">tls1-3</max-version>
+                    <keyxchg-algo-rsa ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-rsa>
+                    <keyxchg-algo-dhe ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-dhe>
+                    <keyxchg-algo-ecdhe ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-ecdhe>
+                    <enc-algo-aes-128-cbc ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-128-cbc>
+                    <enc-algo-aes-128-gcm ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-128-gcm>
+                    <enc-algo-aes-chacha20-poly1305 ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-chacha20-poly1305>
+                    <enc-algo-aes-256-cbc ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-256-cbc>
+                    <enc-algo-aes-256-gcm ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-256-gcm>
+                    <auth-algo-sha1 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha1>
+                    <auth-algo-sha256 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha256>
+                    <auth-algo-sha384 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha384>
+                </protocol-settings>
+                <certificate ptpl="CertificatesTemplate" src="tpl">0.6307286743585818</certificate>
+            </entry>
+            <entry name="foobar2" ptpl="CertificatesTemplate" src="tpl">
+                <certificate ptpl="CertificatesTemplate" src="tpl">kitten</certificate>
+                <protocol-settings ptpl="CertificatesTemplate" src="tpl"/>
+            </entry>
+            <entry name="PanoramaProfileCT" ptpl="CertificatesTemplate" src="tpl">
+                <protocol-settings ptpl="CertificatesTemplate" src="tpl">
+                    <min-version ptpl="CertificatesTemplate" src="tpl">tls1-2</min-version>
+                    <max-version ptpl="CertificatesTemplate" src="tpl">tls1-3</max-version>
+                    <keyxchg-algo-rsa ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-rsa>
+                    <keyxchg-algo-dhe ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-dhe>
+                    <keyxchg-algo-ecdhe ptpl="CertificatesTemplate" src="tpl">yes</keyxchg-algo-ecdhe>
+                    <enc-algo-aes-128-cbc ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-128-cbc>
+                    <enc-algo-aes-128-gcm ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-128-gcm>
+                    <enc-algo-aes-chacha20-poly1305 ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-chacha20-poly1305>
+                    <enc-algo-aes-256-cbc ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-256-cbc>
+                    <enc-algo-aes-256-gcm ptpl="CertificatesTemplate" src="tpl">yes</enc-algo-aes-256-gcm>
+                    <auth-algo-sha1 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha1>
+                    <auth-algo-sha256 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha256>
+                    <auth-algo-sha384 ptpl="CertificatesTemplate" src="tpl">yes</auth-algo-sha384>
+                </protocol-settings>
+                <certificate ptpl="CertificatesTemplate" src="tpl">testing</certificate>
+            </entry>
+            <entry name="PanoramaProfile" ptpl="CertificatesStack" src="tpl">
+                <protocol-settings ptpl="CertificatesStack" src="tpl">
+                    <min-version ptpl="CertificatesStack" src="tpl">tls1-2</min-version>
+                    <max-version ptpl="CertificatesStack" src="tpl">tls1-3</max-version>
+                    <keyxchg-algo-rsa ptpl="CertificatesStack" src="tpl">yes</keyxchg-algo-rsa>
+                    <keyxchg-algo-dhe ptpl="CertificatesStack" src="tpl">yes</keyxchg-algo-dhe>
+                    <keyxchg-algo-ecdhe ptpl="CertificatesStack" src="tpl">yes</keyxchg-algo-ecdhe>
+                    <enc-algo-aes-128-cbc ptpl="CertificatesStack" src="tpl">yes</enc-algo-aes-128-cbc>
+                    <enc-algo-aes-128-gcm ptpl="CertificatesStack" src="tpl">yes</enc-algo-aes-128-gcm>
+                    <enc-algo-aes-chacha20-poly1305 ptpl="CertificatesStack" src="tpl">yes</enc-algo-aes-chacha20-poly1305>
+                    <enc-algo-aes-256-cbc ptpl="CertificatesStack" src="tpl">yes</enc-algo-aes-256-cbc>
+                    <enc-algo-aes-256-gcm ptpl="CertificatesStack" src="tpl">yes</enc-algo-aes-256-gcm>
+                    <auth-algo-sha1 ptpl="CertificatesStack" src="tpl">yes</auth-algo-sha1>
+                    <auth-algo-sha256 ptpl="CertificatesStack" src="tpl">yes</auth-algo-sha256>
+                    <auth-algo-sha384 ptpl="CertificatesStack" src="tpl">yes</auth-algo-sha384>
+                </protocol-settings>
+                <certificate ptpl="CertificatesStack" src="tpl">kitten</certificate>
+            </entry>
+        </ssl-tls-service-profile>
+    </result>
+</response>
