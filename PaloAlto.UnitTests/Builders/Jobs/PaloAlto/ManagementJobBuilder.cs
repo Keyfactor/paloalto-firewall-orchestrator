@@ -17,7 +17,7 @@ using Keyfactor.Orchestrators.Common.Enums;
 using Keyfactor.Orchestrators.Extensions;
 using Newtonsoft.Json;
 
-namespace PaloAlto.UnitTests.Builders;
+namespace PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 
 public sealed class ManagementJobBuilder
 {

@@ -1,3 +1,7 @@
+# 3.1.0
+Features:
+- Added a new store type for binding certificates to SSL / TLS Service Profiles in Panorama and Firewall, `PaloAltoSPBinding`.
+
 # 3.0.0
 Features:
 - Added support for re-enrollment, also known as On-Device Key Generation (ODKG).
