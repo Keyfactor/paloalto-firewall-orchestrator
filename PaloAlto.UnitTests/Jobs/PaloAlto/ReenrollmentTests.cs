@@ -21,12 +21,13 @@ using Keyfactor.Orchestrators.Extensions;
 using Moq;
 using Org.BouncyCastle.X509;
 using PaloAlto.UnitTests.Builders;
+using PaloAlto.UnitTests.Builders.Jobs.PaloAlto;
 using PaloAlto.UnitTests.Generators;
 using Xunit;
 using Xunit.Abstractions;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
-namespace PaloAlto.UnitTests.Jobs;
+namespace PaloAlto.UnitTests.Jobs.PaloAlto;
 
 public class ReenrollmentTests : BaseUnitTest
 {

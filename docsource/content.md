@@ -2,7 +2,8 @@
 
 The Palo Alto Orchestrator Extension is an integration that can replace and inventory certificates on either a Panoroama instance or Firewall Instance, depending on the configuration.  The certificate store types that can be managed in the current version are: 
 
-* PaloAlto - See [Test Cases](#test-cases) For Specific Use Cases that are supported.
+* PaloAlto - Manages the certificates themselves: inventory, deploy, renew, re-enroll, and remove. See [Test Cases](#test-cases) For Specific Use Cases that are supported.
+* PASPBin (Palo Alto Service Profile Binding) - Manages SSL/TLS Service Profiles: creates a profile, binds a certificate that is already on the device to it, and optionally binds the profile to the management interface. Use it in addition to PaloAlto when the service profile and management interface assignment should be automated too.
 
 ## Requirements
 
