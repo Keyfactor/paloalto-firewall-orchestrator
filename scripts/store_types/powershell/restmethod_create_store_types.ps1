@@ -202,7 +202,7 @@ $Body = @'
       "RequiredWhen": {
         "HasPrivateKey": false,
         "OnAdd": false,
-        "OnRemove": true,
+        "OnRemove": false,
         "OnODKG": false
       }
     }

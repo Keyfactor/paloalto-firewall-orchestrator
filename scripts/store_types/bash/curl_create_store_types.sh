@@ -202,7 +202,7 @@ curl -s -X POST "https://${KEYFACTOR_HOSTNAME}/${KEYFACTOR_API_PATH}/Certificate
       "RequiredWhen": {
         "HasPrivateKey": false,
         "OnAdd": false,
-        "OnRemove": true,
+        "OnRemove": false,
         "OnODKG": false
       }
     }

@@ -409,7 +409,7 @@ the Keyfactor Command Portal
    | Name | Display Name | Description | Type | Default Value | Entry has a private key | Adding an entry | Removing an entry | Reenrolling an entry |
    | ---- | ------------ | ---- | ------------- | ----------------------- | ---------------- | ----------------- | ------------------- | ----------- |
    | CertificateAlias | Certificate Alias |  | String |  | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked |
-   | BindToManagementInterface | Bind to Management Interface |  | Bool | false | 🔲 Unchecked | 🔲 Unchecked | ✅ Checked | 🔲 Unchecked |
+   | BindToManagementInterface | Bind to Management Interface |  | Bool | false | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked | 🔲 Unchecked |
 
    The Entry Parameters tab should look like this:
 
